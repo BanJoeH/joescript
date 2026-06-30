@@ -53,7 +53,13 @@ export default function AdminAllowedEmailsPage() {
             <input name="intent" type="hidden" value="add" />
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input id="email" name="email" placeholder="friend@example.com" required type="email" />
+              <Input
+                id="email"
+                name="email"
+                placeholder="friend@example.com"
+                required
+                type="email"
+              />
             </div>
             <Button type="submit">Add to allowlist</Button>
           </Form>

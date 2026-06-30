@@ -5,7 +5,9 @@ import { integer, text } from "drizzle-orm/sqlite-core";
 export const nowMs = sql`(cast(unixepoch('subsecond') * 1000 as integer))`;
 
 export function idColumn(name = "id") {
-  return text(name).primaryKey().$defaultFn(() => crypto.randomUUID());
+  return text(name)
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID());
 }
 
 export function createdAtColumn(name = "created_at") {

@@ -19,13 +19,7 @@ const addMemberInput = z.object({
   email: z.string().trim().email(),
 });
 
-export function createHouseholdsService({
-  db,
-  userId,
-}: {
-  db: Database;
-  userId: string;
-}) {
+export function createHouseholdsService({ db, userId }: { db: Database; userId: string }) {
   async function assertMember(householdId: string) {
     const [membership] = await db
       .select({ id: householdMembers.id })
@@ -236,7 +230,9 @@ export function createHouseholdsService({
       await db
         .update(householdMembers)
         .set({ deletedAt: now, ...touch })
-        .where(and(eq(householdMembers.householdId, householdId), isNull(householdMembers.deletedAt)));
+        .where(
+          and(eq(householdMembers.householdId, householdId), isNull(householdMembers.deletedAt)),
+        );
 
       await db
         .update(households)
@@ -345,9 +341,6 @@ async function clearFavoriteHousehold(db: Database, userId: string, householdId:
     .update(userPreferences)
     .set({ favoriteHouseholdId: null, updatedAt: new Date() })
     .where(
-      and(
-        eq(userPreferences.userId, userId),
-        eq(userPreferences.favoriteHouseholdId, householdId),
-      ),
+      and(eq(userPreferences.userId, userId), eq(userPreferences.favoriteHouseholdId, householdId)),
     );
 }

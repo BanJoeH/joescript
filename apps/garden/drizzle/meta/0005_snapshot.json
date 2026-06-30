@@ -107,12 +107,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -186,9 +182,7 @@
       "indexes": {
         "session_token_unique": {
           "name": "session_token_unique",
-          "columns": [
-            "token"
-          ],
+          "columns": ["token"],
           "isUnique": true
         }
       },
@@ -197,12 +191,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -270,9 +260,7 @@
       "indexes": {
         "user_email_unique": {
           "name": "user_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },
@@ -379,9 +367,7 @@
       "indexes": {
         "allowed_emails_email_unique": {
           "name": "allowed_emails_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },
@@ -441,10 +427,7 @@
       "indexes": {
         "household_members_household_user_unique": {
           "name": "household_members_household_user_unique",
-          "columns": [
-            "household_id",
-            "user_id"
-          ],
+          "columns": ["household_id", "user_id"],
           "isUnique": true
         }
       },
@@ -453,12 +436,8 @@
           "name": "household_members_household_id_households_id_fk",
           "tableFrom": "household_members",
           "tableTo": "households",
-          "columnsFrom": [
-            "household_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["household_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -466,12 +445,8 @@
           "name": "household_members_user_id_user_id_fk",
           "tableFrom": "household_members",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -559,12 +534,8 @@
           "name": "user_preferences_user_id_user_id_fk",
           "tableFrom": "user_preferences",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -572,12 +543,8 @@
           "name": "user_preferences_favorite_household_id_households_id_fk",
           "tableFrom": "user_preferences",
           "tableTo": "households",
-          "columnsFrom": [
-            "favorite_household_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["favorite_household_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -662,12 +629,8 @@
           "name": "areas_household_id_households_id_fk",
           "tableFrom": "areas",
           "tableTo": "households",
-          "columnsFrom": [
-            "household_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["household_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -675,12 +638,8 @@
           "name": "areas_created_by_user_id_user_id_fk",
           "tableFrom": "areas",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -688,12 +647,8 @@
           "name": "areas_updated_by_user_id_user_id_fk",
           "tableFrom": "areas",
           "tableTo": "user",
-          "columnsFrom": [
-            "updated_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["updated_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -806,12 +761,8 @@
           "name": "care_rules_plant_id_plants_id_fk",
           "tableFrom": "care_rules",
           "tableTo": "plants",
-          "columnsFrom": [
-            "plant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["plant_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -819,12 +770,8 @@
           "name": "care_rules_created_by_user_id_user_id_fk",
           "tableFrom": "care_rules",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -832,12 +779,8 @@
           "name": "care_rules_updated_by_user_id_user_id_fk",
           "tableFrom": "care_rules",
           "tableTo": "user",
-          "columnsFrom": [
-            "updated_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["updated_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -957,12 +900,8 @@
           "name": "journal_entries_household_id_households_id_fk",
           "tableFrom": "journal_entries",
           "tableTo": "households",
-          "columnsFrom": [
-            "household_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["household_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -970,12 +909,8 @@
           "name": "journal_entries_plant_id_plants_id_fk",
           "tableFrom": "journal_entries",
           "tableTo": "plants",
-          "columnsFrom": [
-            "plant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["plant_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -983,12 +918,8 @@
           "name": "journal_entries_area_id_areas_id_fk",
           "tableFrom": "journal_entries",
           "tableTo": "areas",
-          "columnsFrom": [
-            "area_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["area_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -996,12 +927,8 @@
           "name": "journal_entries_care_rule_id_care_rules_id_fk",
           "tableFrom": "journal_entries",
           "tableTo": "care_rules",
-          "columnsFrom": [
-            "care_rule_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["care_rule_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1009,12 +936,8 @@
           "name": "journal_entries_created_by_user_id_user_id_fk",
           "tableFrom": "journal_entries",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1022,12 +945,8 @@
           "name": "journal_entries_updated_by_user_id_user_id_fk",
           "tableFrom": "journal_entries",
           "tableTo": "user",
-          "columnsFrom": [
-            "updated_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["updated_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1146,12 +1065,8 @@
           "name": "plants_household_id_households_id_fk",
           "tableFrom": "plants",
           "tableTo": "households",
-          "columnsFrom": [
-            "household_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["household_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1159,12 +1074,8 @@
           "name": "plants_area_id_areas_id_fk",
           "tableFrom": "plants",
           "tableTo": "areas",
-          "columnsFrom": [
-            "area_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["area_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1172,12 +1083,8 @@
           "name": "plants_created_by_user_id_user_id_fk",
           "tableFrom": "plants",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1185,12 +1092,8 @@
           "name": "plants_updated_by_user_id_user_id_fk",
           "tableFrom": "plants",
           "tableTo": "user",
-          "columnsFrom": [
-            "updated_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["updated_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

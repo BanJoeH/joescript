@@ -1,12 +1,7 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 import { user } from "./auth";
-import {
-  createdAtColumn,
-  deletedAtColumn,
-  idColumn,
-  updatedAtColumn,
-} from "./columns";
+import { createdAtColumn, deletedAtColumn, idColumn, updatedAtColumn } from "./columns";
 import { households } from "./domain";
 
 export const areas = sqliteTable("areas", {

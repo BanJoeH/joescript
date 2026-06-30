@@ -1,11 +1,6 @@
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-import {
-  createdAtColumn,
-  idColumn,
-  optionalTimestampColumn,
-  updatedAtColumn,
-} from "./columns";
+import { createdAtColumn, idColumn, optionalTimestampColumn, updatedAtColumn } from "./columns";
 
 export const user = sqliteTable("user", {
   id: idColumn(),
