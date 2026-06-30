@@ -1,17 +1,15 @@
 packages:
   - "apps/*"
-
 allowBuilds:
-  esbuild: true
-  sharp: true
-  workerd: true
-
+  esbuild: set this to true or false
+  sharp: set this to true or false
+  workerd: set this to true or false
 minimumReleaseAgeExclude:
-  - "@better-auth/core@1.6.23"
-  - "@better-auth/drizzle-adapter@1.6.23"
-  - "@better-auth/kysely-adapter@1.6.23"
-  - "@better-auth/memory-adapter@1.6.23"
-  - "@better-auth/mongo-adapter@1.6.23"
-  - "@better-auth/prisma-adapter@1.6.23"
-  - "@better-auth/telemetry@1.6.23"
+  - '@better-auth/core@1.6.23'
+  - '@better-auth/drizzle-adapter@1.6.23'
+  - '@better-auth/kysely-adapter@1.6.23'
+  - '@better-auth/memory-adapter@1.6.23'
+  - '@better-auth/mongo-adapter@1.6.23'
+  - '@better-auth/prisma-adapter@1.6.23'
+  - '@better-auth/telemetry@1.6.23'
   - better-auth@1.6.23
