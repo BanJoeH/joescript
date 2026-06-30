@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "garden-dev",
+  "compatibility_date": "2026-06-30",
+  "main": "./workers/app.ts",
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true,
+  "compatibility_flags": ["nodejs_compat"],
+  "env": {
+    "production": {
+      "name": "garden-prod"
+    }
+  }
+}
