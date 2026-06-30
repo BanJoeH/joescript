@@ -5,7 +5,8 @@
   "scripts": {
     "build": "react-router build",
     "dev": "react-router dev",
-    "typecheck": "wrangler types && react-router typegen && tsc -b",
+    "codegen": "wrangler types && react-router typegen",
+    "typecheck": "pnpm run codegen && tsc -b",
     "deploy": "pnpm run build && wrangler deploy",
     "deploy:prod": "CLOUDFLARE_ENV=production pnpm run build && wrangler deploy",
     "preview": "pnpm run build && vite preview",

@@ -1,8 +1,7 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { z } from "zod";
-
-import { areas, journalEntries, plants, careRules } from "~/db/schema/garden";
 import { householdMembers, households, user, userPreferences } from "~/db/schema";
+import { areas, careRules, journalEntries, plants } from "~/db/schema/garden";
 import { isEmailAllowed } from "~/lib/access.server";
 import type { Database } from "~/lib/db.server";
 import { auditFields, newId, touchFields } from "~/services/types";

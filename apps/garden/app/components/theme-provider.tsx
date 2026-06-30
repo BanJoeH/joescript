@@ -3,10 +3,10 @@ import { createContext, useContext, useEffect, useState } from "react";
 import {
   applyThemeClass,
   getStoredTheme,
-  resolveTheme,
   type ResolvedTheme,
-  type ThemePreference,
+  resolveTheme,
   THEME_STORAGE_KEY,
+  type ThemePreference,
 } from "~/lib/theme";
 
 type ThemeContextValue = {

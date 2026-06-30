@@ -2,7 +2,7 @@ import { and, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { careRules, plants } from "~/db/schema";
-import { auditFields, newId, touchFields, type GardenContext } from "~/services/types";
+import { auditFields, type GardenContext, newId, touchFields } from "~/services/types";
 
 const monthsSchema = z.array(z.number().int().min(1).max(12)).min(1);
 

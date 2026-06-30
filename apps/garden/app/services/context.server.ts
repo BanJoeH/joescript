@@ -2,9 +2,9 @@ import { and, eq, isNull } from "drizzle-orm";
 import { redirect } from "react-router";
 
 import { households } from "~/db/schema";
+import { getGardenEnv } from "~/lib/context.server";
 import type { Database } from "~/lib/db.server";
 import type { GardenEnv } from "~/lib/env.server";
-import { getGardenEnv } from "~/lib/context.server";
 import { assertHouseholdMember, getHouseholdIdFromRequest } from "~/lib/household-path.server";
 import { requireGardenSession } from "~/lib/session.server";
 import { createGardenService } from "~/services/garden.service";
