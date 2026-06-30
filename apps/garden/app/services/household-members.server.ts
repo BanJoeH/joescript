@@ -5,11 +5,7 @@ import { normalizeEmail } from "~/lib/access.server";
 import type { Database } from "~/lib/db.server";
 import { touchFields } from "~/services/types";
 
-export async function linkPendingHouseholdMemberships(
-  db: Database,
-  userId: string,
-  email: string,
-) {
+export async function linkPendingHouseholdMemberships(db: Database, userId: string, email: string) {
   const normalizedEmail = normalizeEmail(email);
 
   await db

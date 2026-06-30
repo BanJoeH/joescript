@@ -58,8 +58,8 @@ export default function HouseholdSettings() {
         <CardHeader>
           <CardTitle>Members</CardTitle>
           <CardDescription>
-            Only allowlisted Google accounts can be added. Invited members get access when they
-            sign in.
+            Only allowlisted Google accounts can be added. Invited members get access when they sign
+            in.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
