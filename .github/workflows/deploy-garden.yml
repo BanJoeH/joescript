@@ -6,7 +6,10 @@ on:
     paths:
       - "apps/garden/**"
       - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "package.json"
       - ".github/workflows/deploy-garden.yml"
+  workflow_dispatch:
 
 concurrency:
   group: deploy-garden-${{ github.ref }}
