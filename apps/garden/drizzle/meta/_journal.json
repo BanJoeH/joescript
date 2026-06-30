@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1782813019765,
+      "tag": "0000_tiresome_firestar",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1782815691348,
+      "tag": "0001_amused_penance",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1782816337482,
+      "tag": "0002_red_robin_chapel",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1782824702271,
+      "tag": "0003_cold_starfox",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1782825283220,
+      "tag": "0004_living_kitty_pryde",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1782826000000,
+      "tag": "0005_seed_admin_allowlist",
+      "breakpoints": true
+    }
+  ]
+}

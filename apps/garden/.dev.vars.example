@@ -1,0 +1,16 @@
+# Copy to .dev.vars — runtime secrets for `pnpm dev` / wrangler.
+#
+# For migrations, use separate files (keeps prod creds out of dev):
+#   cp .env.migrate.dev.example .env.migrate.dev
+#   cp .env.migrate.prod.example .env.migrate.prod
+#
+# Turso garden-dev (runtime + can duplicate in .env.migrate.dev):
+#   turso db show garden-dev --url
+#   turso db tokens create garden-dev
+#
+TURSO_DATABASE_URL=
+TURSO_AUTH_TOKEN=
+BETTER_AUTH_SECRET=
+BETTER_AUTH_URL=http://localhost:5173
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
