@@ -43,6 +43,13 @@
       "when": 1782826000000,
       "tag": "0005_seed_admin_allowlist",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1782831130123,
+      "tag": "0006_spicy_prima",
+      "breakpoints": true
     }
   ]
 }
