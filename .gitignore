@@ -6,7 +6,18 @@ build
 .env
 .env.*
 !.env.example
+!.env.migrate.*.example
 *.local
 .DS_Store
 .turbo
 coverage
+
+# React Router / Cloudflare (garden app)
+apps/garden/.react-router
+apps/garden/build
+apps/garden/.mf
+apps/garden/local.db
+apps/garden/local.db-*
+apps/garden/worker-configuration.d.ts
+apps/garden/.dev.vars
+!apps/garden/.dev.vars.example

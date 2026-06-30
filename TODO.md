@@ -40,15 +40,15 @@ No `packages/` initially.
 
 Stack
 
-* [ ] React Router v7
-* [ ] Cloudflare Workers
-* [ ] Turso
-* [ ] Drizzle
-* [ ] Better Auth
-* [ ] Google OAuth
-* [ ] shadcn/ui
-* [ ] Tailwind
-* [ ] Zod
+* [x] React Router v7
+* [x] Cloudflare Workers
+* [x] Turso
+* [x] Drizzle
+* [x] Better Auth
+* [x] Google OAuth
+* [x] shadcn/ui
+* [x] Tailwind
+* [x] Zod
 
 Skip React Query initially.
 
@@ -63,14 +63,14 @@ Use:
 
 # Phase 3 - Infrastructure
 
-* [ ] Create Turso databases
+* [x] Configure Drizzle.
+* [x] Create first migration.
+* [x] Configure Workers.
+* [x] Configure local development.
+* [x] Create Turso databases
 
-  * [ ] garden-dev
-  * [ ] garden-prod
-* [ ] Configure Drizzle.
-* [ ] Create first migration.
-* [ ] Configure Workers.
-* [ ] Configure local development.
+  * [x] garden-dev
+  * [x] garden-prod
 
 ---
 
@@ -84,12 +84,12 @@ App decides access.
 
 Tables
 
-* [ ] users
-* [ ] accounts
-* [ ] sessions
-* [ ] households
-* [ ] household_members
-* [ ] allowed_emails
+* [x] users
+* [x] accounts
+* [x] sessions
+* [x] households
+* [x] household_members
+* [x] allowed_emails
 
 No shared account.
 
@@ -98,6 +98,8 @@ Each person gets their own login.
 ---
 
 # Phase 5 - Domain
+
+Skipped for now — using `*.workers.dev` URLs. Revisit when ready to add `garden.joescript.io` / `dev.garden.joescript.io`.
 
 Keep
 
@@ -123,17 +125,19 @@ Later
 
 # Phase 6 - Database
 
+Schema and migration `0002_red_robin_chapel.sql` added. Run `pnpm db:migrate` on dev/prod.
+
 ## areas
 
-* id
-* household_id
-* name
-* sort_order
-* created_at
-* updated_at
-* deleted_at
-* created_by_user_id
-* updated_by_user_id
+* [x] id
+* [x] household_id
+* [x] name
+* [x] sort_order
+* [x] created_at
+* [x] updated_at
+* [x] deleted_at
+* [x] created_by_user_id
+* [x] updated_by_user_id
 
 ---
 
@@ -233,7 +237,7 @@ Examples
 
 ---
 
-# Phase 7 - Service layer
+# Phase 7 - Service layer ✅
 
 Hide database behind services.
 
@@ -267,22 +271,34 @@ gardenService.dashboard.getCurrentJobs()
 
 This makes local-first easier later.
 
+```
+app/services/
+  context.server.ts   # requireGardenService, household resolution
+  garden.service.ts   # facade: createGardenService()
+  areas.service.ts
+  plants.service.ts
+  care-rules.service.ts
+  journal.service.ts
+  dashboard.service.ts
+  types.ts
+```
+
 ---
 
-# Phase 8 - MVP Screens
+# Phase 8 - MVP Screens ✅
 
-* [ ] Login
-* [ ] Dashboard
-* [ ] Plants
-* [ ] Plant detail
-* [ ] Areas
-* [ ] Journal
-* [ ] Add journal entry
-* [ ] Add care rule
+* [x] Login
+* [x] Dashboard
+* [x] Plants
+* [x] Plant detail
+* [x] Areas
+* [x] Journal
+* [x] Add journal entry
+* [x] Add care rule
 
 ---
 
-# Phase 9 - Dashboard
+# Phase 9 - Dashboard ✅
 
 Calculate jobs.
 
@@ -290,11 +306,11 @@ Don't generate task rows.
 
 Show
 
-* This month's jobs
-* Recent journal entries
-* Recently completed
+* [x] This month's jobs
+* [x] Recent journal entries
+* [x] Recently completed
 
-Completing a reminder creates a journal entry linked to its care rule.
+Completing a reminder creates a journal entry linked to its care rule. Logged jobs disappear from the dashboard for that month.
 
 ---
 
