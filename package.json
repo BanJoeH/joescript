@@ -6,6 +6,7 @@
     "build": "pnpm -r build",
     "check": "biome check .",
     "check:fix": "biome check --write .",
+    "dev:garden": "pnpm --filter @joescript/garden dev",
     "format": "biome format --write .",
     "lint": "biome lint .",
     "typecheck": "pnpm -r typecheck"
@@ -16,6 +17,6 @@
   },
   "packageManager": "pnpm@11.7.0",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   }
 }
