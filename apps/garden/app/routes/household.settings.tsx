@@ -16,7 +16,8 @@ export function meta(_args: Route.MetaArgs) {
 }
 
 export default function HouseholdSettings() {
-  const { household, members, householdId } = useLoaderData<typeof import("./household.settings.server").loader>();
+  const { household, members, householdId } =
+    useLoaderData<typeof import("./household.settings.server").loader>();
   const actionData = useActionData<typeof import("./household.settings.server").action>();
 
   return (
@@ -86,13 +87,7 @@ export default function HouseholdSettings() {
             <input name="intent" type="hidden" value="add-member" />
             <div className="space-y-2">
               <Label htmlFor="email">Add member by email</Label>
-              <Input
-                id="email"
-                name="email"
-                placeholder="test@example.com"
-                required
-                type="email"
-              />
+              <Input id="email" name="email" placeholder="test@example.com" required type="email" />
             </div>
             <Button type="submit">Add member</Button>
           </Form>

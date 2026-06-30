@@ -62,7 +62,10 @@ export default function Plants({ loaderData }: Route.ComponentProps) {
         <Card>
           <CardContent className="pt-6 text-sm text-muted-foreground">
             Create an{" "}
-            <Link className="text-primary underline-offset-4 hover:underline" to={householdPath(householdId, "areas")}>
+            <Link
+              className="text-primary underline-offset-4 hover:underline"
+              to={householdPath(householdId, "areas")}
+            >
               area
             </Link>{" "}
             before adding plants.

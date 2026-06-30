@@ -57,7 +57,9 @@ export function createDashboardService({ db, householdId }: GardenContext) {
           ),
         );
 
-      const monthJobs = rules.filter((rule) => parseCareRuleMonths(rule.monthsJson).includes(month));
+      const monthJobs = rules.filter((rule) =>
+        parseCareRuleMonths(rule.monthsJson).includes(month),
+      );
       const { start, end } = getMonthRange(month, year);
 
       const loggedThisMonth = await db

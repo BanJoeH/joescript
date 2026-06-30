@@ -17,7 +17,8 @@ export function meta(_args: Route.MetaArgs) {
 }
 
 export default function HouseholdsPage() {
-  const { households, favoriteHouseholdId } = useLoaderData<typeof import("./households.server").loader>();
+  const { households, favoriteHouseholdId } =
+    useLoaderData<typeof import("./households.server").loader>();
   const actionData = useActionData<typeof import("./households.server").action>();
 
   return (
@@ -50,7 +51,9 @@ export default function HouseholdsPage() {
                   <input name="householdId" type="hidden" value={household.id} />
                   <Button
                     aria-label={
-                      isFavorite ? `Remove ${household.name} as favourite` : `Set ${household.name} as favourite`
+                      isFavorite
+                        ? `Remove ${household.name} as favourite`
+                        : `Set ${household.name} as favourite`
                     }
                     className="h-full rounded-none px-3"
                     size="icon"
@@ -58,9 +61,7 @@ export default function HouseholdsPage() {
                     type="submit"
                     variant="ghost"
                   >
-                    <Star
-                      className={cn("size-4", isFavorite && "fill-primary text-primary")}
-                    />
+                    <Star className={cn("size-4", isFavorite && "fill-primary text-primary")} />
                   </Button>
                 </Form>
                 <Link

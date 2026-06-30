@@ -176,9 +176,7 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
                       ) : null}
                     </div>
                     <Button asChild size="sm" variant="ghost">
-                      <Link to={householdPath(householdId, `journal/${entry.id}/edit`)}>
-                        Edit
-                      </Link>
+                      <Link to={householdPath(householdId, `journal/${entry.id}/edit`)}>Edit</Link>
                     </Button>
                   </div>
                 </li>

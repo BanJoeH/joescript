@@ -48,9 +48,7 @@ export function createJournalService({ db, userId, householdId }: GardenContext)
     const [area] = await db
       .select({ id: areas.id })
       .from(areas)
-      .where(
-        and(eq(areas.id, areaId), eq(areas.householdId, householdId), isNull(areas.deletedAt)),
-      )
+      .where(and(eq(areas.id, areaId), eq(areas.householdId, householdId), isNull(areas.deletedAt)))
       .limit(1);
 
     if (!area) {
@@ -210,8 +208,7 @@ export function createJournalService({ db, userId, householdId }: GardenContext)
       await validateJournalLinks({
         plantId: data.plantId !== undefined ? (data.plantId ?? null) : existing.plantId,
         areaId: data.areaId !== undefined ? (data.areaId ?? null) : existing.areaId,
-        careRuleId:
-          data.careRuleId !== undefined ? (data.careRuleId ?? null) : existing.careRuleId,
+        careRuleId: data.careRuleId !== undefined ? (data.careRuleId ?? null) : existing.careRuleId,
       });
 
       await db

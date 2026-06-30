@@ -1,9 +1,8 @@
 import { Settings } from "lucide-react";
-import { Form, Link, useLocation, useNavigate, useParams, useRouteLoaderData } from "react-router";
+import { Form, Link, useLocation, useParams, useRouteLoaderData } from "react-router";
 
 import { ThemeToggle } from "~/components/theme-toggle";
 import { Button } from "~/components/ui/button";
-import { Select } from "~/components/ui/select";
 import { householdPath } from "~/lib/household-path";
 
 import type { Route as AppRoute } from "../routes/+types/app";
@@ -18,15 +17,7 @@ function getHouseholdNavItems(householdId: string) {
   ] as const;
 }
 
-function NavLink({
-  href,
-  label,
-  exact,
-}: {
-  href: string;
-  label: string;
-  exact: boolean;
-}) {
+function NavLink({ href, label, exact }: { href: string; label: string; exact: boolean }) {
   const location = useLocation();
   const isActive = exact
     ? location.pathname === href
@@ -51,7 +42,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const householdData =
     useRouteLoaderData<HouseholdRoute.ComponentProps["loaderData"]>("routes/household");
   const params = useParams();
-  const navigate = useNavigate();
   const householdId = params.householdId ?? householdData?.householdId;
   const navItems = householdId ? getHouseholdNavItems(householdId) : null;
 

@@ -1,12 +1,7 @@
 import { sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { user } from "./auth";
-import {
-  createdAtColumn,
-  deletedAtColumn,
-  idColumn,
-  updatedAtColumn,
-} from "./columns";
+import { createdAtColumn, deletedAtColumn, idColumn, updatedAtColumn } from "./columns";
 
 export const households = sqliteTable("households", {
   id: idColumn(),
