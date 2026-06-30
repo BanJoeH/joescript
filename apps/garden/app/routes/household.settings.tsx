@@ -58,7 +58,8 @@ export default function HouseholdSettings() {
         <CardHeader>
           <CardTitle>Members</CardTitle>
           <CardDescription>
-            Only allowlisted Google accounts can be added. They must sign in once first.
+            Only allowlisted Google accounts can be added. Invited members get access when they
+            sign in.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -70,11 +71,14 @@ export default function HouseholdSettings() {
               >
                 <div>
                   <span className="font-medium">{member.name}</span>
+                  {member.pending ? (
+                    <span className="ml-2 text-xs text-muted-foreground">(invited)</span>
+                  ) : null}
                   <span className="block text-muted-foreground">{member.email}</span>
                 </div>
                 <Form method="post">
                   <input name="intent" type="hidden" value="remove-member" />
-                  <input name="memberUserId" type="hidden" value={member.userId} />
+                  <input name="membershipId" type="hidden" value={member.membershipId} />
                   <Button size="sm" type="submit" variant="outline">
                     Remove
                   </Button>

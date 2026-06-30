@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import { sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { user } from "./auth";
@@ -18,15 +19,19 @@ export const householdMembers = sqliteTable(
     householdId: text("household_id")
       .notNull()
       .references(() => households.id, { onDelete: "cascade" }),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    userId: text("user_id").references(() => user.id, { onDelete: "cascade" }),
+    email: text("email"),
     createdAt: createdAtColumn(),
     updatedAt: updatedAtColumn(),
     deletedAt: deletedAtColumn(),
   },
   (table) => [
-    uniqueIndex("household_members_household_user_unique").on(table.householdId, table.userId),
+    uniqueIndex("household_members_household_user_unique")
+      .on(table.householdId, table.userId)
+      .where(sql`${table.userId} is not null`),
+    uniqueIndex("household_members_household_email_unique")
+      .on(table.householdId, table.email)
+      .where(sql`${table.email} is not null`),
   ],
 );
 

@@ -59,10 +59,12 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "remove-member") {
-    const memberUserId = getString(formData, "memberUserId");
+    const membershipId = getString(formData, "membershipId");
     try {
-      await garden.households.removeMember(householdId, memberUserId);
-      if (memberUserId === session.user.id) {
+      const members = await garden.households.listMembers(householdId);
+      const target = members.find((member) => member.membershipId === membershipId);
+      await garden.households.removeMember(householdId, membershipId);
+      if (target?.userId === session.user.id) {
         throw redirect("/households");
       }
     } catch (error) {

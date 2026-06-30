@@ -7,6 +7,7 @@ import * as schema from "~/db/schema";
 import { assertEmailAllowed } from "~/lib/access.server";
 import { createDb } from "~/lib/db.server";
 import type { GardenEnv } from "~/lib/env.server";
+import { linkPendingHouseholdMemberships } from "~/services/household-members.server";
 
 export function createAuth(env: GardenEnv) {
   const db = createDb(env);
@@ -35,6 +36,9 @@ export function createAuth(env: GardenEnv) {
             await assertEmailAllowed(db, user.email);
             return { data: user };
           },
+          after: async (user) => {
+            await linkPendingHouseholdMemberships(db, user.id, user.email);
+          },
         },
       },
       session: {
@@ -54,6 +58,7 @@ export function createAuth(env: GardenEnv) {
             }
 
             await assertEmailAllowed(db, user.email);
+            await linkPendingHouseholdMemberships(db, session.userId, user.email);
             return { data: session };
           },
         },
