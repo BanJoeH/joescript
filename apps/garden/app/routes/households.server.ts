@@ -1,8 +1,8 @@
 import { redirect } from "react-router";
 
 import { getGardenEnv } from "~/lib/context.server";
-import { householdPath } from "~/lib/household-path";
 import { getString } from "~/lib/forms.server";
+import { householdPath } from "~/lib/household-path";
 import { requireGardenSessionContext } from "~/services";
 import { getFavoriteHouseholdId } from "~/services/households.service";
 

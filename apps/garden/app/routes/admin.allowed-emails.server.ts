@@ -1,8 +1,7 @@
 import { redirect } from "react-router";
-
+import { requireGardenAdmin } from "~/lib/admin.server";
 import { getGardenEnv } from "~/lib/context.server";
 import { getString } from "~/lib/forms.server";
-import { requireGardenAdmin } from "~/lib/admin.server";
 import { createAllowedEmailsService } from "~/services/allowed-emails.service";
 
 import type { Route } from "./+types/admin.allowed-emails";

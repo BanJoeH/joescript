@@ -1,5 +1,5 @@
-import { Form, Link, useActionData, useLoaderData } from "react-router";
 import { Star } from "lucide-react";
+import { Form, Link, useActionData, useLoaderData } from "react-router";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";

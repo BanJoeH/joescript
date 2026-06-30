@@ -1,8 +1,8 @@
 import { Outlet } from "react-router";
 
 import { AppShell } from "~/components/app-shell";
-import { getGardenEnv } from "~/lib/context.server";
 import { isGardenAdmin } from "~/lib/admin";
+import { getGardenEnv } from "~/lib/context.server";
 import { requireGardenSession } from "~/lib/session.server";
 
 import type { Route } from "./+types/app";

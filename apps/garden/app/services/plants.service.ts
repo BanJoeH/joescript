@@ -2,7 +2,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { areas, plants } from "~/db/schema";
-import { auditFields, newId, touchFields, type GardenContext } from "~/services/types";
+import { auditFields, type GardenContext, newId, touchFields } from "~/services/types";
 
 const createPlantInput = z.object({
   areaId: z.string().min(1),

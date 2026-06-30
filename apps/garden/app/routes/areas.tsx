@@ -1,5 +1,5 @@
-import { AreaList } from "~/components/areas/area-list";
 import { AddAreaForm } from "~/components/areas/add-area-form";
+import { AreaList } from "~/components/areas/area-list";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
 import { getString } from "~/lib/forms.server";

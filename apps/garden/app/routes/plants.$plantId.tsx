@@ -1,10 +1,9 @@
 import { Link } from "react-router";
-
-import { parseCareRuleMonths } from "~/lib/care-rules";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
-import { formatDate } from "~/lib/dates";
+import { parseCareRuleMonths } from "~/lib/care-rules";
 import { getGardenEnv } from "~/lib/context.server";
+import { formatDate } from "~/lib/dates";
 import { householdPath } from "~/lib/household-path";
 import { requireGardenService } from "~/services";
 
