@@ -1,0 +1,12 @@
+node_modules
+dist
+build
+.wrangler
+.dev.vars
+.env
+.env.*
+!.env.example
+*.local
+.DS_Store
+.turbo
+coverage
