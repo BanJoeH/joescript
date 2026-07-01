@@ -1,9 +1,14 @@
-import { AddAreaForm } from "~/components/areas/add-area-form";
+import { Link } from "react-router";
+
 import { AreaList } from "~/components/areas/area-list";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { AreaPlantPhotoStrip } from "~/components/areas/area-plant-photo-strip";
+import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
 import { getString } from "~/lib/forms.server";
+import { householdPath } from "~/lib/household-path";
 import { requireGardenService } from "~/services";
+import type { PlantLatestPhoto } from "~/services/photos.service";
 
 import type { Route } from "./+types/areas";
 
@@ -13,9 +18,19 @@ export function meta(_args: Route.MetaArgs) {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { garden } = await requireGardenService(request, getGardenEnv(), params.householdId);
-  const areas = await garden.areas.list();
+  const [areas, latestPhotos] = await Promise.all([
+    garden.areas.list(),
+    garden.photos.listLatestPerPlant(),
+  ]);
 
-  return { areas };
+  const latestPhotosByArea: Record<string, PlantLatestPhoto[]> = {};
+  for (const photo of latestPhotos) {
+    const existing = latestPhotosByArea[photo.areaId] ?? [];
+    existing.push(photo);
+    latestPhotosByArea[photo.areaId] = existing;
+  }
+
+  return { householdId: params.householdId, areas, latestPhotosByArea };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -65,43 +80,42 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
   }
 
-  try {
-    await garden.areas.create({
-      name: getString(formData, "name"),
-    });
-  } catch (error) {
-    return {
-      error: error instanceof Error ? error.message : "Could not create area.",
-    };
-  }
-
-  return { created: true as const };
+  return { error: "Unknown action." };
 }
 
 export default function Areas({ loaderData }: Route.ComponentProps) {
-  const { areas } = loaderData;
+  const { householdId, areas, latestPhotosByArea } = loaderData;
+  const areasWithPhotos = areas.filter(
+    (area) => (latestPhotosByArea[area.id]?.length ?? 0) > 0,
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Areas</h2>
-        <p className="text-sm text-muted-foreground">
-          Physical parts of the garden — patio, front border, veg patch.
-        </p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Areas</h2>
+          <p className="text-sm text-muted-foreground">
+            Physical parts of the garden — patio, front border, veg patch.
+          </p>
+        </div>
+        <Button asChild>
+          <Link to={householdPath(householdId, "areas/new")}>Add area</Link>
+        </Button>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Add area</CardTitle>
-          <CardDescription>Areas group plants and journal entries.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AddAreaForm />
-        </CardContent>
-      </Card>
-
       {areas.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No areas yet.</p>
+        <Card>
+          <CardContent className="pt-6 text-sm text-muted-foreground">
+            No areas yet.{" "}
+            <Link
+              className="text-primary underline-offset-4 hover:underline"
+              to={householdPath(householdId, "areas/new")}
+            >
+              Add the first one
+            </Link>
+            .
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground">
@@ -110,6 +124,30 @@ export default function Areas({ loaderData }: Route.ComponentProps) {
           <AreaList areas={areas} />
         </div>
       )}
+
+      {areasWithPhotos.length > 0 ? (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-lg font-medium">Latest photos</h3>
+            <p className="text-sm text-muted-foreground">
+              Most recent journal photo from each plant, grouped by area.
+            </p>
+          </div>
+          {areasWithPhotos.map((area) => (
+            <Card key={area.id}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">{area.name}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <AreaPlantPhotoStrip
+                  householdId={householdId}
+                  photos={latestPhotosByArea[area.id] ?? []}
+                />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

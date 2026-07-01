@@ -12,7 +12,9 @@ export default [
       index("routes/home.tsx"),
       route("settings", "routes/household.settings.tsx"),
       route("plants", "routes/plants.tsx"),
+      route("plants/new", "routes/plants.new.tsx"),
       route("plants/:plantId", "routes/plants.$plantId.tsx"),
+      route("plants/:plantId/photos", "routes/plants.$plantId.photos.tsx"),
       route("plants/:plantId/edit", "routes/plants.$plantId.edit.tsx"),
       route("plants/:plantId/care-rules/new", "routes/plants.$plantId.care-rules.new.tsx"),
       route(
@@ -20,6 +22,7 @@ export default [
         "routes/plants.$plantId.care-rules.$careRuleId.edit.tsx",
       ),
       route("areas", "routes/areas.tsx"),
+      route("areas/new", "routes/areas.new.tsx"),
       route("journal", "routes/journal.tsx"),
       route("journal/new", "routes/journal.new.tsx"),
       route("journal/:entryId/edit", "routes/journal.$entryId.edit.tsx"),

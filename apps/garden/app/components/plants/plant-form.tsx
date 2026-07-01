@@ -22,10 +22,18 @@ type PlantFormProps = {
   cancelTo: string;
   defaultValues: PlantFormValues;
   error?: string | null;
+  showRemovedAt?: boolean;
   submitLabel: string;
 };
 
-export function PlantForm({ areas, cancelTo, defaultValues, error, submitLabel }: PlantFormProps) {
+export function PlantForm({
+  areas,
+  cancelTo,
+  defaultValues,
+  error,
+  showRemovedAt = true,
+  submitLabel,
+}: PlantFormProps) {
   return (
     <Form className="space-y-4" method="post">
       <input name="intent" type="hidden" value="save" />
@@ -66,15 +74,17 @@ export function PlantForm({ areas, cancelTo, defaultValues, error, submitLabel }
             type="date"
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="removedAt">Removed</Label>
-          <Input
-            defaultValue={defaultValues.removedAt}
-            id="removedAt"
-            name="removedAt"
-            type="date"
-          />
-        </div>
+        {showRemovedAt ? (
+          <div className="space-y-2">
+            <Label htmlFor="removedAt">Removed</Label>
+            <Input
+              defaultValue={defaultValues.removedAt}
+              id="removedAt"
+              name="removedAt"
+              type="date"
+            />
+          </div>
+        ) : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Notes</Label>

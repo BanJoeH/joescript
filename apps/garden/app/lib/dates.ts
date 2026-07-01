@@ -24,6 +24,30 @@ export function parseDateInput(value: string) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+/** When logging for today, keep the real time so same-day entries sort correctly. */
+export function resolvePerformedAtForCreate(performedAt: Date) {
+  const today = formatDateInput(new Date());
+  const selected = formatDateInput(performedAt);
+
+  if (selected === today) {
+    return new Date();
+  }
+
+  return performedAt;
+}
+
+/** Preserve intraday time when the date field is unchanged on edit. */
+export function resolvePerformedAtForUpdate(nextPerformedAt: Date, existingPerformedAt: Date) {
+  const nextDay = formatDateInput(nextPerformedAt);
+  const existingDay = formatDateInput(existingPerformedAt);
+
+  if (nextDay === existingDay) {
+    return existingPerformedAt;
+  }
+
+  return resolvePerformedAtForCreate(nextPerformedAt);
+}
+
 export function getMonthRange(month: number, year = new Date().getFullYear()) {
   return {
     start: new Date(year, month - 1, 1),

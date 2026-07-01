@@ -7,6 +7,7 @@
     "dev": "react-router dev",
     "codegen": "wrangler types && react-router typegen",
     "typecheck": "pnpm run codegen && tsc -b",
+    "test": "node --test --experimental-strip-types app/lib/dates.test.ts",
     "deploy": "pnpm run build && wrangler deploy",
     "deploy:prod": "CLOUDFLARE_ENV=production pnpm run build && wrangler deploy",
     "preview": "pnpm run build && vite preview",
