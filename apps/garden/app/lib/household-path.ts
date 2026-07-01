@@ -5,6 +5,10 @@ export function householdPath(householdId: string, path = "") {
   return normalized ? `/${householdId}/${normalized}` : `/${householdId}`;
 }
 
+export function photoPath(householdId: string, photoId: string) {
+  return householdPath(householdId, `photos/${photoId}`);
+}
+
 export function getHouseholdIdFromPath(pathname: string) {
   const segment = pathname.split("/").filter(Boolean)[0];
   if (!segment || RESERVED_PATH_SEGMENTS.has(segment)) {

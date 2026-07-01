@@ -23,6 +23,7 @@ export default [
       route("journal", "routes/journal.tsx"),
       route("journal/new", "routes/journal.new.tsx"),
       route("journal/:entryId/edit", "routes/journal.$entryId.edit.tsx"),
+      route("photos/:photoId", "routes/photos.$photoId.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;

@@ -1,5 +1,6 @@
 import { Form, Link } from "react-router";
 
+import { JournalPhotoFields } from "~/components/journal/journal-photo-fields";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
@@ -22,6 +23,8 @@ type JournalEntryFormProps = {
   cancelTo: string;
   defaultValues: JournalEntryFormValues;
   error?: string | null;
+  existingPhotoCount?: number;
+  formId: string;
   plants: Array<{ id: string; name: string; areaName: string }>;
   submitLabel: string;
 };
@@ -31,11 +34,13 @@ export function JournalEntryForm({
   cancelTo,
   defaultValues,
   error,
+  existingPhotoCount = 0,
+  formId,
   plants,
   submitLabel,
 }: JournalEntryFormProps) {
   return (
-    <Form className="space-y-4" method="post">
+    <Form className="space-y-4" encType="multipart/form-data" id={formId} method="post">
       <input name="intent" type="hidden" value="save" />
       {error ? (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -100,6 +105,8 @@ export function JournalEntryForm({
         <Label htmlFor="notes">Notes</Label>
         <Textarea defaultValue={defaultValues.notes} id="notes" name="notes" rows={4} />
       </div>
+
+      <JournalPhotoFields existingCount={existingPhotoCount} formId={formId} />
 
       <div className="flex gap-3">
         <Button type="submit">{submitLabel}</Button>

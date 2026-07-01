@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { areas, careRules, journalEntries, journalEntryStatuses, plants } from "~/db/schema";
 import { auditFields, type GardenContext, newId, touchFields } from "~/services/types";
+import type { PhotosService } from "~/services/photos.service";
 
 const createJournalEntryInput = z.object({
   plantId: z.string().optional(),
@@ -22,7 +23,10 @@ type JournalLinks = {
   careRuleId: string | null;
 };
 
-export function createJournalService({ db, userId, householdId }: GardenContext) {
+export function createJournalService(
+  { db, userId, householdId }: GardenContext,
+  photos?: PhotosService,
+) {
   const householdScope = and(
     eq(journalEntries.householdId, householdId),
     isNull(journalEntries.deletedAt),
@@ -231,6 +235,10 @@ export function createJournalService({ db, userId, householdId }: GardenContext)
     async remove(id: string) {
       const existing = await this.get(id);
       if (!existing) return false;
+
+      if (photos) {
+        await photos.removeForEntry(id);
+      }
 
       await db
         .update(journalEntries)

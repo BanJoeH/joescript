@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { Button } from "~/components/ui/button";
+import { JournalPhotoThumbnails } from "~/components/journal/journal-photo-gallery";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { parseCareRuleMonths } from "~/lib/care-rules";
 import { getGardenEnv } from "~/lib/context.server";
@@ -25,8 +26,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     garden.careRules.listForPlant(plant.id),
     garden.journal.listForPlant(plant.id),
   ]);
+  const photosByEntry = Object.fromEntries(
+    await garden.photos.listForEntries(journal.map((entry) => entry.id)),
+  );
 
-  return { householdId: params.householdId, plant, careRules, journal };
+  return { householdId: params.householdId, plant, careRules, journal, photosByEntry };
 }
 
 const monthLabels = [
@@ -45,7 +49,7 @@ const monthLabels = [
 ];
 
 export default function PlantDetail({ loaderData }: Route.ComponentProps) {
-  const { householdId, plant, careRules, journal } = loaderData;
+  const { householdId, plant, careRules, journal, photosByEntry } = loaderData;
 
   return (
     <div className="flex flex-col gap-6">
@@ -173,6 +177,10 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
                       {entry.notes ? (
                         <p className="mt-1 text-muted-foreground">{entry.notes}</p>
                       ) : null}
+                      <JournalPhotoThumbnails
+                        householdId={householdId}
+                        photos={photosByEntry[entry.id] ?? []}
+                      />
                     </div>
                     <Button asChild size="sm" variant="ghost">
                       <Link to={householdPath(householdId, `journal/${entry.id}/edit`)}>Edit</Link>

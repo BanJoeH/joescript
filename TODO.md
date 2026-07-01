@@ -279,6 +279,7 @@ app/services/
   plants.service.ts
   care-rules.service.ts
   journal.service.ts
+  photos.service.ts
   dashboard.service.ts
   types.ts
 ```
@@ -330,10 +331,10 @@ Simple landing page
 
 # Phase 11 - Future
 
-## Photos
+## Photos ✅
 
-* Journal photos
-* Before / after
+* [x] Journal photos (R2 + client resize, private authenticated delivery)
+* [x] Before / after labels
 
 ---
 
@@ -443,7 +444,6 @@ React Router revalidation
 * Generated reminder rows
 * Reminder snoozing
 * Local-first sync
-* Photos
 * Push notifications
 * Calendar sync
 * Shared packages
