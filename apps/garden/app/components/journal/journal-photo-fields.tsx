@@ -1,11 +1,10 @@
 import { useEffect, useId, useState } from "react";
 import { useSubmit } from "react-router";
-
-import { Label } from "~/components/ui/label";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 import { Select } from "~/components/ui/select";
+import { type PhotoRole, photoRoles } from "~/db/schema";
 import { MAX_PHOTO_CAPTION_LENGTH } from "~/lib/photos";
-import { photoRoles, type PhotoRole } from "~/db/schema";
 import { resizeImageFiles } from "~/lib/resize-image";
 
 type SelectedPhoto = {

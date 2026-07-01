@@ -119,9 +119,7 @@ export function JournalPhotoThumbnails({
           </PhotoLightboxTrigger>
         ))}
         {remaining > 0 ? (
-          <PhotoLightboxMoreTrigger atIndex={limit}>
-            +{remaining} more
-          </PhotoLightboxMoreTrigger>
+          <PhotoLightboxMoreTrigger atIndex={limit}>+{remaining} more</PhotoLightboxMoreTrigger>
         ) : null}
       </div>
     </PhotoLightboxProvider>

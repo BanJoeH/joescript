@@ -1,5 +1,5 @@
-import { Link, redirect, useActionData } from "react-router";
 import { useId } from "react";
+import { Link, redirect, useActionData } from "react-router";
 
 import { DeleteForm } from "~/components/delete-form";
 import { JournalEntryForm } from "~/components/journal/journal-entry-form";
@@ -10,8 +10,8 @@ import { getGardenEnv } from "~/lib/context.server";
 import { formatDateInput } from "~/lib/dates";
 import { parseJournalFormData, parsePhotoUploads } from "~/lib/entity-forms.server";
 import { getOptionalString, getString } from "~/lib/forms.server";
-import { parsePhotoRole } from "~/lib/photos.server";
 import { householdPath } from "~/lib/household-path";
+import { parsePhotoRole } from "~/lib/photos.server";
 import { requireGardenService } from "~/services";
 
 import type { Route } from "./+types/journal.$entryId.edit";
@@ -171,7 +171,9 @@ export default function EditJournalEntry({ loaderData }: Route.ComponentProps) {
       <Card className="border-destructive/30">
         <CardHeader>
           <CardTitle>Delete entry</CardTitle>
-          <CardDescription>Removes this journal entry and its photos from your garden history.</CardDescription>
+          <CardDescription>
+            Removes this journal entry and its photos from your garden history.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <DeleteForm confirmMessage="Delete this journal entry? This cannot be undone." />

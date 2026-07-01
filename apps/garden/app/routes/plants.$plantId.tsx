@@ -1,6 +1,6 @@
 import { Link } from "react-router";
-import { Button } from "~/components/ui/button";
 import { JournalPhotoThumbnails } from "~/components/journal/journal-photo-gallery";
+import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { parseCareRuleMonths } from "~/lib/care-rules";
 import { getGardenEnv } from "~/lib/context.server";

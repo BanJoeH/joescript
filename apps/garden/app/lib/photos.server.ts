@@ -1,16 +1,12 @@
-import { photoRoles, type PhotoRole } from "~/db/schema";
-import {
-  ALLOWED_PHOTO_CONTENT_TYPES,
-  MAX_PHOTO_CAPTION_LENGTH,
-  type AllowedPhotoContentType,
-} from "~/lib/photos";
+import { type PhotoRole, photoRoles } from "~/db/schema";
+import { type AllowedPhotoContentType, MAX_PHOTO_CAPTION_LENGTH } from "~/lib/photos";
 
 export {
   ALLOWED_PHOTO_CONTENT_TYPES,
+  type AllowedPhotoContentType,
   MAX_PHOTO_BYTES,
   MAX_PHOTO_CAPTION_LENGTH,
   MAX_PHOTOS_PER_ENTRY,
-  type AllowedPhotoContentType,
 } from "~/lib/photos";
 
 const JPEG_MAGIC = [0xff, 0xd8, 0xff] as const;

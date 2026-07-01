@@ -1,12 +1,12 @@
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import {
   createContext,
+  type ReactNode,
   useCallback,
   useContext,
   useEffect,
   useId,
   useState,
-  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 
@@ -34,7 +34,11 @@ type PhotoLightboxProviderProps = {
   children: ReactNode;
 };
 
-export function PhotoLightboxProvider({ householdId, photos, children }: PhotoLightboxProviderProps) {
+export function PhotoLightboxProvider({
+  householdId,
+  photos,
+  children,
+}: PhotoLightboxProviderProps) {
   const parent = useContext(PhotoLightboxContext);
   if (parent) {
     return <>{children}</>;

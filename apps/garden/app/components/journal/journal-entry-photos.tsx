@@ -10,8 +10,8 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select } from "~/components/ui/select";
 import { photoRoles } from "~/db/schema";
-import { MAX_PHOTO_CAPTION_LENGTH } from "~/lib/photos";
 import { photoPath } from "~/lib/household-path";
+import { MAX_PHOTO_CAPTION_LENGTH } from "~/lib/photos";
 import type { PhotoRecord } from "~/services/photos.service";
 
 type JournalEntryPhotosProps = {

@@ -1,7 +1,6 @@
 import { redirect, useSearchParams } from "react-router";
-
-import { ThemeToggle } from "~/components/theme-toggle";
 import { GardenBrand } from "~/components/garden-brand";
+import { ThemeToggle } from "~/components/theme-toggle";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "~/components/ui/card";
 import { authClient } from "~/lib/auth.client";

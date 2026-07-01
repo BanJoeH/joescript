@@ -2,8 +2,8 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { areas, careRules, journalEntries, journalEntryStatuses, plants } from "~/db/schema";
-import { auditFields, type GardenContext, newId, touchFields } from "~/services/types";
 import type { PhotosService } from "~/services/photos.service";
+import { auditFields, type GardenContext, newId, touchFields } from "~/services/types";
 
 const createJournalEntryInput = z.object({
   plantId: z.string().optional(),

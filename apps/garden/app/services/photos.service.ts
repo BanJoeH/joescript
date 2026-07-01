@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 
-import { journalEntries, photoRoles, photos, type PhotoRole } from "~/db/schema";
+import { journalEntries, type PhotoRole, photoRoles, photos } from "~/db/schema";
 import {
   ALLOWED_PHOTO_CONTENT_TYPES,
   buildPhotoStorageKey,
