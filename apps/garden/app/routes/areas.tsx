@@ -85,9 +85,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
 export default function Areas({ loaderData }: Route.ComponentProps) {
   const { householdId, areas, latestPhotosByArea } = loaderData;
-  const areasWithPhotos = areas.filter(
-    (area) => (latestPhotosByArea[area.id]?.length ?? 0) > 0,
-  );
+  const areasWithPhotos = areas.filter((area) => (latestPhotosByArea[area.id]?.length ?? 0) > 0);
 
   return (
     <div className="flex flex-col gap-6">

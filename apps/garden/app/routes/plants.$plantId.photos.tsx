@@ -62,9 +62,7 @@ export default function PlantPhotos({ loaderData }: Route.ComponentProps) {
         <Card>
           <CardHeader>
             <CardTitle>All photos</CardTitle>
-            <CardDescription>
-              From journal entries for this plant, newest first.
-            </CardDescription>
+            <CardDescription>From journal entries for this plant, newest first.</CardDescription>
           </CardHeader>
           <CardContent>
             <PlantPhotoGallery householdId={householdId} photos={plantPhotos} />

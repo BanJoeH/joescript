@@ -11,12 +11,7 @@ type AreaFormProps = {
   submitLabel: string;
 };
 
-export function AreaForm({
-  cancelTo,
-  defaultName = "",
-  error,
-  submitLabel,
-}: AreaFormProps) {
+export function AreaForm({ cancelTo, defaultName = "", error, submitLabel }: AreaFormProps) {
   return (
     <Form className="space-y-4" method="post">
       {error ? (

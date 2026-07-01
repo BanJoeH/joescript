@@ -54,9 +54,7 @@ export function PlantPhotoGallery({
                   {photo.taskType ?? "Note"} · {formatDate(photo.performedAt)}
                 </p>
               )}
-              {photo.role !== "general" ? (
-                <p className="capitalize">{photo.role}</p>
-              ) : null}
+              {photo.role !== "general" ? <p className="capitalize">{photo.role}</p> : null}
               {photo.caption ? <p className="line-clamp-2">{photo.caption}</p> : null}
             </div>
           </div>

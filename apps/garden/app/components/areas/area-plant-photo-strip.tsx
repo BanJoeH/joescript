@@ -37,7 +37,9 @@ export function AreaPlantPhotoStrip({ householdId, photos }: AreaPlantPhotoStrip
             >
               {photo.plantName}
             </Link>
-            <p className="truncate text-xs text-muted-foreground">{formatDate(photo.performedAt)}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {formatDate(photo.performedAt)}
+            </p>
           </div>
         ))}
       </div>
