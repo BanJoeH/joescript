@@ -8,9 +8,40 @@
   },
   "upload_source_maps": true,
   "compatibility_flags": ["nodejs_compat"],
+  "routes": [
+    {
+      "pattern": "garden-dev.joescript.io",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "BETTER_AUTH_URL": "https://garden-dev.joescript.io"
+  },
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "garden-photos-dev",
+      "remote": true
+    }
+  ],
   "env": {
     "production": {
-      "name": "garden-prod"
+      "name": "garden-prod",
+      "routes": [
+        {
+          "pattern": "garden.joescript.io",
+          "custom_domain": true
+        }
+      ],
+      "vars": {
+        "BETTER_AUTH_URL": "https://garden.joescript.io"
+      },
+      "r2_buckets": [
+        {
+          "binding": "PHOTOS",
+          "bucket_name": "garden-photos-prod"
+        }
+      ]
     }
   }
 }

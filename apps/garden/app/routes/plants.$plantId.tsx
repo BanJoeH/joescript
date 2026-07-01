@@ -1,4 +1,6 @@
 import { Link } from "react-router";
+import { JournalPhotoThumbnails } from "~/components/journal/journal-photo-gallery";
+import { PlantPhotoGallery } from "~/components/plants/plant-photo-gallery";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { parseCareRuleMonths } from "~/lib/care-rules";
@@ -6,6 +8,7 @@ import { getGardenEnv } from "~/lib/context.server";
 import { formatDate } from "~/lib/dates";
 import { householdPath } from "~/lib/household-path";
 import { requireGardenService } from "~/services";
+import { groupPlantPhotosByEntry } from "~/services/photos.service";
 
 import type { Route } from "./+types/plants.$plantId";
 
@@ -21,12 +24,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     throw new Response("Plant not found", { status: 404 });
   }
 
-  const [careRules, journal] = await Promise.all([
+  const [careRules, journal, plantPhotos] = await Promise.all([
     garden.careRules.listForPlant(plant.id),
     garden.journal.listForPlant(plant.id),
+    garden.photos.listForPlant(plant.id),
   ]);
+  const photosByEntry = groupPlantPhotosByEntry(plantPhotos);
 
-  return { householdId: params.householdId, plant, careRules, journal };
+  return { householdId: params.householdId, plant, careRules, journal, plantPhotos, photosByEntry };
 }
 
 const monthLabels = [
@@ -45,7 +50,7 @@ const monthLabels = [
 ];
 
 export default function PlantDetail({ loaderData }: Route.ComponentProps) {
-  const { householdId, plant, careRules, journal } = loaderData;
+  const { householdId, plant, careRules, journal, plantPhotos, photosByEntry } = loaderData;
 
   return (
     <div className="flex flex-col gap-6">
@@ -151,6 +156,23 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
         </CardContent>
       </Card>
 
+      {plantPhotos.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Photos</CardTitle>
+            <CardDescription>From journal entries for this plant, newest first.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PlantPhotoGallery
+              householdId={householdId}
+              limit={4}
+              photos={plantPhotos}
+              seeMoreTo={householdPath(householdId, `plants/${plant.id}/photos`)}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle>Journal</CardTitle>
@@ -173,6 +195,10 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
                       {entry.notes ? (
                         <p className="mt-1 text-muted-foreground">{entry.notes}</p>
                       ) : null}
+                      <JournalPhotoThumbnails
+                        householdId={householdId}
+                        photos={photosByEntry[entry.id] ?? []}
+                      />
                     </div>
                     <Button asChild size="sm" variant="ghost">
                       <Link to={householdPath(householdId, `journal/${entry.id}/edit`)}>Edit</Link>

@@ -11,6 +11,9 @@
 TURSO_DATABASE_URL=
 TURSO_AUTH_TOKEN=
 BETTER_AUTH_SECRET=
+# Local dev only. Deployed URLs are set in wrangler.jsonc vars:
+#   dev  → https://garden-dev.joescript.io
+#   prod → https://garden.joescript.io
 BETTER_AUTH_URL=http://localhost:5173
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=

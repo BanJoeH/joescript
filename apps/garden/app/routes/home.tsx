@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 
+import { JournalPhotoThumbnails } from "~/components/journal/journal-photo-gallery";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
@@ -24,12 +25,15 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     garden.dashboard.getRecentJournalEntries(),
     garden.dashboard.getRecentlyCompleted(),
   ]);
+  const photosByEntry = Object.fromEntries(
+    await garden.photos.listForEntries(recentJournal.map((entry) => entry.id)),
+  );
 
-  return { householdId: params.householdId, jobs, recentJournal, recentlyCompleted };
+  return { householdId: params.householdId, jobs, recentJournal, recentlyCompleted, photosByEntry };
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  const { householdId, jobs, recentJournal, recentlyCompleted } = loaderData;
+  const { householdId, jobs, recentJournal, recentlyCompleted, photosByEntry } = loaderData;
 
   return (
     <div className="flex flex-col gap-6">
@@ -107,7 +111,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
             ) : (
               <ul className="space-y-2 text-sm">
                 {recentJournal.map((entry: JournalSummary) => (
-                  <li key={entry.id}>
+                  <li key={entry.id} className="space-y-2">
                     <span className="font-medium">{entry.plantName ?? "General"}</span>
                     {entry.taskType ? (
                       <span className="text-muted-foreground"> · {entry.taskType}</span>
@@ -115,6 +119,11 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                     <span className="block text-muted-foreground">
                       {formatDate(entry.performedAt)} · {entry.status}
                     </span>
+                    <JournalPhotoThumbnails
+                      householdId={householdId}
+                      limit={2}
+                      photos={photosByEntry[entry.id] ?? []}
+                    />
                   </li>
                 ))}
               </ul>

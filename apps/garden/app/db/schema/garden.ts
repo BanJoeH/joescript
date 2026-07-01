@@ -72,6 +72,36 @@ export const careRules = sqliteTable("care_rules", {
 export const journalEntryStatuses = ["done", "skipped", "note"] as const;
 export type JournalEntryStatus = (typeof journalEntryStatuses)[number];
 
+export const photoRoles = ["general", "before", "after"] as const;
+export type PhotoRole = (typeof photoRoles)[number];
+
+export const photos = sqliteTable("photos", {
+  id: idColumn(),
+  householdId: text("household_id")
+    .notNull()
+    .references(() => households.id, { onDelete: "cascade" }),
+  journalEntryId: text("journal_entry_id").references(() => journalEntries.id, {
+    onDelete: "set null",
+  }),
+  storageKey: text("storage_key").notNull(),
+  contentType: text("content_type").notNull(),
+  byteSize: integer("byte_size").notNull(),
+  width: integer("width"),
+  height: integer("height"),
+  caption: text("caption"),
+  role: text("role").$type<PhotoRole>().notNull().default("general"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: createdAtColumn(),
+  updatedAt: updatedAtColumn(),
+  deletedAt: deletedAtColumn(),
+  createdByUserId: text("created_by_user_id")
+    .notNull()
+    .references(() => user.id),
+  updatedByUserId: text("updated_by_user_id")
+    .notNull()
+    .references(() => user.id),
+});
+
 export const journalEntries = sqliteTable("journal_entries", {
   id: idColumn(),
   householdId: text("household_id")

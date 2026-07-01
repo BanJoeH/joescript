@@ -1,3 +1,4 @@
+import { env as workerEnv } from "cloudflare:workers";
 import { and, eq, isNull } from "drizzle-orm";
 import { redirect } from "react-router";
 
@@ -33,7 +34,7 @@ export async function requireGardenContext(
   householdId: string,
 ): Promise<GardenContext> {
   await assertHouseholdMember(db, userId, householdId);
-  return { db, userId, householdId };
+  return { db, userId, householdId, photosBucket: workerEnv.PHOTOS };
 }
 
 export async function requireGardenService(
@@ -54,6 +55,7 @@ export async function requireGardenService(
     db: sessionContext.db,
     userId: sessionContext.userId,
     householdId: resolvedHouseholdId,
+    photosBucket: workerEnv.PHOTOS,
   };
   const garden = createGardenService(context);
   const householdName = await getHouseholdName(context.db, resolvedHouseholdId);

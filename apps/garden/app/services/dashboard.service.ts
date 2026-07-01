@@ -106,7 +106,7 @@ export function createDashboardService({ db, householdId }: GardenContext) {
         .from(journalEntries)
         .leftJoin(plants, eq(journalEntries.plantId, plants.id))
         .where(and(eq(journalEntries.householdId, householdId), isNull(journalEntries.deletedAt)))
-        .orderBy(desc(journalEntries.performedAt))
+        .orderBy(desc(journalEntries.performedAt), desc(journalEntries.createdAt))
         .limit(limit);
     },
 
@@ -128,7 +128,7 @@ export function createDashboardService({ db, householdId }: GardenContext) {
             isNull(journalEntries.deletedAt),
           ),
         )
-        .orderBy(desc(journalEntries.performedAt))
+        .orderBy(desc(journalEntries.performedAt), desc(journalEntries.createdAt))
         .limit(limit);
     },
   };

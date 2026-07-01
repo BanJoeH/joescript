@@ -2,6 +2,8 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { areas, careRules, journalEntries, journalEntryStatuses, plants } from "~/db/schema";
+import { resolvePerformedAtForCreate, resolvePerformedAtForUpdate } from "~/lib/dates";
+import type { PhotosService } from "~/services/photos.service";
 import { auditFields, type GardenContext, newId, touchFields } from "~/services/types";
 
 const createJournalEntryInput = z.object({
@@ -22,7 +24,10 @@ type JournalLinks = {
   careRuleId: string | null;
 };
 
-export function createJournalService({ db, userId, householdId }: GardenContext) {
+export function createJournalService(
+  { db, userId, householdId }: GardenContext,
+  photos?: PhotosService,
+) {
   const householdScope = and(
     eq(journalEntries.householdId, householdId),
     isNull(journalEntries.deletedAt),
@@ -126,7 +131,7 @@ export function createJournalService({ db, userId, householdId }: GardenContext)
         .leftJoin(plants, eq(journalEntries.plantId, plants.id))
         .leftJoin(areas, eq(journalEntries.areaId, areas.id))
         .where(householdScope)
-        .orderBy(desc(journalEntries.performedAt))
+        .orderBy(desc(journalEntries.performedAt), desc(journalEntries.createdAt))
         .limit(limit);
     },
 
@@ -143,7 +148,7 @@ export function createJournalService({ db, userId, householdId }: GardenContext)
         })
         .from(journalEntries)
         .where(and(eq(journalEntries.plantId, plantId), householdScope))
-        .orderBy(desc(journalEntries.performedAt))
+        .orderBy(desc(journalEntries.performedAt), desc(journalEntries.createdAt))
         .limit(limit);
     },
 
@@ -193,7 +198,7 @@ export function createJournalService({ db, userId, householdId }: GardenContext)
         taskType: data.taskType ?? null,
         status: data.status,
         notes: data.notes ?? null,
-        performedAt: data.performedAt,
+        performedAt: resolvePerformedAtForCreate(data.performedAt),
         ...audit,
       });
 
@@ -211,6 +216,11 @@ export function createJournalService({ db, userId, householdId }: GardenContext)
         careRuleId: data.careRuleId !== undefined ? (data.careRuleId ?? null) : existing.careRuleId,
       });
 
+      const performedAt =
+        data.performedAt !== undefined
+          ? resolvePerformedAtForUpdate(data.performedAt, existing.performedAt)
+          : undefined;
+
       await db
         .update(journalEntries)
         .set({
@@ -220,7 +230,7 @@ export function createJournalService({ db, userId, householdId }: GardenContext)
           ...(data.taskType !== undefined ? { taskType: data.taskType ?? null } : {}),
           ...(data.status !== undefined ? { status: data.status } : {}),
           ...(data.notes !== undefined ? { notes: data.notes ?? null } : {}),
-          ...(data.performedAt !== undefined ? { performedAt: data.performedAt } : {}),
+          ...(performedAt !== undefined ? { performedAt } : {}),
           ...touchFields(userId),
         })
         .where(eq(journalEntries.id, id));
@@ -231,6 +241,10 @@ export function createJournalService({ db, userId, householdId }: GardenContext)
     async remove(id: string) {
       const existing = await this.get(id);
       if (!existing) return false;
+
+      if (photos) {
+        await photos.removeForEntry(id);
+      }
 
       await db
         .update(journalEntries)

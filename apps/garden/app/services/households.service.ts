@@ -1,8 +1,8 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { householdMembers, households, user, userPreferences } from "~/db/schema";
 import { areas, careRules, journalEntries, plants } from "~/db/schema/garden";
-import { isEmailAllowed } from "~/lib/access.server";
+import { isEmailAllowed, normalizeEmail } from "~/lib/access.server";
 import type { Database } from "~/lib/db.server";
 import { auditFields, newId, touchFields } from "~/services/types";
 
@@ -68,10 +68,17 @@ export function createHouseholdsService({ db, userId }: { db: Database; userId: 
         updatedAt: now,
       });
 
+      const [creator] = await db
+        .select({ email: user.email })
+        .from(user)
+        .where(eq(user.id, userId))
+        .limit(1);
+
       await db.insert(householdMembers).values({
         id: membershipId,
         householdId,
         userId,
+        email: creator?.email ? normalizeEmail(creator.email) : null,
         ...audit,
       });
 
@@ -93,25 +100,34 @@ export function createHouseholdsService({ db, userId }: { db: Database; userId: 
     async listMembers(householdId: string) {
       await assertMember(householdId);
 
-      return db
+      const rows = await db
         .select({
           membershipId: householdMembers.id,
-          userId: user.id,
+          userId: householdMembers.userId,
+          memberEmail: householdMembers.email,
           name: user.name,
-          email: user.email,
+          userEmail: user.email,
         })
         .from(householdMembers)
-        .innerJoin(user, eq(householdMembers.userId, user.id))
+        .leftJoin(user, eq(householdMembers.userId, user.id))
         .where(
           and(eq(householdMembers.householdId, householdId), isNull(householdMembers.deletedAt)),
         )
-        .orderBy(asc(user.name), asc(user.email));
+        .orderBy(asc(user.name), asc(householdMembers.email), asc(user.email));
+
+      return rows.map((row) => ({
+        membershipId: row.membershipId,
+        userId: row.userId,
+        email: row.userEmail ?? row.memberEmail ?? "",
+        name: row.name ?? "Invited",
+        pending: row.userId === null,
+      }));
     },
 
     async addMember(householdId: string, input: z.input<typeof addMemberInput>) {
       await assertMember(householdId);
       const data = addMemberInput.parse(input);
-      const email = data.email.trim().toLowerCase();
+      const email = normalizeEmail(data.email);
 
       if (!(await isEmailAllowed(db, email))) {
         throw new Error("That email is not on the garden allowlist");
@@ -123,9 +139,9 @@ export function createHouseholdsService({ db, userId }: { db: Database; userId: 
         .where(eq(user.email, email))
         .limit(1);
 
-      if (!targetUser) {
-        throw new Error("That person needs to sign in once before they can be added");
-      }
+      const membershipMatch = targetUser
+        ? or(eq(householdMembers.userId, targetUser.id), eq(householdMembers.email, email))
+        : eq(householdMembers.email, email);
 
       const [existing] = await db
         .select({
@@ -133,12 +149,7 @@ export function createHouseholdsService({ db, userId }: { db: Database; userId: 
           deletedAt: householdMembers.deletedAt,
         })
         .from(householdMembers)
-        .where(
-          and(
-            eq(householdMembers.householdId, householdId),
-            eq(householdMembers.userId, targetUser.id),
-          ),
-        )
+        .where(and(eq(householdMembers.householdId, householdId), membershipMatch))
         .limit(1);
 
       if (existing && !existing.deletedAt) {
@@ -148,13 +159,19 @@ export function createHouseholdsService({ db, userId }: { db: Database; userId: 
       if (existing?.deletedAt) {
         await db
           .update(householdMembers)
-          .set({ deletedAt: null, ...touchFields(userId) })
+          .set({
+            deletedAt: null,
+            email,
+            ...(targetUser ? { userId: targetUser.id } : { userId: null }),
+            ...touchFields(userId),
+          })
           .where(eq(householdMembers.id, existing.id));
       } else {
         await db.insert(householdMembers).values({
           id: newId(),
           householdId,
-          userId: targetUser.id,
+          userId: targetUser?.id ?? null,
+          email,
           ...auditFields(userId),
         });
       }
@@ -162,11 +179,11 @@ export function createHouseholdsService({ db, userId }: { db: Database; userId: 
       return this.listMembers(householdId);
     },
 
-    async removeMember(householdId: string, memberUserId: string) {
+    async removeMember(householdId: string, membershipId: string) {
       await assertMember(householdId);
 
       const members = await this.listMembers(householdId);
-      const target = members.find((member) => member.userId === memberUserId);
+      const target = members.find((member) => member.membershipId === membershipId);
 
       if (!target) {
         throw new Error("Member not found");
@@ -179,9 +196,11 @@ export function createHouseholdsService({ db, userId }: { db: Database; userId: 
       await db
         .update(householdMembers)
         .set({ deletedAt: new Date(), ...touchFields(userId) })
-        .where(eq(householdMembers.id, target.membershipId));
+        .where(eq(householdMembers.id, membershipId));
 
-      await clearFavoriteHousehold(db, memberUserId, householdId);
+      if (target.userId) {
+        await clearFavoriteHousehold(db, target.userId, householdId);
+      }
 
       return true;
     },
