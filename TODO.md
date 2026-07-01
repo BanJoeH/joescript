@@ -20,6 +20,7 @@
 * [x] Add shared TypeScript config.
 * [x] Configure GitHub Actions.
 * [x] Configure Renovate/Dependabot (optional).
+* [x] Vitest in garden app + test step in CI.
 
 ```
 joescript/
@@ -40,7 +41,7 @@ No `packages/` initially.
 
 Stack
 
-* [x] React Router v7
+* [x] React Router v8
 * [x] Cloudflare Workers
 * [x] Turso
 * [x] Drizzle
@@ -72,6 +73,8 @@ Use:
   * [x] garden-dev
   * [x] garden-prod
 
+* [x] R2 photo buckets (`garden-photos-dev` / `garden-photos-prod`) + `PHOTOS` binding
+
 ---
 
 # Phase 4 - Authentication
@@ -99,33 +102,50 @@ Each person gets their own login.
 
 # Phase 5 - Domain
 
-Skipped for now — using `*.workers.dev` URLs. Revisit when ready to add `garden.joescript.io` / `dev.garden.joescript.io`.
+Custom domains configured in `apps/garden/wrangler.jsonc`. Full setup: **`apps/garden/docs/domains.md`**.
 
-Keep
+| Environment | URL | Worker |
+|-------------|-----|--------|
+| Dev | `garden-dev.joescript.io` | `garden-dev` |
+| Production | `garden.joescript.io` | `garden-prod` |
 
-```
-joescript.io
-```
+Keep apex `joescript.io` on SiteGround hosting; only Garden subdomains go to Workers.
 
-Initially
+## In repo
 
-* [ ] Leave DNS on SiteGround.
-* [ ] Add
+* [x] `wrangler.jsonc` custom domains + `BETTER_AUTH_URL` per environment
+* [x] Setup guide (`apps/garden/docs/domains.md`)
 
-```
-garden.joescript.io
-dev.garden.joescript.io
-```
+## Manual (dashboard / DNS)
+
+* [ ] Add `joescript.io` zone to Cloudflare
+* [ ] Google OAuth: origins + redirect URIs for both Garden URLs
+* [ ] Remove duplicate `BETTER_AUTH_URL` **secret** if set in Workers dashboard (use wrangler `vars`)
+* [ ] Deploy dev + prod (CI or `pnpm deploy` / `pnpm deploy:prod`)
+
+## DNS (pick one)
+
+**Option A — recommended**
+
+* [ ] Point `joescript.io` nameservers to Cloudflare
+* [ ] Confirm apex / `www` still resolve to SiteGround website
+* [ ] Deploy — Garden DNS records created automatically
+
+**Option B — interim (SiteGround nameservers)**
+
+* [ ] Add Cloudflare zone (step above)
+* [ ] Deploy, then add SiteGround CNAMEs for `garden` and `garden-dev` per Cloudflare dashboard
+* [ ] Plan migration to Option A
 
 Later
 
-* [ ] Move DNS to Cloudflare.
+* [ ] Move any remaining DNS fully to Cloudflare (if still on Option B)
 
 ---
 
 # Phase 6 - Database
 
-Schema and migration `0002_red_robin_chapel.sql` added. Run `pnpm db:migrate` on dev/prod.
+Migrations through `0007_hot_the_captain.sql` (photos). Run `pnpm db:migrate` on dev/prod after pulling schema changes.
 
 ## areas
 
@@ -149,20 +169,20 @@ No species table yet.
 
 Fields
 
-* id
-* household_id
-* area_id
-* name
-* latin_name
-* cultivar
-* notes
-* planted_at
-* removed_at
-* created_at
-* updated_at
-* deleted_at
-* created_by_user_id
-* updated_by_user_id
+* [x] id
+* [x] household_id
+* [x] area_id
+* [x] name
+* [x] latin_name
+* [x] cultivar
+* [x] notes
+* [x] planted_at
+* [x] removed_at
+* [x] created_at
+* [x] updated_at
+* [x] deleted_at
+* [x] created_by_user_id
+* [x] updated_by_user_id
 
 Examples
 
@@ -180,19 +200,19 @@ Plants may have zero rules.
 
 Fields
 
-* id
-* plant_id
-* task_type
-* months_json
-* instructions
-* source
-* confidence
-* active
-* created_at
-* updated_at
-* deleted_at
-* created_by_user_id
-* updated_by_user_id
+* [x] id
+* [x] plant_id
+* [x] task_type
+* [x] months_json
+* [x] instructions
+* [x] source
+* [x] confidence
+* [x] active
+* [x] created_at
+* [x] updated_at
+* [x] deleted_at
+* [x] created_by_user_id
+* [x] updated_by_user_id
 
 Examples
 
@@ -211,20 +231,20 @@ Everything interesting goes here.
 
 Fields
 
-* id
-* household_id
-* plant_id (nullable)
-* area_id (nullable)
-* care_rule_id (nullable)
-* task_type (nullable)
-* status (done | skipped | note)
-* notes
-* performed_at
-* created_at
-* updated_at
-* deleted_at
-* created_by_user_id
-* updated_by_user_id
+* [x] id
+* [x] household_id
+* [x] plant_id (nullable)
+* [x] area_id (nullable)
+* [x] care_rule_id (nullable)
+* [x] task_type (nullable)
+* [x] status (done | skipped | note)
+* [x] notes
+* [x] performed_at
+* [x] created_at
+* [x] updated_at
+* [x] deleted_at
+* [x] created_by_user_id
+* [x] updated_by_user_id
 
 Examples
 
@@ -234,6 +254,30 @@ Examples
 * Added bark mulch
 * Found aphids
 * Removed buddleia
+
+---
+
+## photos
+
+Linked to journal entries. Private R2 storage; served via authenticated route.
+
+Fields
+
+* [x] id
+* [x] household_id
+* [x] journal_entry_id
+* [x] storage_key
+* [x] content_type
+* [x] byte_size
+* [x] width / height
+* [x] caption
+* [x] role (general | before | after)
+* [x] sort_order
+* [x] created_at
+* [x] updated_at
+* [x] deleted_at
+* [x] created_by_user_id
+* [x] updated_by_user_id
 
 ---
 
@@ -291,11 +335,31 @@ app/services/
 * [x] Login
 * [x] Dashboard
 * [x] Plants
+* [x] Add plant (`/plants/new`)
 * [x] Plant detail
+* [x] Plant photos (`/plants/:plantId/photos`)
+* [x] Edit plant
 * [x] Areas
+* [x] Add area (`/areas/new`)
 * [x] Journal
 * [x] Add journal entry
+* [x] Edit journal entry
 * [x] Add care rule
+* [x] Edit care rule
+
+---
+
+# Phase 8.5 - UX polish ✅
+
+* [x] Garden logo, favicon, apple touch icon
+* [x] Mobile-friendly app header (brand + actions)
+* [x] List pages: add flows behind header buttons (plants, areas, journal pattern)
+* [x] Plant detail: care rules → photos → journal section order
+* [x] Plant photo gallery with lightbox; 4-photo preview + “see more”
+* [x] Latest photo per plant on plants list and areas page
+* [x] Journal photo thumbnails on list, home, and plant journal rows
+* [x] Same-day journal ordering (`performed_at` + `created_at`; real time when logging today)
+* [x] `*.tsbuildinfo` gitignored and removed from tracking
 
 ---
 
@@ -335,6 +399,24 @@ Simple landing page
 
 * [x] Journal photos (R2 + client resize, private authenticated delivery)
 * [x] Before / after labels
+* [x] Upload on journal create / edit; captions and role editing
+* [x] Fullscreen lightbox with keyboard navigation
+* [x] Plant photo gallery + dedicated all-photos page
+* [x] Latest-photo previews on plants list and areas page
+* [x] `photos.service.ts`: list for plant/entry, upload, cascade delete on journal remove
+
+---
+
+## Near-term
+
+Good next steps that reuse existing data — journal-first, low infra cost.
+
+* [ ] **On this day** — dashboard widget: journal entries from this calendar date in prior years
+* [ ] **Journal see-more** on plant detail (mirror photos preview pattern)
+* [ ] **Photo thumbnails** on dashboard recent-journal rows
+* [ ] **Optional time** on journal entries (UI still date-only; sorting uses `created_at` as fallback)
+* [ ] **Pagination / limits** on journal list and plant journal as data grows
+* [ ] **Area previews** for journal entries logged to an area without a plant (if needed)
 
 ---
 
@@ -355,15 +437,20 @@ Generate Open Graph / Twitter cards.
 
 ## Garden timeline
 
-Timeline by year.
+* [ ] Timeline by year
+* [ ] Timeline by plant
+* [ ] Timeline by area
 
-Timeline by plant.
-
-Timeline by area.
+Natural follow-on once photos + journal density justify it.
 
 ---
 
 ## Today in previous years
+
+See **Near-term** above for dashboard “on this day” slice. Broader views:
+
+* [ ] Dedicated screen or expanded home section
+* [ ] Filter by plant or area
 
 Examples
 
@@ -448,6 +535,7 @@ React Router revalidation
 * Calendar sync
 * Shared packages
 * React Query
+* PWA / installable app (revisit if phone use dominates)
 
 Add these only when the need becomes obvious.
 
