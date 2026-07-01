@@ -1,6 +1,6 @@
-import { and, asc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 
-import { journalEntries, type PhotoRole, photoRoles, photos } from "~/db/schema";
+import { journalEntries, type PhotoRole, photoRoles, photos, plants } from "~/db/schema";
 import {
   ALLOWED_PHOTO_CONTENT_TYPES,
   buildPhotoStorageKey,
@@ -32,6 +32,45 @@ export type PhotoUploadInput = {
   height?: number;
   caption?: string | null;
 };
+
+export type PlantPhotoRecord = PhotoRecord & {
+  performedAt: Date;
+  taskType: string | null;
+};
+
+export type PlantLatestPhoto = PlantPhotoRecord & {
+  plantId: string;
+  plantName: string;
+  areaId: string;
+};
+
+function groupPhotosByEntry(rows: PhotoRecord[]) {
+  const grouped = new Map<string, PhotoRecord[]>();
+  for (const row of rows) {
+    if (!row.journalEntryId) continue;
+    const existing = grouped.get(row.journalEntryId) ?? [];
+    existing.push(row);
+    grouped.set(row.journalEntryId, existing);
+  }
+  return grouped;
+}
+
+export function groupPlantPhotosByEntry(photos: PlantPhotoRecord[]) {
+  const grouped: Record<string, PlantPhotoRecord[]> = {};
+
+  for (const photo of photos) {
+    if (!photo.journalEntryId) continue;
+    const entryPhotos = grouped[photo.journalEntryId] ?? [];
+    entryPhotos.push(photo);
+    grouped[photo.journalEntryId] = entryPhotos;
+  }
+
+  for (const entryPhotos of Object.values(grouped)) {
+    entryPhotos.sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  return grouped;
+}
 
 export function createPhotosService({ db, userId, householdId, photosBucket }: GardenContext) {
   const householdScope = and(eq(photos.householdId, householdId), isNull(photos.deletedAt));
@@ -107,15 +146,109 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
         .where(and(inArray(photos.journalEntryId, entryIds), householdScope))
         .orderBy(asc(photos.sortOrder), asc(photos.createdAt));
 
-      const grouped = new Map<string, PhotoRecord[]>();
-      for (const row of rows) {
-        if (!row.journalEntryId) continue;
-        const existing = grouped.get(row.journalEntryId) ?? [];
-        existing.push(row);
-        grouped.set(row.journalEntryId, existing);
+      return groupPhotosByEntry(rows);
+    },
+
+    async listForPlant(plantId: string): Promise<PlantPhotoRecord[]> {
+      const [plant] = await db
+        .select({ id: plants.id })
+        .from(plants)
+        .where(
+          and(
+            eq(plants.id, plantId),
+            eq(plants.householdId, householdId),
+            isNull(plants.deletedAt),
+          ),
+        )
+        .limit(1);
+
+      if (!plant) {
+        throw new Error("Plant not found");
       }
 
-      return grouped;
+      return db
+        .select({
+          id: photos.id,
+          journalEntryId: photos.journalEntryId,
+          storageKey: photos.storageKey,
+          contentType: photos.contentType,
+          byteSize: photos.byteSize,
+          width: photos.width,
+          height: photos.height,
+          caption: photos.caption,
+          role: photos.role,
+          sortOrder: photos.sortOrder,
+          performedAt: journalEntries.performedAt,
+          taskType: journalEntries.taskType,
+        })
+        .from(photos)
+        .innerJoin(journalEntries, eq(photos.journalEntryId, journalEntries.id))
+        .where(
+          and(
+            eq(journalEntries.plantId, plantId),
+            eq(journalEntries.householdId, householdId),
+            isNull(journalEntries.deletedAt),
+            householdScope,
+          ),
+        )
+        .orderBy(
+          desc(journalEntries.performedAt),
+          desc(journalEntries.createdAt),
+          asc(photos.sortOrder),
+          asc(photos.createdAt),
+        );
+    },
+
+    async listLatestPerPlant(): Promise<PlantLatestPhoto[]> {
+      const rows = await db
+        .select({
+          id: photos.id,
+          journalEntryId: photos.journalEntryId,
+          storageKey: photos.storageKey,
+          contentType: photos.contentType,
+          byteSize: photos.byteSize,
+          width: photos.width,
+          height: photos.height,
+          caption: photos.caption,
+          role: photos.role,
+          sortOrder: photos.sortOrder,
+          performedAt: journalEntries.performedAt,
+          taskType: journalEntries.taskType,
+          plantId: plants.id,
+          plantName: plants.name,
+          areaId: plants.areaId,
+        })
+        .from(photos)
+        .innerJoin(journalEntries, eq(photos.journalEntryId, journalEntries.id))
+        .innerJoin(plants, eq(journalEntries.plantId, plants.id))
+        .where(
+          and(
+            eq(plants.householdId, householdId),
+            isNull(plants.deletedAt),
+            eq(journalEntries.householdId, householdId),
+            isNull(journalEntries.deletedAt),
+            householdScope,
+          ),
+        )
+        .orderBy(
+          desc(journalEntries.performedAt),
+          desc(journalEntries.createdAt),
+          asc(photos.sortOrder),
+          asc(photos.createdAt),
+        );
+
+      const seen = new Set<string>();
+      const result: PlantLatestPhoto[] = [];
+
+      for (const row of rows) {
+        if (seen.has(row.plantId)) {
+          continue;
+        }
+        seen.add(row.plantId);
+        result.push(row);
+      }
+
+      return result;
     },
 
     async get(photoId: string): Promise<PhotoRecord | null> {
