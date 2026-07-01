@@ -8,9 +8,22 @@
   },
   "upload_source_maps": true,
   "compatibility_flags": ["nodejs_compat"],
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "garden-photos-dev",
+      "remote": true
+    }
+  ],
   "env": {
     "production": {
-      "name": "garden-prod"
+      "name": "garden-prod",
+      "r2_buckets": [
+        {
+          "binding": "PHOTOS",
+          "bucket_name": "garden-photos-prod"
+        }
+      ]
     }
   }
 }

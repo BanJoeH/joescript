@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 
+import { JournalPhotoThumbnails } from "~/components/journal/journal-photo-gallery";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
@@ -16,12 +17,15 @@ export function meta(_args: Route.MetaArgs) {
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { garden } = await requireGardenService(request, getGardenEnv(), params.householdId);
   const entries = await garden.journal.list();
+  const photosByEntry = Object.fromEntries(
+    await garden.photos.listForEntries(entries.map((entry) => entry.id)),
+  );
 
-  return { householdId: params.householdId, entries };
+  return { householdId: params.householdId, entries, photosByEntry };
 }
 
 export default function Journal({ loaderData }: Route.ComponentProps) {
-  const { householdId, entries } = loaderData;
+  const { householdId, entries, photosByEntry } = loaderData;
 
   return (
     <div className="flex flex-col gap-6">
@@ -81,6 +85,10 @@ export default function Journal({ loaderData }: Route.ComponentProps) {
                 <CardContent className="space-y-2 text-sm">
                   <p className="text-muted-foreground">{formatDate(entry.performedAt)}</p>
                   {entry.notes ? <p className="whitespace-pre-wrap">{entry.notes}</p> : null}
+                  <JournalPhotoThumbnails
+                    householdId={householdId}
+                    photos={photosByEntry[entry.id] ?? []}
+                  />
                   {entry.plantId ? (
                     <Link
                       className="text-primary underline-offset-4 hover:underline"

@@ -1,0 +1,22 @@
+CREATE TABLE `photos` (
+	`id` text PRIMARY KEY NOT NULL,
+	`household_id` text NOT NULL,
+	`journal_entry_id` text,
+	`storage_key` text NOT NULL,
+	`content_type` text NOT NULL,
+	`byte_size` integer NOT NULL,
+	`width` integer,
+	`height` integer,
+	`caption` text,
+	`role` text DEFAULT 'general' NOT NULL,
+	`sort_order` integer DEFAULT 0 NOT NULL,
+	`created_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`updated_at` integer DEFAULT (cast(unixepoch('subsecond') * 1000 as integer)) NOT NULL,
+	`deleted_at` integer,
+	`created_by_user_id` text NOT NULL,
+	`updated_by_user_id` text NOT NULL,
+	FOREIGN KEY (`household_id`) REFERENCES `households`(`id`) ON UPDATE no action ON DELETE cascade,
+	FOREIGN KEY (`journal_entry_id`) REFERENCES `journal_entries`(`id`) ON UPDATE no action ON DELETE set null,
+	FOREIGN KEY (`created_by_user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action,
+	FOREIGN KEY (`updated_by_user_id`) REFERENCES `user`(`id`) ON UPDATE no action ON DELETE no action
+);

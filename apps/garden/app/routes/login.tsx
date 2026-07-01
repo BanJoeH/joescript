@@ -1,8 +1,8 @@
 import { redirect, useSearchParams } from "react-router";
-
+import { GardenBrand } from "~/components/garden-brand";
 import { ThemeToggle } from "~/components/theme-toggle";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "~/components/ui/card";
 import { authClient } from "~/lib/auth.client";
 import { getGardenEnv } from "~/lib/context.server";
 import { getOptionalGardenSession } from "~/lib/session.server";
@@ -44,8 +44,8 @@ export default function Login() {
         <ThemeToggle />
       </div>
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Garden</CardTitle>
+        <CardHeader className="items-center text-center">
+          <GardenBrand className="mb-2" titleClassName="text-2xl" />
           <CardDescription>
             Sign in with Google to access your household garden journal.
           </CardDescription>

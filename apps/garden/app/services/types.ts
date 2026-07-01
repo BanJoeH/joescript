@@ -4,6 +4,7 @@ export type GardenContext = {
   db: Database;
   userId: string;
   householdId: string;
+  photosBucket: R2Bucket;
 };
 
 export function newId() {
