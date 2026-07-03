@@ -26,7 +26,13 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     throw new Response("Plant not found", { status: 404 });
   }
 
-  return { householdId: params.householdId, plant, areas };
+  return {
+    householdId: params.householdId,
+    plant,
+    areas,
+    plantLookupEnabled: garden.plantLookup.isConfigured(),
+    speciesSearchUrl: householdPath(params.householdId, "api/plants/search"),
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -58,7 +64,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function EditPlant({ loaderData }: Route.ComponentProps) {
-  const { householdId, plant, areas } = loaderData;
+  const { householdId, plant, areas, plantLookupEnabled, speciesSearchUrl } = loaderData;
   const actionData = useActionData<typeof action>();
 
   return (
@@ -88,6 +94,8 @@ export default function EditPlant({ loaderData }: Route.ComponentProps) {
             cancelTo={householdPath(householdId, `plants/${plant.id}`)}
             defaultValues={toPlantFormValues(plant)}
             error={actionData?.error}
+            plantLookupEnabled={plantLookupEnabled}
+            speciesSearchUrl={speciesSearchUrl}
             submitLabel="Save changes"
           />
         </CardContent>

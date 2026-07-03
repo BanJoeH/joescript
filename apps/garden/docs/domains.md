@@ -149,6 +149,19 @@ Redirect URI must match exactly (https, no trailing slash). Allow a few minutes 
 **Main site broken after NS move**  
 In Cloudflare DNS, restore apex / `www` A or CNAME records to SiteGround’s IP from Site Tools.
 
+**`joescript.io` works but `www.joescript.io` does not**  
+Usually the two hostnames are configured differently in Cloudflare DNS. They should both be **Proxied** (orange cloud) and point at the same SiteGround origin.
+
+1. Cloudflare → **DNS** → **Records**
+2. **Apex** `@` / `joescript.io` — type **A**, content = SiteGround server IP (Site Tools → Dashboard), **Proxied**
+3. **`www`** — type **CNAME**, content = `joescript.io`, **Proxied**  
+   (Alternative: **A** record for `www` with the same SiteGround IP, **Proxied**)
+4. Delete duplicate `www` records (old CNAME to SiteGround hostname, grey-cloud A record, etc.)
+5. **SSL/TLS** → **Full (strict)** if SiteGround has a valid cert; otherwise try **Full** first
+6. SiteGround / WordPress: if the site prefers `www`, set site URL to `https://www.joescript.io` in WP settings; if it prefers apex, add a Cloudflare **Redirect rule**: `www.joescript.io/*` → `https://joescript.io/$1`
+
+Quick check: `curl -sI https://www.joescript.io | grep -i server` should show `cloudflare` (same as apex). If you see `nginx` only, `www` is bypassing Cloudflare (grey cloud or wrong target).
+
 ---
 
 ## Related files

@@ -17,3 +17,5 @@ BETTER_AUTH_SECRET=
 BETTER_AUTH_URL=http://localhost:5173
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+# Optional — species lookup on add/edit plant (https://perenual.com/user/developer)
+PERENUAL_API_KEY=

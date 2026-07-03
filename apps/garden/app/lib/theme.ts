@@ -41,7 +41,9 @@ export function applyThemeClass(resolved: ResolvedTheme) {
     return;
   }
 
-  document.documentElement.classList.toggle("dark", resolved === "dark");
+  const root = document.documentElement;
+  root.classList.toggle("dark", resolved === "dark");
+  root.style.colorScheme = resolved;
 }
 
-export const themeInitScript = `(function(){try{var t=localStorage.getItem("${THEME_STORAGE_KEY}")||"system";var d=t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);document.documentElement.classList.toggle("dark",d);}catch(e){}})();`;
+export const themeInitScript = `(function(){try{var t=localStorage.getItem("${THEME_STORAGE_KEY}")||"system";var d=t==="dark"||(t==="system"&&window.matchMedia("(prefers-color-scheme: dark)").matches);var r=document.documentElement;r.classList.toggle("dark",d);r.style.colorScheme=d?"dark":"light";}catch(e){}})();`;
