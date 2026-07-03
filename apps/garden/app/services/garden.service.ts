@@ -4,6 +4,7 @@ import { createDashboardService } from "~/services/dashboard.service";
 import { createHouseholdsService } from "~/services/households.service";
 import { createJournalService } from "~/services/journal.service";
 import { createPhotosService } from "~/services/photos.service";
+import { createPlantLookupService } from "~/services/plant-lookup.service";
 import { createPlantsService } from "~/services/plants.service";
 import type { GardenContext } from "~/services/types";
 
@@ -16,6 +17,7 @@ export function createGardenService(context: GardenContext) {
     careRules: createCareRulesService(context),
     journal: createJournalService(context, photos),
     photos,
+    plantLookup: createPlantLookupService(context.perenualApiKey),
     dashboard: createDashboardService(context),
     households: createHouseholdsService({ db: context.db, userId: context.userId }),
   };
