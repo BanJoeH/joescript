@@ -16,6 +16,7 @@ export default [
       route("plants/:plantId", "routes/plants.$plantId.tsx"),
       route("plants/:plantId/photos", "routes/plants.$plantId.photos.tsx"),
       route("plants/:plantId/edit", "routes/plants.$plantId.edit.tsx"),
+      route("api/plants/search", "routes/api.plants.search.tsx"),
       route("plants/:plantId/care-rules/new", "routes/plants.$plantId.care-rules.new.tsx"),
       route(
         "plants/:plantId/care-rules/:careRuleId/edit",

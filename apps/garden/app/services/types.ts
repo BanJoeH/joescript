@@ -5,6 +5,7 @@ export type GardenContext = {
   userId: string;
   householdId: string;
   photosBucket: R2Bucket;
+  perenualApiKey?: string;
 };
 
 export function newId() {

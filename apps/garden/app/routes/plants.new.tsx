@@ -22,6 +22,8 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return {
     householdId: params.householdId,
     areas,
+    plantLookupEnabled: garden.plantLookup.isConfigured(),
+    speciesSearchUrl: householdPath(params.householdId, "api/plants/search"),
     defaultValues: {
       areaId,
       name: "",
@@ -56,7 +58,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function NewPlant({ loaderData }: Route.ComponentProps) {
-  const { householdId, areas, defaultValues } = loaderData;
+  const { householdId, areas, defaultValues, plantLookupEnabled, speciesSearchUrl } = loaderData;
   const actionData = useActionData<typeof action>();
 
   return (
@@ -96,7 +98,9 @@ export default function NewPlant({ loaderData }: Route.ComponentProps) {
               cancelTo={householdPath(householdId, "plants")}
               defaultValues={defaultValues}
               error={actionData?.error}
+              plantLookupEnabled={plantLookupEnabled}
               showRemovedAt={false}
+              speciesSearchUrl={speciesSearchUrl}
               submitLabel="Add plant"
             />
           </CardContent>

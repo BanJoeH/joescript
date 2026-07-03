@@ -42,7 +42,8 @@ export async function requireGardenService(
   env?: GardenEnv,
   householdId?: string,
 ) {
-  const sessionContext = await requireGardenSessionContext(request, env);
+  const gardenEnv = env ?? getGardenEnv();
+  const sessionContext = await requireGardenSessionContext(request, gardenEnv);
   const resolvedHouseholdId = householdId ?? getHouseholdIdFromRequest(request);
 
   if (!resolvedHouseholdId) {
@@ -56,6 +57,7 @@ export async function requireGardenService(
     userId: sessionContext.userId,
     householdId: resolvedHouseholdId,
     photosBucket: workerEnv.PHOTOS,
+    perenualApiKey: gardenEnv.PERENUAL_API_KEY,
   };
   const garden = createGardenService(context);
   const householdName = await getHouseholdName(context.db, resolvedHouseholdId);
