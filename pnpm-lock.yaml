@@ -36,8 +36,8 @@ importers:
         specifier: ^0.45.1
         version: 0.45.2(@libsql/client@0.17.4)(kysely@0.29.2)
       isbot:
-        specifier: ^5.1.36
-        version: 5.1.44
+        specifier: ^5.2.0
+        version: 5.2.0
       lucide-react:
         specifier: ^0.577.0
         version: 0.577.0(react@19.2.7)
@@ -1790,6 +1790,10 @@ packages:
     resolution: {integrity: sha512-PGEHtwMnKbZpeSEXW2Utx+/JWed7dp6DiH0WWg33vGSDA7RUvpUeJSVlLrVkQ1RCpvDOUc/eH9ql7VsdbBZ8pA==}
     engines: {node: '>=18'}
 
+  isbot@5.2.0:
+    resolution: {integrity: sha512-gbZiGCb4B5xaoxg9mS7koAyRdvJnArk10VLSHOgz6rtBG93/pi1xOFaVvXMKZ7JXgyZ8zAbNRK5uIBdIUTFSqw==}
+    engines: {node: '>=18'}
+
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
@@ -3509,6 +3513,8 @@ snapshots:
   graceful-fs@4.2.11: {}
 
   isbot@5.1.44: {}
+
+  isbot@5.2.0: {}
 
   jiti@2.7.0: {}
 
