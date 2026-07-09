@@ -19,9 +19,9 @@ export async function loader({ request }: Route.LoaderArgs) {
   return null;
 }
 
-const notAllowedMessage = "Your Google account is not on the allowlist for this garden.";
+const notAllowedMessage = "Your Google account has not been invited to Garden yet.";
 const noHouseholdMessage =
-  "Your account is allowed but you are not in a household yet. Sign in and create one at /households, or ask someone to add you.";
+  "Your account is invited but you are not in a household yet. Sign in and create one, or ask someone to add you.";
 
 function getLoginErrorMessage(error: string | null) {
   if (!error) return null;

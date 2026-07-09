@@ -13,7 +13,7 @@ import type { Route } from "./+types/admin.allowed-emails";
 export { action, loader } from "./admin.allowed-emails.server";
 
 export function meta(_args: Route.MetaArgs) {
-  return [{ title: "Allowlist · Garden" }];
+  return [{ title: "Invited emails · Garden" }];
 }
 
 export default function AdminAllowedEmailsPage() {
@@ -27,7 +27,7 @@ export default function AdminAllowedEmailsPage() {
           <Link className="hover:underline" to="/households">
             Households
           </Link>{" "}
-          / Allowlist
+          / Invited emails
         </p>
         <h2 className="text-2xl font-semibold tracking-tight">Allowed emails</h2>
         <p className="text-sm text-muted-foreground">
@@ -61,14 +61,14 @@ export default function AdminAllowedEmailsPage() {
                 type="email"
               />
             </div>
-            <Button type="submit">Add to allowlist</Button>
+            <Button type="submit">Add invited email</Button>
           </Form>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Current allowlist</CardTitle>
+          <CardTitle>Invited emails</CardTitle>
         </CardHeader>
         <CardContent>
           {emails.length === 0 ? (
@@ -96,7 +96,7 @@ export default function AdminAllowedEmailsPage() {
                       <span className="text-xs text-muted-foreground">Protected</span>
                     ) : (
                       <DeleteForm
-                        confirmMessage={`Remove ${entry.email} from the allowlist?`}
+                        confirmMessage={`Remove ${entry.email} from the invited list?`}
                         hiddenFields={{ id: entry.id }}
                       />
                     )}

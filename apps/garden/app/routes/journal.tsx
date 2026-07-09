@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
 import { formatDate } from "~/lib/dates";
 import { householdPath } from "~/lib/household-path";
+import { formatJournalStatus, journalEntrySubjectLabel } from "~/lib/journal-labels";
 import { requireGardenService } from "~/services";
 
 import type { Route } from "./+types/journal";
@@ -33,7 +34,7 @@ export default function Journal({ loaderData }: Route.ComponentProps) {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Journal</h2>
           <p className="text-sm text-muted-foreground">
-            Everything you&apos;ve done, noticed, or skipped in the garden.
+            Notes, photos, and tasks from your garden.
           </p>
         </div>
         <Button asChild>
@@ -43,15 +44,13 @@ export default function Journal({ loaderData }: Route.ComponentProps) {
 
       {entries.length === 0 ? (
         <Card>
-          <CardContent className="pt-6 text-sm text-muted-foreground">
-            No journal entries yet.{" "}
-            <Link
-              className="text-primary underline-offset-4 hover:underline"
-              to={householdPath(householdId, "journal/new")}
-            >
-              Write the first one
-            </Link>
-            .
+          <CardContent className="space-y-3 pt-6 text-sm text-muted-foreground">
+            <p>Your garden journal starts here. Record a note or photo from the garden.</p>
+            <Button asChild>
+              <Link to={`${householdPath(householdId, "journal/new")}?starter=1`}>
+                Write your first entry
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (
@@ -62,7 +61,7 @@ export default function Journal({ loaderData }: Route.ComponentProps) {
                 <CardHeader className="pb-2">
                   <div className="flex items-start justify-between gap-3">
                     <CardTitle className="text-base">
-                      {entry.plantName ?? entry.areaName ?? "General"}
+                      {journalEntrySubjectLabel(entry.plantName, entry.areaName)}
                       {entry.taskType ? (
                         <span className="font-normal text-muted-foreground">
                           {" "}
@@ -72,7 +71,7 @@ export default function Journal({ loaderData }: Route.ComponentProps) {
                     </CardTitle>
                     <div className="flex shrink-0 items-center gap-2">
                       <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
-                        {entry.status}
+                        {formatJournalStatus(entry.status)}
                       </span>
                       <Button asChild size="sm" variant="ghost">
                         <Link to={householdPath(householdId, `journal/${entry.id}/edit`)}>

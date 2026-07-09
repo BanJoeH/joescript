@@ -54,13 +54,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {appData?.isAdmin ? (
               <Button asChild className="h-9 w-9 px-0 xs:w-auto xs:px-3" variant="outline">
                 <Link
-                  aria-label="Allowlist"
+                  aria-label="Invited emails"
                   className="inline-flex items-center justify-center gap-2"
-                  title="Allowlist"
+                  title="Invited emails"
                   to="/admin/allowed-emails"
                 >
                   <ListChecks className="size-4 shrink-0" />
-                  <span className="hidden xs:inline">Allowlist</span>
+                  <span className="hidden xs:inline">Invited</span>
                 </Link>
               </Button>
             ) : null}

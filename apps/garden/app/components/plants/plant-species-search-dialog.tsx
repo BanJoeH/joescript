@@ -108,7 +108,8 @@ export function PlantSpeciesSearchDialog({
         <div className="space-y-1">
           <h3 className="text-lg font-semibold text-popover-foreground">Look up species</h3>
           <p className="text-sm text-muted-foreground">
-            Search by common or scientific name. Selecting a result fills name fields only.
+            Search by common or scientific name. Pick a match to fill in the plant name and latin
+            name.
           </p>
         </div>
 

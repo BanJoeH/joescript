@@ -58,8 +58,7 @@ export default function HouseholdSettings() {
         <CardHeader>
           <CardTitle>Members</CardTitle>
           <CardDescription>
-            Only allowlisted Google accounts can be added. Invited members get access when they sign
-            in.
+            Only invited Google accounts can be added. They get access when they sign in.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -102,8 +101,8 @@ export default function HouseholdSettings() {
         <CardHeader>
           <CardTitle>Delete household</CardTitle>
           <CardDescription>
-            Soft-deletes this household and all its areas, plants, care rules, and journal entries.
-            Members lose access. This cannot be undone.
+            Permanently removes this household and all its areas, plants, care rules, and journal
+            entries. Members lose access. This cannot be undone.
           </CardDescription>
         </CardHeader>
         <CardContent>

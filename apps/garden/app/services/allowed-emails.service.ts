@@ -40,7 +40,7 @@ export function createAllowedEmailsService({ db }: { db: Database }) {
         .limit(1);
 
       if (existing && !existing.deletedAt) {
-        throw new Error("That email is already on the allowlist.");
+        throw new Error("That email is already invited.");
       }
 
       if (existing?.deletedAt) {

@@ -93,7 +93,7 @@ export default function Areas({ loaderData }: Route.ComponentProps) {
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Areas</h2>
           <p className="text-sm text-muted-foreground">
-            Physical parts of the garden — patio, front border, veg patch.
+            Physical parts of the garden: patio, front border, veg patch.
           </p>
         </div>
         <Button asChild>
@@ -103,15 +103,11 @@ export default function Areas({ loaderData }: Route.ComponentProps) {
 
       {areas.length === 0 ? (
         <Card>
-          <CardContent className="pt-6 text-sm text-muted-foreground">
-            No areas yet.{" "}
-            <Link
-              className="text-primary underline-offset-4 hover:underline"
-              to={householdPath(householdId, "areas/new")}
-            >
-              Add the first one
-            </Link>
-            .
+          <CardContent className="space-y-3 pt-6 text-sm text-muted-foreground">
+            <p>Areas are the places in your garden. Add your first one.</p>
+            <Button asChild>
+              <Link to={householdPath(householdId, "areas/new")}>Add your first area</Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (

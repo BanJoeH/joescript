@@ -71,9 +71,10 @@ export default function NewCareRule({ loaderData }: Route.ComponentProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>When to remind</CardTitle>
+          <CardTitle>Care rule</CardTitle>
           <CardDescription>
-            Jobs appear on the dashboard in the months you select. No task rows are stored.
+            Set a recurring task for this plant. It will appear on your dashboard in the months you
+            choose.
           </CardDescription>
         </CardHeader>
         <CardContent>
