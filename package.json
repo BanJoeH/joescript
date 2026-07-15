@@ -13,8 +13,8 @@
     "dev:momentum": "pnpm --filter @joescript/momentum dev"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.0.0",
-    "typescript": "^5.8.3"
+    "@biomejs/biome": "^2.5.4",
+    "typescript": "^7.0.2"
   },
   "packageManager": "pnpm@11.7.0",
   "engines": {
