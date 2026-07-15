@@ -105,7 +105,7 @@ export default function EditPlant({ loaderData }: Route.ComponentProps) {
         <CardHeader>
           <CardTitle>Delete plant</CardTitle>
           <CardDescription>
-            Soft-deletes this plant and its care rules. Journal entries are kept but unlinked.
+            Removes this plant from your garden. Past journal entries are kept.
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -1,9 +1,12 @@
+import { ChevronDown } from "lucide-react";
+import { useState } from "react";
 import { Form, Link } from "react-router";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
+import { cn } from "~/lib/utils";
 
 const monthLabels = [
   "January",
@@ -39,6 +42,10 @@ type CareRuleFormProps = {
 };
 
 export function CareRuleForm({ cancelTo, defaultValues, error, submitLabel }: CareRuleFormProps) {
+  const [detailsOpen, setDetailsOpen] = useState(
+    Boolean(defaultValues.source || defaultValues.confidence),
+  );
+
   return (
     <Form className="space-y-6" method="post">
       <input name="intent" type="hidden" value="save" />
@@ -49,13 +56,13 @@ export function CareRuleForm({ cancelTo, defaultValues, error, submitLabel }: Ca
       ) : null}
 
       <div className="space-y-2">
-        <Label htmlFor="taskType">Task type</Label>
+        <Label htmlFor="taskType">Task</Label>
         <Input
           defaultValue={defaultValues.taskType}
           id="taskType"
           list="task-suggestions"
           name="taskType"
-          placeholder="Coppice"
+          placeholder="e.g. Prune, Feed, Mulch"
           required
         />
         <datalist id="task-suggestions">
@@ -63,10 +70,16 @@ export function CareRuleForm({ cancelTo, defaultValues, error, submitLabel }: Ca
             <option key={task} value={task} />
           ))}
         </datalist>
+        <p className="text-xs text-muted-foreground">
+          The garden work you want to remember each year.
+        </p>
       </div>
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-medium">Months</legend>
+        <p className="text-xs text-muted-foreground">
+          This task will appear on your dashboard in the months you select.
+        </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {monthLabels.map((label, index) => {
             const month = index + 1;
@@ -96,22 +109,54 @@ export function CareRuleForm({ cancelTo, defaultValues, error, submitLabel }: Ca
           placeholder="Cut back to two buds above ground"
           rows={3}
         />
+        <p className="text-xs text-muted-foreground">
+          How you do this task, shown on the dashboard and plant page.
+        </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="source">Source</Label>
-          <Input defaultValue={defaultValues.source} id="source" name="source" />
+      <details
+        className="rounded-md border border-border bg-muted/30 px-4 py-3"
+        onToggle={(event) => setDetailsOpen(event.currentTarget.open)}
+        open={detailsOpen}
+      >
+        <summary className="cursor-pointer list-none font-medium [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            <ChevronDown
+              className={cn(
+                "size-4 text-muted-foreground transition-transform",
+                detailsOpen && "rotate-180",
+              )}
+            />
+            More details
+          </span>
+        </summary>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="source">Source</Label>
+            <Input
+              defaultValue={defaultValues.source}
+              id="source"
+              name="source"
+              placeholder="e.g. RHS, neighbour's advice"
+            />
+            <p className="text-xs text-muted-foreground">Where this advice came from.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confidence">Confidence</Label>
+            <Input
+              defaultValue={defaultValues.confidence}
+              id="confidence"
+              name="confidence"
+              placeholder="e.g. High, still experimenting"
+            />
+            <p className="text-xs text-muted-foreground">How sure you are about the timing.</p>
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="confidence">Confidence</Label>
-          <Input defaultValue={defaultValues.confidence} id="confidence" name="confidence" />
-        </div>
-      </div>
+      </details>
 
       <label className="flex items-center gap-2 text-sm">
         <input defaultChecked={defaultValues.active} name="active" type="checkbox" value="on" />
-        Active
+        Show this task on the dashboard
       </label>
 
       <div className="flex gap-3">

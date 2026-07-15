@@ -90,7 +90,10 @@ export default function EditCareRule({ loaderData }: Route.ComponentProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>When to remind</CardTitle>
+          <CardTitle>Care rule</CardTitle>
+          <CardDescription>
+            Update when this task appears on your dashboard and how you do it.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <CareRuleForm
@@ -112,7 +115,9 @@ export default function EditCareRule({ loaderData }: Route.ComponentProps) {
       <Card className="border-destructive/30">
         <CardHeader>
           <CardTitle>Delete care rule</CardTitle>
-          <CardDescription>Removes this reminder from future dashboard jobs.</CardDescription>
+          <CardDescription>
+            Removes this task from your monthly dashboard. Past journal entries are kept.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <DeleteForm confirmMessage={`Delete the "${careRule.taskType}" care rule?`} />

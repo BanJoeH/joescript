@@ -1,6 +1,6 @@
-import { and, desc, eq, gte, isNotNull, isNull, lt } from "drizzle-orm";
+import { and, count, desc, eq, gte, isNotNull, isNull, lt } from "drizzle-orm";
 
-import { careRules, journalEntries, plants } from "~/db/schema";
+import { areas, careRules, journalEntries, plants } from "~/db/schema";
 import { parseCareRuleMonths } from "~/lib/care-rules";
 import { getMonthRange } from "~/lib/dates";
 import type { GardenContext } from "~/services/types";
@@ -30,8 +30,39 @@ export type CompletedSummary = {
   performedAt: Date;
 };
 
+export type GardenStats = {
+  areaCount: number;
+  plantCount: number;
+  journalCount: number;
+};
+
 export function createDashboardService({ db, householdId }: GardenContext) {
   return {
+    async getGardenStats(): Promise<GardenStats> {
+      const [[areaRow], [plantRow], [journalRow]] = await Promise.all([
+        db
+          .select({ value: count() })
+          .from(areas)
+          .where(and(eq(areas.householdId, householdId), isNull(areas.deletedAt))),
+        db
+          .select({ value: count() })
+          .from(plants)
+          .where(and(eq(plants.householdId, householdId), isNull(plants.deletedAt))),
+        db
+          .select({ value: count() })
+          .from(journalEntries)
+          .where(
+            and(eq(journalEntries.householdId, householdId), isNull(journalEntries.deletedAt)),
+          ),
+      ]);
+
+      return {
+        areaCount: areaRow?.value ?? 0,
+        plantCount: plantRow?.value ?? 0,
+        journalCount: journalRow?.value ?? 0,
+      };
+    },
+
     async getCurrentJobs(
       month = new Date().getMonth() + 1,
       year = new Date().getFullYear(),

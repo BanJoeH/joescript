@@ -149,8 +149,8 @@ export function JournalPhotoFields({ existingCount = 0, formId }: JournalPhotoFi
           type="file"
         />
         <p className="text-xs text-muted-foreground">
-          Up to {remainingSlots} more photo{remainingSlots === 1 ? "" : "s"}. Images are resized
-          before upload.
+          Add up to {remainingSlots} more photo{remainingSlots === 1 ? "" : "s"}. Large images are
+          resized automatically.
         </p>
       </div>
 
@@ -177,7 +177,7 @@ export function JournalPhotoFields({ existingCount = 0, formId }: JournalPhotoFi
                   id={`${photo.id}-caption`}
                   maxLength={MAX_PHOTO_CAPTION_LENGTH}
                   onChange={(event) => updateCaption(photo.id, event.target.value)}
-                  placeholder="Optional description"
+                  placeholder="Caption"
                   value={photo.caption}
                 />
               </div>

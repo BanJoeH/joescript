@@ -70,7 +70,7 @@ export function JournalEntryPhotos({ householdId, photos }: JournalEntryPhotosPr
                     id={`${photo.id}-caption`}
                     maxLength={MAX_PHOTO_CAPTION_LENGTH}
                     name="caption"
-                    placeholder="Optional description"
+                    placeholder="Caption"
                   />
                 </div>
                 <div className="space-y-2">
