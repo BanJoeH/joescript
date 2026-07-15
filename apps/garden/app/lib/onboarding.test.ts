@@ -35,10 +35,7 @@ describe("resolveDuplicatePlantForm", () => {
   };
 
   it("defaults to the source area", () => {
-    const result = resolveDuplicatePlantForm(source, [
-      { id: "area-1" },
-      { id: "area-2" },
-    ]);
+    const result = resolveDuplicatePlantForm(source, [{ id: "area-1" }, { id: "area-2" }]);
 
     expect(result.defaultValues.areaId).toBe("area-1");
     expect(result.defaultValues.name).toBe("Lavender");
@@ -53,7 +50,11 @@ describe("resolveDuplicatePlantForm", () => {
   });
 
   it("honours a preferred area id from the query string", () => {
-    const result = resolveDuplicatePlantForm(source, [{ id: "area-1" }, { id: "area-2" }], "area-2");
+    const result = resolveDuplicatePlantForm(
+      source,
+      [{ id: "area-1" }, { id: "area-2" }],
+      "area-2",
+    );
 
     expect(result.defaultValues.areaId).toBe("area-2");
   });
@@ -61,18 +62,10 @@ describe("resolveDuplicatePlantForm", () => {
 
 describe("isGettingStartedComplete", () => {
   it("requires journal, areas, and plants", () => {
-    expect(
-      isGettingStartedComplete({ areaCount: 1, plantCount: 1, journalCount: 0 }),
-    ).toBe(false);
-    expect(
-      isGettingStartedComplete({ areaCount: 1, plantCount: 0, journalCount: 1 }),
-    ).toBe(false);
-    expect(
-      isGettingStartedComplete({ areaCount: 0, plantCount: 1, journalCount: 1 }),
-    ).toBe(false);
-    expect(
-      isGettingStartedComplete({ areaCount: 1, plantCount: 1, journalCount: 1 }),
-    ).toBe(true);
+    expect(isGettingStartedComplete({ areaCount: 1, plantCount: 1, journalCount: 0 })).toBe(false);
+    expect(isGettingStartedComplete({ areaCount: 1, plantCount: 0, journalCount: 1 })).toBe(false);
+    expect(isGettingStartedComplete({ areaCount: 0, plantCount: 1, journalCount: 1 })).toBe(false);
+    expect(isGettingStartedComplete({ areaCount: 1, plantCount: 1, journalCount: 1 })).toBe(true);
   });
 });
 

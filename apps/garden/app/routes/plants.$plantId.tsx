@@ -83,9 +83,7 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
             <Link to={householdPath(householdId, `plants/${plant.id}/edit`)}>Edit</Link>
           </Button>
           <Button asChild size="sm" variant="outline">
-            <Link
-              to={`${householdPath(householdId, "plants/new")}?fromPlantId=${plant.id}`}
-            >
+            <Link to={`${householdPath(householdId, "plants/new")}?fromPlantId=${plant.id}`}>
               Duplicate
             </Link>
           </Button>
@@ -223,7 +221,10 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <span className="font-medium">{entry.taskType ?? "Note"}</span>
-                      <span className="text-muted-foreground"> · {formatJournalStatus(entry.status)}</span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {formatJournalStatus(entry.status)}
+                      </span>
                       <span className="block text-muted-foreground">
                         {formatDate(entry.performedAt)}
                       </span>

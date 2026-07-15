@@ -18,7 +18,9 @@ const STARTER_NOTES_PLACEHOLDER = "What did you notice in the garden today?";
 export function meta({ loaderData }: Route.MetaArgs) {
   return [
     {
-      title: loaderData?.starter ? "Your first journal entry · Garden" : "Add journal entry · Garden",
+      title: loaderData?.starter
+        ? "Your first journal entry · Garden"
+        : "Add journal entry · Garden",
     },
   ];
 }
