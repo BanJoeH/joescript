@@ -1,3 +1,4 @@
+import { endOfZonedDay, parseDateTimeInput } from "~/lib/dates";
 import { getOptionalString, getString } from "~/lib/forms.server";
 import type { CompleteWorkoutInput, DraftWorkoutInput } from "~/services/workouts.service";
 
@@ -46,7 +47,36 @@ function optionalRating(formData: FormData, key: string) {
   return Number.isFinite(value) ? value : null;
 }
 
-export function parseWorkoutFormData(formData: FormData): CompleteWorkoutInput {
+function parseCompletedAt(formData: FormData, timeZone: string, existingCompletedAt?: Date | null) {
+  const dateRaw = getOptionalString(formData, "performedOn");
+  const timeRaw = getOptionalString(formData, "performedAtTime");
+
+  if (!dateRaw) {
+    return existingCompletedAt ?? new Date();
+  }
+  if (!timeRaw) {
+    throw new Error("Pick a time for the workout.");
+  }
+
+  const parsed = parseDateTimeInput(dateRaw, timeRaw, timeZone);
+  if (!parsed) {
+    throw new Error("Invalid workout date or time.");
+  }
+  if (parsed.getTime() > Date.now() + 60_000) {
+    throw new Error("Workout time can’t be in the future.");
+  }
+  if (parsed > endOfZonedDay(new Date(), timeZone)) {
+    throw new Error("Workout date can’t be in the future.");
+  }
+
+  return parsed;
+}
+
+export function parseWorkoutFormData(
+  formData: FormData,
+  timeZone: string,
+  options?: { existingCompletedAt?: Date | null },
+): CompleteWorkoutInput {
   const exercises = mapExercises(parseExercisesJson(getString(formData, "exercisesJson")), {
     requireSets: true,
   });
@@ -64,6 +94,7 @@ export function parseWorkoutFormData(formData: FormData): CompleteWorkoutInput {
     worthIt: Number(getString(formData, "worthIt")),
     notes: getOptionalString(formData, "notes") || undefined,
     durationSeconds: durationMinutes ? Math.round(Number(durationMinutes) * 60) : undefined,
+    completedAt: parseCompletedAt(formData, timeZone, options?.existingCompletedAt),
     exercises,
   };
 }

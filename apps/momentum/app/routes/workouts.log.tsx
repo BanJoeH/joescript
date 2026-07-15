@@ -9,7 +9,7 @@ import { requireMomentumService } from "~/services";
 import type { Route } from "./+types/workouts.log";
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const { service } = await requireMomentumService(request);
+  const { service, timeZone } = await requireMomentumService(request);
   const url = new URL(request.url);
   const repeat = url.searchParams.get("repeat") === "1";
   // Only create a draft when intentionally starting (avoids revalidation races
@@ -44,6 +44,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     exercises,
     workoutId: workout.id,
     draft: service.workouts.toFormDraft(workout),
+    timeZone,
   };
 }
 
@@ -57,7 +58,7 @@ export function shouldRevalidate({
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const { service } = await requireMomentumService(request);
+  const { service, timeZone } = await requireMomentumService(request);
   const formData = await request.formData();
   const intent = getString(formData, "intent") || "complete";
   const workoutId = getString(formData, "workoutId");
@@ -85,7 +86,7 @@ export async function action({ request }: Route.ActionArgs) {
       return { error: "Missing workout." };
     }
 
-    const input = parseWorkoutFormData(formData);
+    const input = parseWorkoutFormData(formData, timeZone);
     const workout = await service.workouts.completeDraft(workoutId, input);
     if (!workout) {
       return { error: "Could not save workout." };
@@ -104,7 +105,7 @@ export function meta(_args: Route.MetaArgs) {
 }
 
 export default function LogWorkoutPage() {
-  const { exercises, draft, workoutId } = useLoaderData<typeof loader>();
+  const { exercises, draft, workoutId, timeZone } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   return (
@@ -117,6 +118,7 @@ export default function LogWorkoutPage() {
       exercises={exercises}
       heading="Log workout"
       submitLabel="Save workout"
+      timeZone={timeZone}
       workoutId={workoutId}
     />
   );

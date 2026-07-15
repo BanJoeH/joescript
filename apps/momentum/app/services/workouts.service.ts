@@ -29,6 +29,8 @@ const completeWorkoutSchema = z.object({
   worthIt: ratingSchema,
   notes: z.string().max(200).optional(),
   durationSeconds: z.number().int().nonnegative().optional(),
+  /** When the workout finished (backdated logs). Defaults to now. */
+  completedAt: z.date().optional(),
   exercises: z.array(exerciseInputSchema).min(1),
 });
 
@@ -52,6 +54,8 @@ export type WorkoutFormDraft = {
   worthIt?: number | null;
   notes?: string | null;
   durationSeconds?: number | null;
+  /** ISO timestamp or Date used to prefill the performed-on date field. */
+  completedAt?: Date | string | null;
   exercises?: Array<{
     exerciseId: string;
     name: string;
@@ -64,6 +68,14 @@ export type WorkoutFormDraft = {
     }>;
   }>;
 };
+
+function timingFromCompletedAt(completedAt: Date, durationSeconds?: number) {
+  const startedAt =
+    durationSeconds != null && durationSeconds > 0
+      ? new Date(completedAt.getTime() - durationSeconds * 1000)
+      : completedAt;
+  return { startedAt, completedAt };
+}
 
 export function createWorkoutsService({ db, userId }: MomentumContext) {
   const exercisesService = createExercisesService({ db });
@@ -224,6 +236,8 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
       worthIt: number | null;
       notes: string | null;
       durationSeconds: number | null;
+      completedAt?: Date | null;
+      startedAt?: Date | null;
       exercises: Array<{
         exerciseId: string;
         exerciseName: string;
@@ -243,6 +257,7 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
         worthIt: row.worthIt,
         notes: row.notes,
         durationSeconds: row.durationSeconds,
+        completedAt: row.completedAt ?? row.startedAt ?? null,
         exercises: row.exercises.map((item) => ({
           exerciseId: item.exerciseId,
           name: item.exerciseName,
@@ -319,7 +334,10 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
       const data = completeWorkoutSchema.parse(input);
       const now = new Date();
       const title = data.title?.trim() || data.exercises[0]?.name?.trim() || "Workout";
-      const startedAt = existing.startedAt ?? now;
+      const { startedAt, completedAt } = timingFromCompletedAt(
+        data.completedAt ?? now,
+        data.durationSeconds,
+      );
 
       await db
         .update(workout)
@@ -327,7 +345,7 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
           title,
           status: "completed",
           startedAt,
-          completedAt: now,
+          completedAt,
           energyBefore: data.energyBefore,
           energyAfter: data.energyAfter,
           worthIt: data.worthIt,
@@ -379,10 +397,10 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
       const now = new Date();
       const workoutId = newId();
       const title = data.title?.trim() || data.exercises[0]?.name?.trim() || "Workout";
-
-      const startedAt = data.durationSeconds
-        ? new Date(now.getTime() - data.durationSeconds * 1000)
-        : now;
+      const { startedAt, completedAt } = timingFromCompletedAt(
+        data.completedAt ?? now,
+        data.durationSeconds,
+      );
 
       await db.insert(workout).values({
         id: workoutId,
@@ -390,7 +408,7 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
         title,
         status: "completed",
         startedAt,
-        completedAt: now,
+        completedAt,
         energyBefore: data.energyBefore,
         energyAfter: data.energyAfter,
         worthIt: data.worthIt,
@@ -413,16 +431,17 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
       const data = completeWorkoutSchema.parse(input);
       const now = new Date();
       const title = data.title?.trim() || data.exercises[0]?.name?.trim() || "Workout";
-      const completedAt = existing.completedAt ?? now;
-      const startedAt = data.durationSeconds
-        ? new Date(completedAt.getTime() - data.durationSeconds * 1000)
-        : (existing.startedAt ?? completedAt);
+      const { startedAt, completedAt } = timingFromCompletedAt(
+        data.completedAt ?? existing.completedAt ?? now,
+        data.durationSeconds,
+      );
 
       await db
         .update(workout)
         .set({
           title,
           startedAt,
+          completedAt,
           energyBefore: data.energyBefore,
           energyAfter: data.energyAfter,
           worthIt: data.worthIt,

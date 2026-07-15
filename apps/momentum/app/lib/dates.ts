@@ -177,6 +177,14 @@ export function formatDateInput(date: Date, timeZone = "UTC") {
   return `${parts.year}-${month}-${day}`;
 }
 
+/** Format a Date for `<input type="time">` using clock parts in `timeZone`. */
+export function formatTimeInput(date: Date, timeZone = "UTC") {
+  const parts = getZonedParts(date, timeZone);
+  const hour = String(parts.hour).padStart(2, "0");
+  const minute = String(parts.minute).padStart(2, "0");
+  return `${hour}:${minute}`;
+}
+
 /** Parse `YYYY-MM-DD` as noon in `timeZone` to keep the calendar date stable. */
 export function parseDateInput(value: string, timeZone = "UTC") {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -187,6 +195,24 @@ export function parseDateInput(value: string, timeZone = "UTC") {
   if (!year || !month || !day) return null;
 
   const parsed = zonedLocalDateTimeToUtc(year, month, day, 12, 0, 0, timeZone);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/** Parse `YYYY-MM-DD` + `HH:MM` in `timeZone`. */
+export function parseDateTimeInput(dateValue: string, timeValue: string, timeZone = "UTC") {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+    return null;
+  }
+  if (!/^\d{2}:\d{2}$/.test(timeValue)) {
+    return null;
+  }
+
+  const [year, month, day] = dateValue.split("-").map(Number);
+  const [hour, minute] = timeValue.split(":").map(Number);
+  if (!year || !month || !day || hour == null || minute == null) return null;
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+  const parsed = zonedLocalDateTimeToUtc(year, month, day, hour, minute, 0, timeZone);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
