@@ -51,9 +51,7 @@ export default function Plants({ loaderData }: Route.ComponentProps) {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Plants</h2>
-          <p className="text-sm text-muted-foreground">
-            The plants you track, organised by area.
-          </p>
+          <p className="text-sm text-muted-foreground">The plants you track, organised by area.</p>
         </div>
         {areas.length > 0 ? (
           <Button asChild>

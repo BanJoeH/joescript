@@ -7,10 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { getGardenEnv } from "~/lib/context.server";
 import { formatDate } from "~/lib/dates";
 import { householdPath } from "~/lib/household-path";
-import {
-  formatJournalStatus,
-  journalEntrySubjectLabel,
-} from "~/lib/journal-labels";
+import { formatJournalStatus, journalEntrySubjectLabel } from "~/lib/journal-labels";
 import { jobsEmptyMessage } from "~/lib/onboarding";
 import { requireGardenService } from "~/services";
 import type { CompletedSummary, GardenJob, JournalSummary } from "~/services/dashboard.service";
@@ -36,7 +33,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     await garden.photos.listForEntries(recentJournal.map((entry) => entry.id)),
   );
 
-  return { householdId: params.householdId, stats, jobs, recentJournal, recentlyCompleted, photosByEntry };
+  return {
+    householdId: params.householdId,
+    stats,
+    jobs,
+    recentJournal,
+    recentlyCompleted,
+    photosByEntry,
+  };
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
@@ -154,9 +158,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <ul className="space-y-2 text-sm">
                 {recentJournal.map((entry: JournalSummary) => (
                   <li key={entry.id} className="space-y-2">
-                    <span className="font-medium">
-                      {journalEntrySubjectLabel(entry.plantName)}
-                    </span>
+                    <span className="font-medium">{journalEntrySubjectLabel(entry.plantName)}</span>
                     {entry.taskType ? (
                       <span className="text-muted-foreground"> · {entry.taskType}</span>
                     ) : null}
@@ -188,9 +190,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
               <ul className="space-y-2 text-sm">
                 {recentlyCompleted.map((entry: CompletedSummary) => (
                   <li key={entry.id}>
-                    <span className="font-medium">
-                      {journalEntrySubjectLabel(entry.plantName)}
-                    </span>
+                    <span className="font-medium">{journalEntrySubjectLabel(entry.plantName)}</span>
                     {entry.taskType ? (
                       <span className="text-muted-foreground"> · {entry.taskType}</span>
                     ) : null}

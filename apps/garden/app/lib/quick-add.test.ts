@@ -67,7 +67,9 @@ describe("parsePlantNewFlash", () => {
   });
 
   it("does not treat saved=plant as area flow", () => {
-    expect(parsePlantNewFlash(new URLSearchParams("saved=plant&from=area"), areas, "area-9")).toEqual({
+    expect(
+      parsePlantNewFlash(new URLSearchParams("saved=plant&from=area"), areas, "area-9"),
+    ).toEqual({
       kind: "plant-repeat",
     });
   });

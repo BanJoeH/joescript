@@ -9,8 +9,8 @@ import {
   isGettingStartedDismissed,
   subscribeGettingStartedDismiss,
 } from "~/lib/getting-started";
-import { isGettingStartedComplete } from "~/lib/onboarding";
 import { householdPath } from "~/lib/household-path";
+import { isGettingStartedComplete } from "~/lib/onboarding";
 import { cn } from "~/lib/utils";
 import type { GardenStats } from "~/services/dashboard.service";
 
@@ -88,8 +88,8 @@ export function GettingStartedCard({ householdId, stats }: GettingStartedCardPro
       <CardContent className="space-y-4">
         {stats.areaCount > 0 || stats.plantCount > 0 || stats.journalCount > 0 ? (
           <p className="text-sm text-muted-foreground">
-            {stats.journalCount} {stats.journalCount === 1 ? "entry" : "entries"} · {stats.areaCount}{" "}
-            {stats.areaCount === 1 ? "area" : "areas"} · {stats.plantCount}{" "}
+            {stats.journalCount} {stats.journalCount === 1 ? "entry" : "entries"} ·{" "}
+            {stats.areaCount} {stats.areaCount === 1 ? "area" : "areas"} · {stats.plantCount}{" "}
             {stats.plantCount === 1 ? "plant" : "plants"}
           </p>
         ) : null}
