@@ -28,7 +28,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Generate types
-        run: pnpm --filter @joescript/garden codegen
+        run: |
+          pnpm --filter @joescript/garden codegen
+          pnpm --filter @joescript/momentum codegen
 
       - name: Lint and format
         run: pnpm check
@@ -37,7 +39,9 @@ jobs:
         run: pnpm typecheck
 
       - name: Test
-        run: pnpm --filter @joescript/garden test
+        run: |
+          pnpm --filter @joescript/garden test
+          pnpm --filter @joescript/momentum test
 
       - name: Build
         run: pnpm build

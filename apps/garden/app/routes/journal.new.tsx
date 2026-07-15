@@ -13,19 +13,29 @@ import { requireGardenService } from "~/services";
 
 import type { Route } from "./+types/journal.new";
 
-export function meta(_args: Route.MetaArgs) {
-  return [{ title: "Add journal entry · Garden" }];
+const STARTER_NOTES_PLACEHOLDER = "What did you notice in the garden today?";
+
+export function meta({ loaderData }: Route.MetaArgs) {
+  return [
+    {
+      title: loaderData?.starter
+        ? "Your first journal entry · Garden"
+        : "Add journal entry · Garden",
+    },
+  ];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { garden } = await requireGardenService(request, getGardenEnv(), params.householdId);
   const url = new URL(request.url);
+  const starter = url.searchParams.get("starter") === "1";
   const [plants, areas] = await Promise.all([garden.plants.list(), garden.areas.list()]);
 
   return {
     householdId: params.householdId,
     plants,
     areas,
+    starter,
     defaults: {
       plantId: url.searchParams.get("plantId") ?? "",
       areaId: url.searchParams.get("areaId") ?? "",
@@ -42,6 +52,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const { garden } = await requireGardenService(request, getGardenEnv(), params.householdId);
   const formData = await request.formData();
   const performedAt = parseDateInput(getString(formData, "performedAt"));
+  const starter = getOptionalString(formData, "starter") === "1";
 
   if (!performedAt) {
     return { error: "Enter a valid date." };
@@ -75,13 +86,17 @@ export async function action({ request, params }: Route.ActionArgs) {
         return {
           error:
             uploadError instanceof Error
-              ? `${uploadError.message} Entry was saved without photos — you can add them on edit.`
+              ? `${uploadError.message} Entry was saved without photos. You can add them on edit.`
               : "Entry was saved, but photos could not be uploaded.",
         };
       }
     }
 
     const plantId = entry.plantId;
+    if (starter) {
+      throw redirect(householdPath(params.householdId));
+    }
+
     throw redirect(
       plantId
         ? householdPath(params.householdId, `plants/${plantId}`)
@@ -99,7 +114,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function NewJournalEntry() {
-  const { householdId, plants, areas, defaults } = useLoaderData<typeof loader>();
+  const { householdId, plants, areas, defaults, starter } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const formId = useId();
 
@@ -112,24 +127,30 @@ export default function NewJournalEntry() {
           </Link>{" "}
           / Add entry
         </p>
-        <h2 className="text-2xl font-semibold tracking-tight">Add journal entry</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {starter ? "Your first journal entry" : "Add journal entry"}
+        </h2>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>What happened?</CardTitle>
+          <CardTitle>{starter ? "Your garden journal" : "What happened?"}</CardTitle>
           <CardDescription>
-            Log work done, things you noticed, or tasks you skipped.
+            {starter
+              ? "Record what you see, note, or photograph in the garden."
+              : "Record work you did, things you noticed, or tasks you skipped."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <JournalEntryForm
             areas={areas}
-            cancelTo={householdPath(householdId, "journal")}
+            cancelTo={starter ? householdPath(householdId) : householdPath(householdId, "journal")}
             defaultValues={defaults}
             error={actionData?.error}
             formId={formId}
+            notesPlaceholder={starter ? STARTER_NOTES_PLACEHOLDER : undefined}
             plants={plants}
+            starter={starter}
             submitLabel="Save entry"
           />
         </CardContent>

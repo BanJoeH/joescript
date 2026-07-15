@@ -7,6 +7,7 @@ import { parseCareRuleMonths } from "~/lib/care-rules";
 import { getGardenEnv } from "~/lib/context.server";
 import { formatDate } from "~/lib/dates";
 import { householdPath } from "~/lib/household-path";
+import { formatJournalStatus } from "~/lib/journal-labels";
 import { requireGardenService } from "~/services";
 import { groupPlantPhotosByEntry } from "~/services/photos.service";
 
@@ -31,7 +32,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   ]);
   const photosByEntry = groupPlantPhotosByEntry(plantPhotos);
 
-  return { householdId: params.householdId, plant, careRules, journal, plantPhotos, photosByEntry };
+  return {
+    householdId: params.householdId,
+    plant,
+    careRules,
+    journal,
+    plantPhotos,
+    photosByEntry,
+  };
 }
 
 const monthLabels = [
@@ -74,6 +82,11 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
           <Button asChild size="sm" variant="outline">
             <Link to={householdPath(householdId, `plants/${plant.id}/edit`)}>Edit</Link>
           </Button>
+          <Button asChild size="sm" variant="outline">
+            <Link to={`${householdPath(householdId, "plants/new")}?fromPlantId=${plant.id}`}>
+              Duplicate
+            </Link>
+          </Button>
           <Button asChild size="sm">
             <Link to={`${householdPath(householdId, "journal/new")}?plantId=${plant.id}`}>
               Add journal entry
@@ -95,7 +108,9 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           <div>
             <CardTitle>Care rules</CardTitle>
-            <CardDescription>Reminders are calculated from these rules each month.</CardDescription>
+            <CardDescription>
+              Recurring tasks for this plant. They appear on your dashboard each month.
+            </CardDescription>
           </div>
           <Button asChild size="sm" variant="outline">
             <Link to={householdPath(householdId, `plants/${plant.id}/care-rules/new`)}>
@@ -105,7 +120,16 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
         </CardHeader>
         <CardContent>
           {careRules.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No care rules yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No care rules yet.{" "}
+              <Link
+                className="text-primary underline-offset-4 hover:underline"
+                to={householdPath(householdId, `plants/${plant.id}/care-rules/new`)}
+              >
+                Add a care rule
+              </Link>{" "}
+              to schedule recurring tasks like pruning or feeding.
+            </p>
           ) : (
             <ul className="space-y-3 text-sm">
               {careRules.map((rule) => {
@@ -133,7 +157,7 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
                           <Link
                             to={`${householdPath(householdId, "journal/new")}?plantId=${plant.id}&careRuleId=${rule.id}&taskType=${encodeURIComponent(rule.taskType)}&status=done`}
                           >
-                            Log
+                            Mark done
                           </Link>
                         </Button>
                         <Button asChild size="sm" variant="ghost">
@@ -180,7 +204,16 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
         </CardHeader>
         <CardContent>
           {journal.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No journal entries for this plant yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No journal entries for this plant yet.{" "}
+              <Link
+                className="text-primary underline-offset-4 hover:underline"
+                to={`${householdPath(householdId, "journal/new")}?plantId=${plant.id}`}
+              >
+                Add an entry
+              </Link>
+              .
+            </p>
           ) : (
             <ul className="space-y-2 text-sm">
               {journal.map((entry) => (
@@ -188,7 +221,10 @@ export default function PlantDetail({ loaderData }: Route.ComponentProps) {
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <span className="font-medium">{entry.taskType ?? "Note"}</span>
-                      <span className="text-muted-foreground"> · {entry.status}</span>
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {formatJournalStatus(entry.status)}
+                      </span>
                       <span className="block text-muted-foreground">
                         {formatDate(entry.performedAt)}
                       </span>

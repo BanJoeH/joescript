@@ -130,7 +130,7 @@ export function createHouseholdsService({ db, userId }: { db: Database; userId: 
       const email = normalizeEmail(data.email);
 
       if (!(await isEmailAllowed(db, email))) {
-        throw new Error("That email is not on the garden allowlist");
+        throw new Error("That email has not been invited to Garden yet.");
       }
 
       const [targetUser] = await db

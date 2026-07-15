@@ -1,16 +1,28 @@
 import { Link, redirect, useActionData } from "react-router";
 
 import { PlantForm } from "~/components/plants/plant-form";
+import { QuickAddFlashBanner } from "~/components/quick-add-flash-banner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
 import { parsePlantCreateFormData } from "~/lib/entity-forms.server";
 import { householdPath } from "~/lib/household-path";
+import { resolveDuplicatePlantForm } from "~/lib/onboarding";
+import {
+  parsePlantNewFlash,
+  parseQuickAddFormKey,
+  plantCreateContinuePath,
+  quickAddFlashMessage,
+} from "~/lib/quick-add";
 import { requireGardenService } from "~/services";
 
 import type { Route } from "./+types/plants.new";
 
-export function meta(_args: Route.MetaArgs) {
-  return [{ title: "Add plant · Garden" }];
+export function meta({ loaderData }: Route.MetaArgs) {
+  return [
+    {
+      title: loaderData?.duplicateFromName ? "Duplicate plant · Garden" : "Add plant · Garden",
+    },
+  ];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
@@ -18,21 +30,40 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const url = new URL(request.url);
   const areas = await garden.areas.list();
   const areaId = url.searchParams.get("areaId") ?? areas[0]?.id ?? "";
+  const fromPlantId = url.searchParams.get("fromPlantId");
+  const flash = parsePlantNewFlash(url.searchParams, areas, areaId);
+  const formKey = parseQuickAddFormKey(url.searchParams, fromPlantId ?? "initial");
+
+  let duplicateFromName: string | null = null;
+  let defaultValues = {
+    areaId,
+    name: "",
+    latinName: "",
+    cultivar: "",
+    notes: "",
+    plantedAt: "",
+    removedAt: "",
+  };
+
+  if (fromPlantId) {
+    const source = await garden.plants.get(fromPlantId);
+    if (!source) {
+      throw new Response("Plant not found", { status: 404 });
+    }
+
+    duplicateFromName = source.name;
+    defaultValues = resolveDuplicatePlantForm(source, areas, areaId).defaultValues;
+  }
 
   return {
     householdId: params.householdId,
     areas,
     plantLookupEnabled: garden.plantLookup.isConfigured(),
     speciesSearchUrl: householdPath(params.householdId, "api/plants/search"),
-    defaultValues: {
-      areaId,
-      name: "",
-      latinName: "",
-      cultivar: "",
-      notes: "",
-      plantedAt: "",
-      removedAt: "",
-    },
+    flash,
+    duplicateFromName,
+    formKey,
+    defaultValues,
   };
 }
 
@@ -45,7 +76,8 @@ export async function action({ request, params }: Route.ActionArgs) {
     if (!plant) {
       return { error: "Could not create plant." };
     }
-    throw redirect(householdPath(params.householdId, `plants/${plant.id}`));
+
+    throw redirect(plantCreateContinuePath(params.householdId, plant.areaId));
   } catch (error) {
     if (error instanceof Response) {
       throw error;
@@ -58,7 +90,16 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function NewPlant({ loaderData }: Route.ComponentProps) {
-  const { householdId, areas, defaultValues, plantLookupEnabled, speciesSearchUrl } = loaderData;
+  const {
+    householdId,
+    areas,
+    defaultValues,
+    plantLookupEnabled,
+    speciesSearchUrl,
+    flash,
+    duplicateFromName,
+    formKey,
+  } = loaderData;
   const actionData = useActionData<typeof action>();
 
   return (
@@ -68,9 +109,11 @@ export default function NewPlant({ loaderData }: Route.ComponentProps) {
           <Link className="hover:underline" to={householdPath(householdId, "plants")}>
             Plants
           </Link>{" "}
-          / Add plant
+          / {duplicateFromName ? "Duplicate plant" : "Add plant"}
         </p>
-        <h2 className="text-2xl font-semibold tracking-tight">Add plant</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">
+          {duplicateFromName ? "Duplicate plant" : "Add plant"}
+        </h2>
       </div>
 
       {areas.length === 0 ? (
@@ -89,16 +132,29 @@ export default function NewPlant({ loaderData }: Route.ComponentProps) {
       ) : (
         <Card>
           <CardHeader>
-            <CardTitle>Plant details</CardTitle>
-            <CardDescription>Name the plant as you think of it in the garden.</CardDescription>
+            <CardTitle>{duplicateFromName ? "Duplicate" : "Quick add"}</CardTitle>
+            <CardDescription>
+              {duplicateFromName
+                ? "Name and area are copied. Adjust either if needed."
+                : "Give each plant a name and choose which area it lives in."}
+            </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            {duplicateFromName ? (
+              <p className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                Copying &ldquo;{duplicateFromName}&rdquo;. Change the name if you want to tell
+                plants apart.
+              </p>
+            ) : null}
+            {flash ? <QuickAddFlashBanner message={quickAddFlashMessage(flash)} /> : null}
             <PlantForm
+              key={formKey}
               areas={areas}
               cancelTo={householdPath(householdId, "plants")}
               defaultValues={defaultValues}
               error={actionData?.error}
               plantLookupEnabled={plantLookupEnabled}
+              quickAdd
               showRemovedAt={false}
               speciesSearchUrl={speciesSearchUrl}
               submitLabel="Add plant"

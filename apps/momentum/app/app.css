@@ -1,0 +1,142 @@
+@import "tailwindcss" source(".");
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --breakpoint-xs: 30rem;
+  --font-sans:
+    "Manrope", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --radius-2xl: 28px;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-blue: var(--blue);
+  --color-blue-soft: var(--blue-soft);
+  --color-purple: var(--purple);
+  --color-purple-soft: var(--purple-soft);
+  --color-primary-soft: var(--primary-soft);
+}
+
+:root {
+  --radius: 16px;
+  --background: #f8f5ef;
+  --foreground: #17211d;
+  --card: #fffdfa;
+  --card-foreground: #17211d;
+  --popover: #fffdfa;
+  --popover-foreground: #17211d;
+  --primary: #17613f;
+  --primary-foreground: #fffdfa;
+  --secondary: #f1efe9;
+  --secondary-foreground: #17211d;
+  --muted: #f2eee6;
+  --muted-foreground: #59635e;
+  --accent: #e4eddf;
+  --accent-foreground: #17613f;
+  --destructive: #b95b53;
+  --border: #e5e0d7;
+  --input: #e5e0d7;
+  --ring: #17613f;
+  --amber: #f0a13a;
+  --amber-soft: #fff0d7;
+  --blue: #4d86a8;
+  --blue-soft: #e3f0f6;
+  --purple: #7864b8;
+  --purple-soft: #eee9fa;
+  --primary-soft: #e4eddf;
+}
+
+.dark {
+  --background: #091417;
+  --foreground: #f3f2eb;
+  --card: #111f21;
+  --card-foreground: #f3f2eb;
+  --popover: #172729;
+  --popover-foreground: #f3f2eb;
+  --primary: #92b967;
+  --primary-foreground: #08120d;
+  --secondary: #1b292a;
+  --secondary-foreground: #f3f2eb;
+  --muted: #0d1a1d;
+  --muted-foreground: #bec7c2;
+  --accent: #253622;
+  --accent-foreground: #92b967;
+  --destructive: #e08378;
+  --border: #2a3939;
+  --input: #2a3939;
+  --ring: #92b967;
+  --amber: #f2ad45;
+  --amber-soft: #3c2d19;
+  --blue: #6da5c5;
+  --blue-soft: #172c38;
+  --purple: #a18adb;
+  --purple-soft: #29243e;
+  --primary-soft: #253622;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  dialog {
+    color: var(--foreground);
+    background-color: var(--popover);
+  }
+
+  dialog::backdrop {
+    background-color: rgb(0 0 0 / 0.5);
+  }
+}
+
+@layer utilities {
+  .btn-primary-gradient {
+    background: linear-gradient(135deg, #17613f 0%, #24764e 100%);
+    color: #fffdfa;
+  }
+
+  .dark .btn-primary-gradient {
+    background: linear-gradient(135deg, #70984c 0%, #98bb69 100%);
+    color: #08120d;
+  }
+
+  .shadow-soft {
+    box-shadow:
+      0 1px 2px rgba(28, 38, 33, 0.04),
+      0 8px 24px rgba(28, 38, 33, 0.07);
+  }
+
+  .dark .shadow-soft {
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.025) inset,
+      0 12px 32px rgba(0, 0, 0, 0.18);
+  }
+}

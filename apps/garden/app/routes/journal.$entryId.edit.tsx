@@ -134,7 +134,7 @@ export default function EditJournalEntry({ loaderData }: Route.ComponentProps) {
         <Card>
           <CardHeader>
             <CardTitle>Photos</CardTitle>
-            <CardDescription>Captions, before/after labels, and existing uploads.</CardDescription>
+            <CardDescription>Add captions and before/after labels to your photos.</CardDescription>
           </CardHeader>
           <CardContent>
             <JournalEntryPhotos householdId={householdId} photos={photos} />

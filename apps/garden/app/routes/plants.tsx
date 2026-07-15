@@ -42,15 +42,16 @@ export default function Plants({ loaderData }: Route.ComponentProps) {
       .map((plant) => latestPhotoByPlantId[plant.id])
       .filter((photo): photo is PlantLatestPhoto => photo !== undefined),
   }));
+  const visibleAreas = plantsByArea.filter(
+    ({ plants: areaPlants }) => plants.length === 0 || areaPlants.length > 0,
+  );
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-semibold tracking-tight">Plants</h2>
-          <p className="text-sm text-muted-foreground">
-            Every plant in your garden, grouped by area.
-          </p>
+          <p className="text-sm text-muted-foreground">The plants you track, organised by area.</p>
         </div>
         {areas.length > 0 ? (
           <Button asChild>
@@ -74,24 +75,31 @@ export default function Plants({ loaderData }: Route.ComponentProps) {
         </Card>
       ) : plants.length === 0 ? (
         <Card>
-          <CardContent className="pt-6 text-sm text-muted-foreground">
-            No plants yet.{" "}
-            <Link
-              className="text-primary underline-offset-4 hover:underline"
-              to={householdPath(householdId, "plants/new")}
-            >
-              Add the first one
-            </Link>
-            .
+          <CardContent className="space-y-3 pt-6 text-sm text-muted-foreground">
+            <p>No plants yet. Give each plant a name and choose its area.</p>
+            <Button asChild>
+              <Link to={householdPath(householdId, `plants/new?areaId=${areas[0].id}`)}>
+                Add your first plant
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-6">
-          {plantsByArea.map(({ area, plants: areaPlants, latestPhotos }) =>
-            areaPlants.length === 0 ? null : (
-              <PhotoLightboxProvider householdId={householdId} key={area.id} photos={latestPhotos}>
-                <section>
-                  <h3 className="mb-3 text-lg font-medium">{area.name}</h3>
+          {visibleAreas.map(({ area, plants: areaPlants, latestPhotos }) => (
+            <PhotoLightboxProvider householdId={householdId} key={area.id} photos={latestPhotos}>
+              <section>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h3 className="text-lg font-medium">{area.name}</h3>
+                  <Button asChild size="sm" variant="outline">
+                    <Link to={householdPath(householdId, `plants/new?areaId=${area.id}`)}>
+                      Add plant
+                    </Link>
+                  </Button>
+                </div>
+                {areaPlants.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No plants in this area yet.</p>
+                ) : (
                   <ul className="space-y-2">
                     {areaPlants.map((plant) => {
                       const latestPhoto = latestPhotoByPlantId[plant.id];
@@ -135,10 +143,10 @@ export default function Plants({ loaderData }: Route.ComponentProps) {
                       );
                     })}
                   </ul>
-                </section>
-              </PhotoLightboxProvider>
-            ),
-          )}
+                )}
+              </section>
+            </PhotoLightboxProvider>
+          ))}
         </div>
       )}
     </div>

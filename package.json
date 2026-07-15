@@ -9,7 +9,8 @@
     "dev:garden": "pnpm --filter @joescript/garden dev",
     "format": "biome format --write .",
     "lint": "biome lint .",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "dev:momentum": "pnpm --filter @joescript/momentum dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

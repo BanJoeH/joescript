@@ -1,10 +1,18 @@
 import { Link, redirect, useActionData } from "react-router";
 
 import { AreaForm } from "~/components/areas/area-form";
+import { QuickAddFlashBanner } from "~/components/quick-add-flash-banner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
-import { getString } from "~/lib/forms.server";
+import { getOptionalString, getString } from "~/lib/forms.server";
 import { householdPath } from "~/lib/household-path";
+import { filterSuggestedAreaNames } from "~/lib/onboarding";
+import {
+  areaCreateRedirectPath,
+  parseAreaNewFlash,
+  parseQuickAddFormKey,
+  quickAddFlashMessage,
+} from "~/lib/quick-add";
 import { requireGardenService } from "~/services";
 
 import type { Route } from "./+types/areas.new";
@@ -14,14 +22,25 @@ export function meta(_args: Route.MetaArgs) {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  await requireGardenService(request, getGardenEnv(), params.householdId);
+  const { garden } = await requireGardenService(request, getGardenEnv(), params.householdId);
+  const url = new URL(request.url);
+  const areas = await garden.areas.list();
+  const flash = parseAreaNewFlash(url.searchParams);
+  const formKey = parseQuickAddFormKey(url.searchParams);
+  const suggestedNames = filterSuggestedAreaNames(areas.map((area) => area.name));
 
-  return { householdId: params.householdId };
+  return {
+    householdId: params.householdId,
+    flash,
+    formKey,
+    suggestedNames,
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
   const { garden } = await requireGardenService(request, getGardenEnv(), params.householdId);
   const formData = await request.formData();
+  const intent = getOptionalString(formData, "intent") ?? "save";
 
   try {
     const area = await garden.areas.create({
@@ -30,7 +49,14 @@ export async function action({ request, params }: Route.ActionArgs) {
     if (!area) {
       return { error: "Could not create area." };
     }
-    throw redirect(householdPath(params.householdId, "areas"));
+
+    throw redirect(
+      areaCreateRedirectPath(
+        params.householdId,
+        intent as "save" | "saveAndAddAnother" | "saveAndAddPlants",
+        area.id,
+      ),
+    );
   } catch (error) {
     if (error instanceof Response) {
       throw error;
@@ -43,7 +69,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function NewArea({ loaderData }: Route.ComponentProps) {
-  const { householdId } = loaderData;
+  const { householdId, flash, formKey, suggestedNames } = loaderData;
   const actionData = useActionData<typeof action>();
 
   return (
@@ -60,14 +86,20 @@ export default function NewArea({ loaderData }: Route.ComponentProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Area details</CardTitle>
-          <CardDescription>Areas group plants and journal entries.</CardDescription>
+          <CardTitle>Quick add</CardTitle>
+          <CardDescription>
+            Name a place in your garden. Pick a suggestion or type your own.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          {flash ? <QuickAddFlashBanner message={quickAddFlashMessage(flash)} /> : null}
           <AreaForm
+            key={formKey}
             cancelTo={householdPath(householdId, "areas")}
             error={actionData?.error}
+            quickAdd
             submitLabel="Add area"
+            suggestedNames={suggestedNames}
           />
         </CardContent>
       </Card>
