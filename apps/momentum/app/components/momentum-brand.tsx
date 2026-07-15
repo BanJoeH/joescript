@@ -11,21 +11,14 @@ type MomentumBrandProps = {
 export function MomentumBrand({ className, titleClassName, to = "/" }: MomentumBrandProps) {
   const content = (
     <span className={cn("flex items-center gap-2", className)}>
-      <span
+      <img
+        alt=""
         aria-hidden
-        className="flex size-8 items-center justify-center rounded-xl bg-primary-soft text-primary"
-      >
-        <svg aria-hidden className="size-4" fill="none" viewBox="0 0 24 24">
-          <title>Momentum</title>
-          <path
-            d="M4 16c3-6 5-9 8-9s5 3 8 9"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeWidth="1.75"
-          />
-          <circle cx="12" cy="7" fill="currentColor" r="1.5" />
-        </svg>
-      </span>
+        className="size-8 rounded-[22%] object-cover"
+        height={32}
+        src="/logo-mark.png"
+        width={32}
+      />
       <span className={cn("text-lg font-bold tracking-tight text-foreground", titleClassName)}>
         Momentum
       </span>
