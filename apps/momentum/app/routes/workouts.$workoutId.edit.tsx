@@ -7,7 +7,7 @@ import { requireMomentumService } from "~/services";
 import type { Route } from "./+types/workouts.$workoutId.edit";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const { service } = await requireMomentumService(request);
+  const { service, timeZone } = await requireMomentumService(request);
   const workout = await service.workouts.getById(params.workoutId);
   const exercises = await service.exercises.list();
 
@@ -18,6 +18,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   return {
     exercises,
     workoutId: workout.id,
+    timeZone,
     draft: {
       title: workout.title ?? undefined,
       energyBefore: workout.energyBefore,
@@ -25,6 +26,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
       worthIt: workout.worthIt,
       notes: workout.notes,
       durationSeconds: workout.durationSeconds,
+      completedAt: workout.completedAt ?? workout.startedAt,
       exercises: workout.exercises.map((item) => ({
         exerciseId: item.exerciseId,
         name: item.exerciseName,
@@ -41,11 +43,14 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
-  const { service } = await requireMomentumService(request);
+  const { service, timeZone } = await requireMomentumService(request);
   const formData = await request.formData();
 
   try {
-    const input = parseWorkoutFormData(formData);
+    const existing = await service.workouts.getById(params.workoutId);
+    const input = parseWorkoutFormData(formData, timeZone, {
+      existingCompletedAt: existing?.completedAt,
+    });
     const workout = await service.workouts.update(params.workoutId, input);
     if (!workout) {
       return { error: "Could not update workout." };
@@ -64,7 +69,7 @@ export function meta(_args: Route.MetaArgs) {
 }
 
 export default function EditWorkoutPage() {
-  const { exercises, draft, workoutId } = useLoaderData<typeof loader>();
+  const { exercises, draft, workoutId, timeZone } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   return (
@@ -75,6 +80,7 @@ export default function EditWorkoutPage() {
       exercises={exercises}
       heading="Edit workout"
       submitLabel="Save changes"
+      timeZone={timeZone}
     />
   );
 }

@@ -6,8 +6,10 @@ import {
   endOfZonedDay,
   formatDate,
   formatDateInput,
+  formatTimeInput,
   getZonedParts,
   parseDateInput,
+  parseDateTimeInput,
   resolvePerformedAtForCreate,
   resolvePerformedAtForUpdate,
   startOfZonedDay,
@@ -32,6 +34,21 @@ describe("parseDateInput", () => {
   it("rejects invalid values", () => {
     expect(parseDateInput("15-06-2025")).toBeNull();
     expect(parseDateInput("")).toBeNull();
+  });
+});
+
+describe("parseDateTimeInput", () => {
+  it("parses date and time in the given time zone", () => {
+    const parsed = parseDateTimeInput("2026-07-14", "18:30", "Europe/London");
+    assert(parsed);
+    expect(formatDateInput(parsed, "Europe/London")).toBe("2026-07-14");
+    expect(formatTimeInput(parsed, "Europe/London")).toBe("18:30");
+    expect(getZonedParts(parsed, "Europe/London").hour).toBe(18);
+  });
+
+  it("rejects invalid time values", () => {
+    expect(parseDateTimeInput("2026-07-14", "25:00", "UTC")).toBeNull();
+    expect(parseDateTimeInput("2026-07-14", "9:30", "UTC")).toBeNull();
   });
 });
 

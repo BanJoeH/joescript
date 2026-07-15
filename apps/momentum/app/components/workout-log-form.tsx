@@ -8,6 +8,7 @@ import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import { Select } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
+import { formatDateInput, formatTimeInput } from "~/lib/dates";
 import { formatExerciseSetsSummary, formatSetDetails } from "~/lib/exercise-format";
 import {
   type ExerciseMetric,
@@ -42,6 +43,7 @@ export type WorkoutFormDraft = {
   worthIt?: number | null;
   notes?: string | null;
   durationSeconds?: number | null;
+  completedAt?: Date | string | null;
   exercises?: Array<{
     exerciseId: string;
     name: string;
@@ -64,8 +66,27 @@ type WorkoutLogFormProps = {
   error?: string | null;
   heading: string;
   submitLabel: string;
+  timeZone: string;
   workoutId?: string;
 };
+
+function draftMoment(draft: WorkoutFormDraft | null | undefined, timeZone: string) {
+  if (draft?.completedAt) {
+    const date =
+      typeof draft.completedAt === "string" ? new Date(draft.completedAt) : draft.completedAt;
+    if (!Number.isNaN(date.getTime())) {
+      return {
+        date: formatDateInput(date, timeZone),
+        time: formatTimeInput(date, timeZone),
+      };
+    }
+  }
+  const now = new Date();
+  return {
+    date: formatDateInput(now, timeZone),
+    time: formatTimeInput(now, timeZone),
+  };
+}
 
 const steps = ["Session", "After"] as const;
 
@@ -109,6 +130,7 @@ export function WorkoutLogForm({
   error,
   heading,
   submitLabel,
+  timeZone,
   workoutId,
 }: WorkoutLogFormProps) {
   const navigation = useNavigation();
@@ -120,6 +142,7 @@ export function WorkoutLogForm({
     navigation.state !== "idle" && navigation.formData?.get("intent") === "discard";
   const catalogById = useMemo(() => new Map(exercises.map((ex) => [ex.id, ex])), [exercises]);
   const skipAutosaveRef = useRef(true);
+  const todayInput = formatDateInput(new Date(), timeZone);
 
   const initialExercises: DraftExercise[] = useMemo(() => {
     if (!draft?.exercises?.length) return [];
@@ -157,6 +180,9 @@ export function WorkoutLogForm({
   const [durationMinutes, setDurationMinutes] = useState(
     draft?.durationSeconds != null ? String(Math.round(draft.durationSeconds / 60)) : "",
   );
+  const initialMoment = useMemo(() => draftMoment(draft, timeZone), [draft, timeZone]);
+  const [performedOn, setPerformedOn] = useState(initialMoment.date);
+  const [performedAtTime, setPerformedAtTime] = useState(initialMoment.time);
   const [draftExercises, setDraftExercises] = useState<DraftExercise[]>(initialExercises);
   const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
   const [addingExercise, setAddingExercise] = useState(false);
@@ -410,6 +436,8 @@ export function WorkoutLogForm({
         <input name="worthIt" type="hidden" value={worthIt ?? ""} />
         <input name="notes" type="hidden" value={notes} />
         <input name="durationMinutes" type="hidden" value={durationMinutes} />
+        <input name="performedOn" type="hidden" value={performedOn} />
+        <input name="performedAtTime" type="hidden" value={performedAtTime} />
 
         {step === 0 ? (
           <section className="space-y-6">
@@ -625,6 +653,29 @@ export function WorkoutLogForm({
 
         {step === 1 ? (
           <section className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="performedOn">When was this?</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <Input
+                  id="performedOn"
+                  max={todayInput}
+                  onChange={(e) => setPerformedOn(e.target.value)}
+                  type="date"
+                  value={performedOn}
+                />
+                <Input
+                  aria-label="Time"
+                  id="performedAtTime"
+                  onChange={(e) => setPerformedAtTime(e.target.value)}
+                  type="time"
+                  value={performedAtTime}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Time matters for insights (morning / afternoon / evening). Backdate if you forgot to
+                log earlier.
+              </p>
+            </div>
             <div className="space-y-2">
               <Label>How are you feeling now?</Label>
               <ControlledRating
