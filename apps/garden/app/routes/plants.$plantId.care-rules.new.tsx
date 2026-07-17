@@ -1,6 +1,6 @@
-import { Link, redirect, useActionData } from "react-router";
-
+import { redirect, useActionData } from "react-router";
 import { CareRuleForm } from "~/components/care-rules/care-rule-form";
+import { Link } from "~/components/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
 import { getCheckedMonths, getOptionalString, getString } from "~/lib/forms.server";

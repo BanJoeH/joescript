@@ -1,16 +1,19 @@
-import { Link, redirect, useActionData } from "react-router";
+import { redirect, useActionData } from "react-router";
+import { Link } from "~/components/link";
 
 import { PlantForm } from "~/components/plants/plant-form";
 import { QuickAddFlashBanner } from "~/components/quick-add-flash-banner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
 import { parsePlantCreateFormData } from "~/lib/entity-forms.server";
+import { getOptionalString } from "~/lib/forms.server";
 import { householdPath } from "~/lib/household-path";
 import { resolveDuplicatePlantForm } from "~/lib/onboarding";
 import {
   parsePlantNewFlash,
   parseQuickAddFormKey,
   plantCreateContinuePath,
+  plantCreateDonePath,
   quickAddFlashMessage,
 } from "~/lib/quick-add";
 import { requireGardenService } from "~/services";
@@ -70,11 +73,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 export async function action({ request, params }: Route.ActionArgs) {
   const { garden } = await requireGardenService(request, getGardenEnv(), params.householdId);
   const formData = await request.formData();
+  const intent = getOptionalString(formData, "intent") ?? "save";
 
   try {
     const plant = await garden.plants.create(parsePlantCreateFormData(formData));
     if (!plant) {
       return { error: "Could not create plant." };
+    }
+
+    if (intent === "saveAndDone") {
+      throw redirect(plantCreateDonePath(params.householdId));
     }
 
     throw redirect(plantCreateContinuePath(params.householdId, plant.areaId));
@@ -122,7 +130,7 @@ export default function NewPlant({ loaderData }: Route.ComponentProps) {
             Create an{" "}
             <Link
               className="text-primary underline-offset-4 hover:underline"
-              to={householdPath(householdId, "areas")}
+              to={householdPath(householdId, "areas/new")}
             >
               area
             </Link>{" "}
@@ -150,6 +158,7 @@ export default function NewPlant({ loaderData }: Route.ComponentProps) {
             <PlantForm
               key={formKey}
               areas={areas}
+              cancelLabel={flash?.kind === "plant-repeat" ? "Done" : "Cancel"}
               cancelTo={householdPath(householdId, "plants")}
               defaultValues={defaultValues}
               error={actionData?.error}

@@ -5,6 +5,7 @@ import {
   parseAreaNewFlash,
   parsePlantNewFlash,
   plantCreateContinuePath,
+  plantCreateDonePath,
   quickAddFlashMessage,
 } from "~/lib/quick-add";
 
@@ -31,6 +32,12 @@ describe("plantCreateContinuePath", () => {
     expect(plantCreateContinuePath("hh-1", "area-2")).toMatch(
       /^\/hh-1\/plants\/new\?areaId=area-2&saved=plant&t=\d+$/,
     );
+  });
+});
+
+describe("plantCreateDonePath", () => {
+  it("redirects to the plants list", () => {
+    expect(plantCreateDonePath("hh-1")).toBe("/hh-1/plants");
   });
 });
 
@@ -81,7 +88,7 @@ describe("quickAddFlashMessage", () => {
       "Area saved. Add the next one below.",
     );
     expect(quickAddFlashMessage({ kind: "plant-repeat" })).toBe(
-      "Plant saved. Add the next one below.",
+      "Plant saved. Add another below, or select Done.",
     );
     expect(quickAddFlashMessage({ kind: "plants-after-area", areaName: "Patio" })).toBe(
       "Patio is ready. Add plants below.",

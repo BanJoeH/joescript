@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Form, Link } from "react-router";
+import { Form } from "react-router";
+import { Link } from "~/components/link";
 
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";

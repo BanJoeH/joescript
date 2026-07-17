@@ -1,9 +1,9 @@
 import { useId } from "react";
-import { Link, redirect, useActionData } from "react-router";
-
+import { redirect, useActionData } from "react-router";
 import { DeleteForm } from "~/components/delete-form";
 import { JournalEntryForm } from "~/components/journal/journal-entry-form";
 import { JournalEntryPhotos } from "~/components/journal/journal-entry-photos";
+import { Link } from "~/components/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { journalEntryStatuses } from "~/db/schema";
 import { getGardenEnv } from "~/lib/context.server";

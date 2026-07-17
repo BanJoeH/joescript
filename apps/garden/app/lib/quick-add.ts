@@ -16,7 +16,7 @@ export function quickAddFlashMessage(flash: QuickAddFlash): string {
     case "area-repeat":
       return "Area saved. Add the next one below.";
     case "plant-repeat":
-      return "Plant saved. Add the next one below.";
+      return "Plant saved. Add another below, or select Done.";
     case "plants-after-area":
       return flash.areaName
         ? `${flash.areaName} is ready. Add plants below.`
@@ -87,4 +87,8 @@ export function plantCreateContinuePath(householdId: string, areaId: string): st
     [FORM_KEY_PARAM]: String(Date.now()),
   });
   return `${householdPath(householdId, "plants/new")}?${search}`;
+}
+
+export function plantCreateDonePath(householdId: string): string {
+  return householdPath(householdId, "plants");
 }

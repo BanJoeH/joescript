@@ -1,5 +1,4 @@
-import { Link } from "react-router";
-
+import { Link } from "~/components/link";
 import { PlantPhotoGallery } from "~/components/plants/plant-photo-gallery";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";

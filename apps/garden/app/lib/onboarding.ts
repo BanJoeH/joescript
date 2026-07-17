@@ -1,4 +1,3 @@
-import { householdPath } from "~/lib/household-path";
 import { SUGGESTED_AREA_NAMES } from "~/lib/suggested-areas";
 import type { GardenStats } from "~/services/dashboard.service";
 
@@ -58,23 +57,4 @@ export function resolveDuplicatePlantForm(
 
 export function isGettingStartedComplete(stats: GardenStats) {
   return stats.journalCount > 0 && stats.areaCount > 0 && stats.plantCount > 0;
-}
-
-export function jobsEmptyMessage(stats: GardenStats, householdId: string) {
-  if (stats.journalCount === 0 && stats.plantCount === 0) {
-    return {
-      journalLink: `${householdPath(householdId, "journal/new")}?starter=1`,
-      plantsLink: householdPath(householdId, "plants/new"),
-      tone: "empty" as const,
-    };
-  }
-
-  if (stats.journalCount > 0 && stats.plantCount === 0) {
-    return {
-      plantsLink: householdPath(householdId, "plants/new"),
-      tone: "journaled" as const,
-    };
-  }
-
-  return { tone: "has-plants" as const };
 }

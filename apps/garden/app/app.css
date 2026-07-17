@@ -152,4 +152,30 @@
   dialog::backdrop {
     background-color: rgb(0 0 0 / 0.5);
   }
+
+  dialog[data-motion="enter"]::backdrop {
+    animation: settings-backdrop-in 300ms ease both;
+  }
+
+  dialog[data-motion="exit"]::backdrop {
+    animation: settings-backdrop-out 200ms ease both;
+  }
+
+  @keyframes settings-backdrop-in {
+    from {
+      background-color: rgb(0 0 0 / 0);
+    }
+    to {
+      background-color: rgb(0 0 0 / 0.5);
+    }
+  }
+
+  @keyframes settings-backdrop-out {
+    from {
+      background-color: rgb(0 0 0 / 0.5);
+    }
+    to {
+      background-color: rgb(0 0 0 / 0);
+    }
+  }
 }

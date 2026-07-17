@@ -1,6 +1,6 @@
-import { Link, redirect, useActionData } from "react-router";
-
+import { redirect, useActionData } from "react-router";
 import { AreaForm } from "~/components/areas/area-form";
+import { Link } from "~/components/link";
 import { QuickAddFlashBanner } from "~/components/quick-add-flash-banner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";

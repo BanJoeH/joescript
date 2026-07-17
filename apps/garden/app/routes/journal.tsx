@@ -1,6 +1,5 @@
-import { Link } from "react-router";
-
 import { JournalPhotoThumbnails } from "~/components/journal/journal-photo-gallery";
+import { Link } from "~/components/link";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
