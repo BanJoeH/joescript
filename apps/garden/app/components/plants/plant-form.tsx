@@ -1,8 +1,9 @@
 import { ChevronDown, Search } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Form } from "react-router";
 import { Link } from "~/components/link";
 
+import { PlantPhotoField } from "~/components/plants/plant-photo-field";
 import { PlantSpeciesSearchDialog } from "~/components/plants/plant-species-search-dialog";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -27,6 +28,7 @@ type PlantFormProps = {
   areas: Array<{ id: string; name: string }>;
   cancelLabel?: string;
   cancelTo: string;
+  currentPhotoUrl?: string | null;
   defaultValues: PlantFormValues;
   error?: string | null;
   plantLookupEnabled?: boolean;
@@ -40,6 +42,7 @@ export function PlantForm({
   areas,
   cancelLabel = "Cancel",
   cancelTo,
+  currentPhotoUrl,
   defaultValues,
   error,
   plantLookupEnabled = false,
@@ -48,7 +51,9 @@ export function PlantForm({
   speciesSearchUrl,
   submitLabel,
 }: PlantFormProps) {
+  const formId = useId();
   const [speciesDialogOpen, setSpeciesDialogOpen] = useState(false);
+  const [photoDirty, setPhotoDirty] = useState(false);
   const [name, setName] = useState(defaultValues.name);
   const [areaId, setAreaId] = useState(defaultValues.areaId);
   const [latinName, setLatinName] = useState(defaultValues.latinName);
@@ -73,7 +78,8 @@ export function PlantForm({
     cultivar !== defaultValues.cultivar ||
     plantedAt !== defaultValues.plantedAt ||
     removedAt !== defaultValues.removedAt ||
-    notes !== defaultValues.notes;
+    notes !== defaultValues.notes ||
+    photoDirty;
 
   const finishWithSave = cancelLabel === "Done" && isDirty;
 
@@ -152,7 +158,7 @@ export function PlantForm({
 
   return (
     <>
-      <Form className="space-y-4" method="post">
+      <Form className="space-y-4" encType="multipart/form-data" id={formId} method="post">
         {error ? (
           <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
@@ -201,6 +207,11 @@ export function PlantForm({
             </Select>
           </div>
         </div>
+        <PlantPhotoField
+          currentPhotoUrl={currentPhotoUrl}
+          formId={formId}
+          onDirtyChange={setPhotoDirty}
+        />
         {quickAdd ? (
           <details
             className="rounded-md border border-border bg-muted/30 px-4 py-3"

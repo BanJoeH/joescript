@@ -13,7 +13,7 @@ export function createGardenService(context: GardenContext) {
 
   return {
     areas: createAreasService(context),
-    plants: createPlantsService(context),
+    plants: createPlantsService(context, photos),
     careRules: createCareRulesService(context),
     journal: createJournalService(context, photos),
     photos,

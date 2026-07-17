@@ -2,6 +2,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { areas, plants } from "~/db/schema";
+import type { PhotosService } from "~/services/photos.service";
 import { auditFields, type GardenContext, newId, touchFields } from "~/services/types";
 
 const createPlantInput = z.object({
@@ -18,7 +19,10 @@ const updatePlantInput = createPlantInput.partial().extend({
   removedAt: z.date().nullable().optional(),
 });
 
-export function createPlantsService({ db, userId, householdId }: GardenContext) {
+export function createPlantsService(
+  { db, userId, householdId }: GardenContext,
+  photosService?: PhotosService,
+) {
   return {
     async list() {
       return db
@@ -155,6 +159,8 @@ export function createPlantsService({ db, userId, householdId }: GardenContext) 
     async remove(id: string) {
       const existing = await this.get(id);
       if (!existing) return false;
+
+      await photosService?.removeForPlant(id);
 
       await db
         .update(plants)

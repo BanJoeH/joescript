@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/com
 import { parseCareRuleMonths, sortCareRulesBySoonest } from "~/lib/care-rules";
 import { getGardenEnv } from "~/lib/context.server";
 import { formatDate } from "~/lib/dates";
-import { householdPath } from "~/lib/household-path";
+import { householdPath, photoPath } from "~/lib/household-path";
 import { formatJournalStatus } from "~/lib/journal-labels";
 import { cn } from "~/lib/utils";
 import { requireGardenService } from "~/services";
@@ -30,10 +30,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     throw new Response("Plant not found", { status: 404 });
   }
 
-  const [careRules, journal, plantPhotos] = await Promise.all([
+  const [careRules, journal, plantPhotos, profilePhoto] = await Promise.all([
     garden.careRules.listForPlant(plant.id),
     garden.journal.listForPlant(plant.id),
     garden.photos.listForPlant(plant.id),
+    garden.photos.getForPlant(plant.id),
   ]);
   const photosByEntry = groupPlantPhotosByEntry(plantPhotos);
 
@@ -43,6 +44,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     careRules,
     journal,
     plantPhotos,
+    profilePhoto,
     photosByEntry,
   };
 }
@@ -176,25 +178,35 @@ function CareRulesList({
 }
 
 export default function PlantDetail({ loaderData }: Route.ComponentProps) {
-  const { householdId, plant, careRules, journal, plantPhotos, photosByEntry } = loaderData;
+  const { householdId, plant, careRules, journal, plantPhotos, profilePhoto, photosByEntry } =
+    loaderData;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-4">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            <Link className="hover:underline" to={householdPath(householdId, "plants")}>
-              Plants
-            </Link>{" "}
-            / {plant.areaName}
-          </p>
-          <h2 className="text-2xl font-semibold tracking-tight">{plant.name}</h2>
-          {plant.latinName ? (
-            <p className="italic text-muted-foreground">
-              {plant.latinName}
-              {plant.cultivar ? ` '${plant.cultivar}'` : ""}
-            </p>
+        <div className="flex items-start gap-4">
+          {profilePhoto ? (
+            <img
+              alt=""
+              className="size-24 shrink-0 rounded-xl border object-cover"
+              src={photoPath(householdId, profilePhoto.id)}
+            />
           ) : null}
+          <div className="min-w-0">
+            <p className="text-sm text-muted-foreground">
+              <Link className="hover:underline" to={householdPath(householdId, "plants")}>
+                Plants
+              </Link>{" "}
+              / {plant.areaName}
+            </p>
+            <h2 className="text-2xl font-semibold tracking-tight">{plant.name}</h2>
+            {plant.latinName ? (
+              <p className="italic text-muted-foreground">
+                {plant.latinName}
+                {plant.cultivar ? ` '${plant.cultivar}'` : ""}
+              </p>
+            ) : null}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button asChild className="max-sm:flex-1" size="sm">

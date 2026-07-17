@@ -14,6 +14,7 @@ import { auditFields, type GardenContext, newId, touchFields } from "~/services/
 
 export type PhotoRecord = {
   id: string;
+  plantId: string | null;
   journalEntryId: string | null;
   storageKey: string;
   contentType: string;
@@ -75,6 +76,20 @@ export function groupPlantPhotosByEntry(photos: PlantPhotoRecord[]) {
 export function createPhotosService({ db, userId, householdId, photosBucket }: GardenContext) {
   const householdScope = and(eq(photos.householdId, householdId), isNull(photos.deletedAt));
 
+  async function assertPlantInHousehold(plantId: string) {
+    const [plant] = await db
+      .select({ id: plants.id })
+      .from(plants)
+      .where(
+        and(eq(plants.id, plantId), eq(plants.householdId, householdId), isNull(plants.deletedAt)),
+      )
+      .limit(1);
+
+    if (!plant) {
+      throw new Error("Plant not found");
+    }
+  }
+
   async function assertEntryInHousehold(entryId: string) {
     const [entry] = await db
       .select({ id: journalEntries.id })
@@ -102,6 +117,82 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
     return rows.length;
   }
 
+  async function uploadOne({
+    upload,
+    journalEntryId,
+    plantId,
+    sortOrder,
+  }: {
+    upload: PhotoUploadInput;
+    journalEntryId: string | null;
+    plantId: string | null;
+    sortOrder: number;
+  }): Promise<PhotoRecord | null> {
+    if (upload.file.size === 0) {
+      return null;
+    }
+
+    if (upload.file.size > MAX_PHOTO_BYTES) {
+      throw new Error(`Each photo must be ${MAX_PHOTO_BYTES / (1024 * 1024)} MB or smaller.`);
+    }
+
+    const header = new Uint8Array(await upload.file.slice(0, 16).arrayBuffer());
+    const sniffedType = sniffPhotoContentType(header);
+    if (!sniffedType || !ALLOWED_PHOTO_CONTENT_TYPES.includes(sniffedType)) {
+      throw new Error("Only JPEG, PNG, and WebP images are supported.");
+    }
+
+    if (!upload.file.type.startsWith("image/")) {
+      throw new Error("Only image uploads are supported.");
+    }
+
+    const role = photoRoles.includes(upload.role) ? upload.role : "general";
+    const caption = normalizePhotoCaption(upload.caption);
+    const photoId = newId();
+    const ext = extensionForContentType(sniffedType);
+    const storageKey = buildPhotoStorageKey(householdId, photoId, ext);
+    const audit = auditFields(userId);
+
+    await photosBucket.put(storageKey, upload.file.stream(), {
+      httpMetadata: { contentType: sniffedType },
+    });
+
+    try {
+      await db.insert(photos).values({
+        id: photoId,
+        householdId,
+        plantId,
+        journalEntryId,
+        storageKey,
+        contentType: sniffedType,
+        byteSize: upload.file.size,
+        width: upload.width ?? null,
+        height: upload.height ?? null,
+        caption,
+        role,
+        sortOrder,
+        ...audit,
+      });
+    } catch (error) {
+      await photosBucket.delete(storageKey);
+      throw error;
+    }
+
+    return {
+      id: photoId,
+      plantId,
+      journalEntryId,
+      storageKey,
+      contentType: sniffedType,
+      byteSize: upload.file.size,
+      width: upload.width ?? null,
+      height: upload.height ?? null,
+      caption,
+      role,
+      sortOrder,
+    };
+  }
+
   return {
     async listForEntry(entryId: string): Promise<PhotoRecord[]> {
       await assertEntryInHousehold(entryId);
@@ -109,6 +200,7 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
       return db
         .select({
           id: photos.id,
+          plantId: photos.plantId,
           journalEntryId: photos.journalEntryId,
           storageKey: photos.storageKey,
           contentType: photos.contentType,
@@ -132,6 +224,7 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
       const rows = await db
         .select({
           id: photos.id,
+          plantId: photos.plantId,
           journalEntryId: photos.journalEntryId,
           storageKey: photos.storageKey,
           contentType: photos.contentType,
@@ -147,6 +240,31 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
         .orderBy(asc(photos.sortOrder), asc(photos.createdAt));
 
       return groupPhotosByEntry(rows);
+    },
+
+    async getForPlant(plantId: string): Promise<PhotoRecord | null> {
+      await assertPlantInHousehold(plantId);
+
+      const [photo] = await db
+        .select({
+          id: photos.id,
+          plantId: photos.plantId,
+          journalEntryId: photos.journalEntryId,
+          storageKey: photos.storageKey,
+          contentType: photos.contentType,
+          byteSize: photos.byteSize,
+          width: photos.width,
+          height: photos.height,
+          caption: photos.caption,
+          role: photos.role,
+          sortOrder: photos.sortOrder,
+        })
+        .from(photos)
+        .where(and(eq(photos.plantId, plantId), householdScope))
+        .orderBy(desc(photos.createdAt))
+        .limit(1);
+
+      return photo ?? null;
     },
 
     async listForPlant(plantId: string): Promise<PlantPhotoRecord[]> {
@@ -169,6 +287,7 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
       return db
         .select({
           id: photos.id,
+          plantId: photos.plantId,
           journalEntryId: photos.journalEntryId,
           storageKey: photos.storageKey,
           contentType: photos.contentType,
@@ -200,9 +319,33 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
     },
 
     async listLatestPerPlant(): Promise<PlantLatestPhoto[]> {
-      const rows = await db
+      const profileRows = await db
         .select({
           id: photos.id,
+          plantId: plants.id,
+          journalEntryId: photos.journalEntryId,
+          storageKey: photos.storageKey,
+          contentType: photos.contentType,
+          byteSize: photos.byteSize,
+          width: photos.width,
+          height: photos.height,
+          caption: photos.caption,
+          role: photos.role,
+          sortOrder: photos.sortOrder,
+          performedAt: photos.createdAt,
+          taskType: photos.caption,
+          plantName: plants.name,
+          areaId: plants.areaId,
+        })
+        .from(photos)
+        .innerJoin(plants, eq(photos.plantId, plants.id))
+        .where(and(eq(plants.householdId, householdId), isNull(plants.deletedAt), householdScope))
+        .orderBy(desc(photos.createdAt));
+
+      const journalRows = await db
+        .select({
+          id: photos.id,
+          plantId: plants.id,
           journalEntryId: photos.journalEntryId,
           storageKey: photos.storageKey,
           contentType: photos.contentType,
@@ -214,7 +357,6 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
           sortOrder: photos.sortOrder,
           performedAt: journalEntries.performedAt,
           taskType: journalEntries.taskType,
-          plantId: plants.id,
           plantName: plants.name,
           areaId: plants.areaId,
         })
@@ -240,7 +382,7 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
       const seen = new Set<string>();
       const result: PlantLatestPhoto[] = [];
 
-      for (const row of rows) {
+      for (const row of [...profileRows, ...journalRows]) {
         if (seen.has(row.plantId)) {
           continue;
         }
@@ -255,6 +397,7 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
       const [photo] = await db
         .select({
           id: photos.id,
+          plantId: photos.plantId,
           journalEntryId: photos.journalEntryId,
           storageKey: photos.storageKey,
           contentType: photos.contentType,
@@ -288,68 +431,33 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
       let sortOrder = existingCount;
 
       for (const upload of uploads) {
-        if (upload.file.size === 0) {
-          continue;
-        }
-
-        if (upload.file.size > MAX_PHOTO_BYTES) {
-          throw new Error(`Each photo must be ${MAX_PHOTO_BYTES / (1024 * 1024)} MB or smaller.`);
-        }
-
-        const header = new Uint8Array(await upload.file.slice(0, 16).arrayBuffer());
-        const sniffedType = sniffPhotoContentType(header);
-        if (!sniffedType) {
-          throw new Error("Only JPEG, PNG, and WebP images are supported.");
-        }
-
-        if (!ALLOWED_PHOTO_CONTENT_TYPES.includes(sniffedType)) {
-          throw new Error("Only JPEG, PNG, and WebP images are supported.");
-        }
-
-        if (!upload.file.type.startsWith("image/")) {
-          throw new Error("Only image uploads are supported.");
-        }
-
-        const role = photoRoles.includes(upload.role) ? upload.role : "general";
-        const caption = normalizePhotoCaption(upload.caption);
-        const photoId = newId();
-        const ext = extensionForContentType(sniffedType);
-        const storageKey = buildPhotoStorageKey(householdId, photoId, ext);
-        const audit = auditFields(userId);
-
-        await photosBucket.put(storageKey, upload.file.stream(), {
-          httpMetadata: { contentType: sniffedType },
-        });
-
-        await db.insert(photos).values({
-          id: photoId,
-          householdId,
+        const photo = await uploadOne({
+          upload,
           journalEntryId: entryId,
-          storageKey,
-          contentType: sniffedType,
-          byteSize: upload.file.size,
-          width: upload.width ?? null,
-          height: upload.height ?? null,
-          caption,
-          role,
-          sortOrder,
-          ...audit,
-        });
-
-        created.push({
-          id: photoId,
-          journalEntryId: entryId,
-          storageKey,
-          contentType: sniffedType,
-          byteSize: upload.file.size,
-          width: upload.width ?? null,
-          height: upload.height ?? null,
-          caption,
-          role,
+          plantId: null,
           sortOrder,
         });
+        if (photo) {
+          created.push(photo);
+          sortOrder += 1;
+        }
+      }
 
-        sortOrder += 1;
+      return created;
+    },
+
+    async uploadForPlant(plantId: string, upload: PhotoUploadInput) {
+      await assertPlantInHousehold(plantId);
+      const existing = await this.getForPlant(plantId);
+      const created = await uploadOne({
+        upload: { ...upload, role: "general", caption: null },
+        journalEntryId: null,
+        plantId,
+        sortOrder: 0,
+      });
+
+      if (created && existing) {
+        await this.remove(existing.id);
       }
 
       return created;
@@ -403,6 +511,13 @@ export function createPhotosService({ db, userId, householdId, photosBucket }: G
     async removeForEntry(entryId: string) {
       const entryPhotos = await this.listForEntry(entryId);
       for (const photo of entryPhotos) {
+        await this.remove(photo.id);
+      }
+    },
+
+    async removeForPlant(plantId: string) {
+      const photo = await this.getForPlant(plantId);
+      if (photo) {
         await this.remove(photo.id);
       }
     },

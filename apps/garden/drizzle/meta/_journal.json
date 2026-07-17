@@ -57,6 +57,13 @@
       "when": 1782894015506,
       "tag": "0007_hot_the_captain",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784291941205,
+      "tag": "0008_typical_chimera",
+      "breakpoints": true
     }
   ]
 }

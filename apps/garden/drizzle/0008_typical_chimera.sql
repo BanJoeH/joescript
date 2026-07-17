@@ -1,0 +1,1 @@
+ALTER TABLE `photos` ADD `plant_id` text REFERENCES plants(id) ON DELETE SET NULL;

@@ -21,6 +21,23 @@ export function parsePhotoUploads(formData: FormData): PhotoUploadInput[] {
   }));
 }
 
+export function parsePlantPhotoUpload(formData: FormData): PhotoUploadInput | null {
+  const file = formData.get("plantPhoto");
+  if (!(file instanceof File) || file.size === 0) {
+    return null;
+  }
+
+  const width = Number(formData.get("plantPhotoWidth"));
+  const height = Number(formData.get("plantPhotoHeight"));
+
+  return {
+    file,
+    role: "general",
+    width: Number.isFinite(width) ? width : undefined,
+    height: Number.isFinite(height) ? height : undefined,
+  };
+}
+
 export function parsePlantCreateFormData(formData: FormData) {
   const plantedAt = getOptionalString(formData, "plantedAt");
 
