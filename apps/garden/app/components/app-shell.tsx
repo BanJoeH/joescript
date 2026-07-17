@@ -12,6 +12,7 @@ import { useLocation, useParams, useRouteLoaderData } from "react-router";
 import { GardenBrand } from "~/components/garden-brand";
 import { Link } from "~/components/link";
 import { SettingsSheet } from "~/components/settings-sheet";
+import { gardenLogoForLocation } from "~/lib/garden-logos";
 import { householdPath } from "~/lib/household-path";
 import { cn } from "~/lib/utils";
 
@@ -157,6 +158,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navItems = householdId ? getHouseholdNavItems(householdId) : null;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsActive = settingsOpen || location.pathname.includes("/settings");
+  const logoSrc = gardenLogoForLocation({ pathname: location.pathname, settingsOpen });
 
   return (
     <div
@@ -167,7 +169,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     >
       <header>
         <h1>
-          <GardenBrand logoClassName="size-7" titleClassName="text-xl" />
+          <GardenBrand logoClassName="size-14" logoSrc={logoSrc} titleClassName="text-xl" />
         </h1>
       </header>
 
