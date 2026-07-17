@@ -41,8 +41,22 @@ const draftWorkoutSchema = z.object({
   worthIt: ratingSchema.nullish(),
   notes: z.string().max(200).optional(),
   durationSeconds: z.number().int().nonnegative().optional().nullable(),
+  /** Draft “when was this” — stored on startedAt while in progress. */
+  performedAt: z.date().optional().nullable(),
   exercises: z.array(exerciseInputSchema).default([]),
 });
+
+export type RecentExerciseTemplate = {
+  exerciseId: string;
+  key: string;
+  name: string;
+  lastSet: {
+    reps?: number | null;
+    weightKg?: number | null;
+    durationSeconds?: number | null;
+    distanceM?: number | null;
+  };
+};
 
 export type CompleteWorkoutInput = z.input<typeof completeWorkoutSchema>;
 export type DraftWorkoutInput = z.input<typeof draftWorkoutSchema>;
@@ -310,6 +324,7 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
           worthIt: data.worthIt ?? null,
           durationSeconds: data.durationSeconds ?? null,
           notes: data.notes?.trim() || null,
+          ...(data.performedAt ? { startedAt: data.performedAt } : {}),
           updatedAt: now,
         })
         .where(and(eq(workout.id, id), eq(workout.userId, userId), isNull(workout.deletedAt)));
@@ -323,6 +338,32 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
       }
 
       return this.getById(id);
+    },
+
+    async recentExerciseTemplates(limit = 6): Promise<RecentExerciseTemplate[]> {
+      const latest = await this.latestCompleted();
+      if (!latest) return [];
+
+      const seen = new Set<string>();
+      const templates: RecentExerciseTemplate[] = [];
+      for (const item of latest.exercises) {
+        if (!item.exerciseId || seen.has(item.exerciseId)) continue;
+        seen.add(item.exerciseId);
+        const last = item.sets[item.sets.length - 1];
+        templates.push({
+          exerciseId: item.exerciseId,
+          key: item.exerciseKey,
+          name: item.exerciseName,
+          lastSet: {
+            reps: last?.reps ?? null,
+            weightKg: last?.weightKg ?? null,
+            durationSeconds: last?.durationSeconds ?? null,
+            distanceM: last?.distanceM ?? null,
+          },
+        });
+        if (templates.length >= limit) break;
+      }
+      return templates;
     },
 
     async completeDraft(id: string, input: CompleteWorkoutInput) {
@@ -539,15 +580,10 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
       }
     },
 
-    async repeatLatest() {
-      const latest = await this.latestCompleted();
-      if (!latest) {
-        throw new Error("No previous workout to repeat.");
-      }
-
+    asRepeatTemplate(row: NonNullable<Awaited<ReturnType<typeof this.getById>>>) {
       return {
-        title: latest.title ?? undefined,
-        exercises: latest.exercises.map((we) => ({
+        title: row.title ?? undefined,
+        exercises: row.exercises.map((we) => ({
           exerciseId: we.exerciseId,
           name: we.exerciseName,
           key: we.exerciseKey,
@@ -561,6 +597,22 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
           })),
         })),
       };
+    },
+
+    async repeatFrom(id: string) {
+      const row = await this.getById(id);
+      if (row?.status !== "completed") {
+        throw new Error("Workout not found.");
+      }
+      return this.asRepeatTemplate(row);
+    },
+
+    async repeatLatest() {
+      const latest = await this.latestCompleted();
+      if (!latest) {
+        throw new Error("No previous workout to repeat.");
+      }
+      return this.asRepeatTemplate(latest);
     },
 
     async listForInsights(limit = 60) {

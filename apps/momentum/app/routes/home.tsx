@@ -4,6 +4,7 @@ import { Form, Link, redirect, useLoaderData, useNavigation } from "react-router
 import { EnergyChangeBadge } from "~/components/energy-change";
 import { LandscapeHero } from "~/components/landscape-hero";
 import { ProfileAvatar } from "~/components/profile-avatar";
+import { ENERGY_LABELS } from "~/components/rating-picker";
 import { Button } from "~/components/ui/button";
 import { formatRelativeDate, getZonedParts } from "~/lib/dates";
 import { getPreferredDisplayName } from "~/lib/display-name";
@@ -100,14 +101,36 @@ export default function HomePage() {
 
   return (
     <div className="space-y-7">
-      <header className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-primary">
-            {greeting(timeZone)}, {firstName}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">How are you feeling today?</p>
+      <header className="space-y-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-[1.75rem] font-bold leading-tight tracking-tight text-primary">
+              {greeting(timeZone)}, {firstName}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">How are you feeling today?</p>
+          </div>
+          <ProfileAvatar image={userImage} name={userName} />
         </div>
-        <ProfileAvatar image={userImage} name={userName} />
+        <div className="flex flex-wrap gap-2">
+          {ENERGY_LABELS.map((label, index) => {
+            const score = index + 1;
+            const to = hasInProgress
+              ? `/workouts/log?energyBefore=${score}`
+              : `/workouts/log?start=1&energyBefore=${score}`;
+            return (
+              <Link
+                className="rounded-2xl border border-border bg-card px-3 py-2 text-center shadow-soft transition hover:border-primary/40 hover:bg-primary-soft/50"
+                key={score}
+                to={to}
+              >
+                <span className="block text-sm font-semibold text-primary">{score}</span>
+                <span className="block text-[10px] leading-tight text-muted-foreground">
+                  {label}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
       </header>
 
       <LandscapeHero className="h-72 w-full sm:h-56">
