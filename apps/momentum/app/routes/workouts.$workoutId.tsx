@@ -19,7 +19,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!workout) {
     throw new Response("Not found", { status: 404 });
   }
-  return { workout, timeZone };
+  const inProgress = await service.workouts.getInProgress();
+  return {
+    workout,
+    timeZone,
+    hasInProgress: Boolean(inProgress),
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -77,10 +82,11 @@ function worthItTone(value: number | null | undefined) {
 }
 
 export default function WorkoutDetailPage() {
-  const { workout, timeZone } = useLoaderData<typeof loader>();
+  const { workout, timeZone, hasInProgress } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const setCount = workout.exercises.reduce((sum, e) => sum + e.sets.length, 0);
   const duration = formatDuration(workout.durationSeconds);
+  const canRepeat = workout.status === "completed";
 
   return (
     <div className="space-y-6">
@@ -111,6 +117,24 @@ export default function WorkoutDetailPage() {
           <DeleteForm confirmMessage="Delete this workout? This cannot be undone." />
         </div>
       </div>
+
+      {canRepeat ? (
+        <Button asChild className="btn-primary-gradient w-full">
+          <Link
+            onClick={(event) => {
+              if (
+                hasInProgress &&
+                !window.confirm("Replace your in-progress workout with this one?")
+              ) {
+                event.preventDefault();
+              }
+            }}
+            to={`/workouts/log?repeat=${workout.id}`}
+          >
+            Do this workout again
+          </Link>
+        </Button>
+      ) : null}
 
       {actionData?.error ? (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

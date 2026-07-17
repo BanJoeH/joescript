@@ -2,8 +2,8 @@ import { Star } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 
-const ENERGY_LABELS = ["Exhausted", "Low", "Okay", "Good", "Great"] as const;
-const WORTH_IT_LABELS = ["Not really", "A little", "Somewhat", "Yes", "Absolutely"] as const;
+export const ENERGY_LABELS = ["Exhausted", "Low", "Okay", "Good", "Great"] as const;
+export const WORTH_IT_LABELS = ["Not really", "A little", "Somewhat", "Yes", "Absolutely"] as const;
 
 type RatingPickerProps = {
   name: string;

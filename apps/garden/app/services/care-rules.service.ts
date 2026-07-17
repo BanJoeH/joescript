@@ -43,6 +43,22 @@ export function createCareRulesService({ db, userId, householdId }: GardenContex
         .where(and(eq(careRules.plantId, plantId), isNull(careRules.deletedAt)));
     },
 
+    async listPlantIdsWithRules() {
+      const rows = await db
+        .selectDistinct({ plantId: careRules.plantId })
+        .from(careRules)
+        .innerJoin(plants, eq(careRules.plantId, plants.id))
+        .where(
+          and(
+            eq(plants.householdId, householdId),
+            isNull(plants.deletedAt),
+            isNull(careRules.deletedAt),
+          ),
+        );
+
+      return rows.map((row) => row.plantId);
+    },
+
     async get(id: string) {
       const [rule] = await db
         .select({

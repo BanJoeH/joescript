@@ -1,6 +1,6 @@
-import { Link, redirect, useActionData } from "react-router";
-
+import { redirect, useActionData } from "react-router";
 import { DeleteForm } from "~/components/delete-form";
+import { Link } from "~/components/link";
 import { PlantForm, toPlantFormValues } from "~/components/plants/plant-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";

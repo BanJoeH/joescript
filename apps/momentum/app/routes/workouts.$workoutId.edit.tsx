@@ -15,8 +15,11 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     throw new Response("Not found", { status: 404 });
   }
 
+  const recentExercises = await service.workouts.recentExerciseTemplates();
+
   return {
     exercises,
+    recentExercises,
     workoutId: workout.id,
     timeZone,
     draft: {
@@ -69,7 +72,7 @@ export function meta(_args: Route.MetaArgs) {
 }
 
 export default function EditWorkoutPage() {
-  const { exercises, draft, workoutId, timeZone } = useLoaderData<typeof loader>();
+  const { exercises, recentExercises, draft, workoutId, timeZone } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   return (
@@ -79,6 +82,7 @@ export default function EditWorkoutPage() {
       error={actionData?.error}
       exercises={exercises}
       heading="Edit workout"
+      recentExercises={recentExercises}
       submitLabel="Save changes"
       timeZone={timeZone}
     />

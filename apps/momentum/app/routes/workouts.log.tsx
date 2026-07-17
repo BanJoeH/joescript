@@ -8,17 +8,34 @@ import { requireMomentumService } from "~/services";
 
 import type { Route } from "./+types/workouts.log";
 
+function parseEnergyBeforeParam(raw: string | null) {
+  if (!raw) return null;
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 1 || value > 5) return null;
+  return value;
+}
+
 export async function loader({ request }: Route.LoaderArgs) {
   const { service, timeZone } = await requireMomentumService(request);
   const url = new URL(request.url);
-  const repeat = url.searchParams.get("repeat") === "1";
+  const repeatParam = url.searchParams.get("repeat");
+  const repeatLatest = repeatParam === "1";
+  const repeatFromId = repeatParam && repeatParam !== "1" ? repeatParam : null;
+  const wantsRepeat = repeatLatest || Boolean(repeatFromId);
   // Only create a draft when intentionally starting (avoids revalidation races
   // after complete/autosave leaving a fresh empty "Continue Workout").
-  const start = url.searchParams.get("start") === "1" || repeat;
+  const start = url.searchParams.get("start") === "1" || wantsRepeat;
+  const seedEnergyBefore = parseEnergyBeforeParam(url.searchParams.get("energyBefore"));
 
   // libsql web client is not safe for concurrent queries on one connection.
   const exercises = await service.exercises.list();
   let workout = await service.workouts.getInProgress();
+
+  if (wantsRepeat && workout) {
+    // Starting a templated session replaces any leftover draft.
+    await service.workouts.discardInProgress(workout.id);
+    workout = null;
+  }
 
   if (!workout) {
     if (!start) {
@@ -28,22 +45,61 @@ export async function loader({ request }: Route.LoaderArgs) {
     if (!workout) {
       throw new Error("Could not start workout.");
     }
-    if (repeat) {
-      const template = await service.workouts.repeatLatest().catch(() => null);
+    if (wantsRepeat) {
+      const template = repeatFromId
+        ? await service.workouts.repeatFrom(repeatFromId).catch(() => null)
+        : await service.workouts.repeatLatest().catch(() => null);
       if (template) {
         await service.workouts.saveDraft(workout.id, {
           title: template.title,
           exercises: template.exercises,
+          ...(seedEnergyBefore != null ? { energyBefore: seedEnergyBefore } : {}),
+        });
+        workout = (await service.workouts.getById(workout.id)) ?? workout;
+      } else if (seedEnergyBefore != null) {
+        await service.workouts.saveDraft(workout.id, {
+          energyBefore: seedEnergyBefore,
+          exercises: [],
         });
         workout = (await service.workouts.getById(workout.id)) ?? workout;
       }
+    } else if (seedEnergyBefore != null) {
+      await service.workouts.saveDraft(workout.id, {
+        energyBefore: seedEnergyBefore,
+        exercises: [],
+      });
+      workout = (await service.workouts.getById(workout.id)) ?? workout;
     }
+  } else if (seedEnergyBefore != null && workout.energyBefore == null) {
+    await service.workouts.saveDraft(workout.id, {
+      energyBefore: seedEnergyBefore,
+      energyAfter: workout.energyAfter,
+      worthIt: workout.worthIt,
+      notes: workout.notes ?? undefined,
+      durationSeconds: workout.durationSeconds,
+      title: workout.title ?? undefined,
+      exercises: workout.exercises.map((item) => ({
+        exerciseId: item.exerciseId,
+        name: item.exerciseName,
+        sets: item.sets.map((set) => ({
+          reps: set.reps ?? undefined,
+          weightKg: set.weightKg ?? undefined,
+          durationSeconds: set.durationSeconds ?? undefined,
+          distanceM: set.distanceM ?? undefined,
+        })),
+      })),
+    });
+    workout = (await service.workouts.getById(workout.id)) ?? workout;
   }
+
+  const recentExercises = await service.workouts.recentExerciseTemplates();
 
   return {
     exercises,
+    recentExercises,
     workoutId: workout.id,
     draft: service.workouts.toFormDraft(workout),
+    seedEnergyBefore,
     timeZone,
   };
 }
@@ -69,7 +125,7 @@ export async function action({ request }: Route.ActionArgs) {
         return { ok: true as const };
       }
       try {
-        const input = parseDraftWorkoutFormData(formData);
+        const input = parseDraftWorkoutFormData(formData, timeZone);
         await service.workouts.saveDraft(workoutId, input);
       } catch {
         // Draft may already be completed/discarded — ignore stale autosaves.
@@ -105,7 +161,8 @@ export function meta(_args: Route.MetaArgs) {
 }
 
 export default function LogWorkoutPage() {
-  const { exercises, draft, workoutId, timeZone } = useLoaderData<typeof loader>();
+  const { exercises, recentExercises, draft, workoutId, seedEnergyBefore, timeZone } =
+    useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   return (
@@ -117,6 +174,8 @@ export default function LogWorkoutPage() {
       error={actionData && "error" in actionData ? actionData.error : null}
       exercises={exercises}
       heading="Log workout"
+      recentExercises={recentExercises}
+      seedEnergyBefore={seedEnergyBefore}
       submitLabel="Save workout"
       timeZone={timeZone}
       workoutId={workoutId}

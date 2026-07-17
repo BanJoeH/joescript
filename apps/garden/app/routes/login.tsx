@@ -5,6 +5,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "~/components/ui/card";
 import { authClient } from "~/lib/auth.client";
 import { getGardenEnv } from "~/lib/context.server";
+import { gardenLogoForLocation } from "~/lib/garden-logos";
 import { getOptionalGardenSession } from "~/lib/session.server";
 
 import type { Route } from "./+types/login";
@@ -45,7 +46,12 @@ export default function Login() {
       </div>
       <Card className="w-full max-w-md">
         <CardHeader className="items-center text-center">
-          <GardenBrand className="mb-2" titleClassName="text-2xl" />
+          <GardenBrand
+            className="mb-2"
+            logoClassName="size-20"
+            logoSrc={gardenLogoForLocation({ pathname: "/login" })}
+            titleClassName="text-2xl"
+          />
           <CardDescription>
             Sign in with Google to access your household garden journal.
           </CardDescription>

@@ -1,7 +1,6 @@
-import { Link } from "react-router";
-
 import { AreaList } from "~/components/areas/area-list";
 import { AreaPlantPhotoStrip } from "~/components/areas/area-plant-photo-strip";
+import { Link } from "~/components/link";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";

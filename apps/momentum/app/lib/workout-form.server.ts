@@ -99,12 +99,24 @@ export function parseWorkoutFormData(
   };
 }
 
-export function parseDraftWorkoutFormData(formData: FormData): DraftWorkoutInput {
+export function parseDraftWorkoutFormData(
+  formData: FormData,
+  timeZone?: string,
+): DraftWorkoutInput {
   const exercises = mapExercises(
     parseExercisesJson(getOptionalString(formData, "exercisesJson") ?? "[]"),
     { requireSets: false },
   );
   const durationMinutes = getOptionalString(formData, "durationMinutes");
+
+  let performedAt: Date | null | undefined;
+  if (timeZone) {
+    const dateRaw = getOptionalString(formData, "performedOn");
+    const timeRaw = getOptionalString(formData, "performedAtTime");
+    if (dateRaw && timeRaw) {
+      performedAt = parseDateTimeInput(dateRaw, timeRaw, timeZone) ?? null;
+    }
+  }
 
   return {
     title: getOptionalString(formData, "title") || undefined,
@@ -113,6 +125,7 @@ export function parseDraftWorkoutFormData(formData: FormData): DraftWorkoutInput
     worthIt: optionalRating(formData, "worthIt"),
     notes: getOptionalString(formData, "notes") || undefined,
     durationSeconds: durationMinutes ? Math.round(Number(durationMinutes) * 60) : null,
+    performedAt,
     exercises,
   };
 }

@@ -42,7 +42,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         error: error instanceof Error ? error.message : "Could not update household.",
       };
     }
-    throw redirect(householdPath(householdId, "settings"));
+    throw redirect(householdPath(householdId, "settings/household"));
   }
 
   if (intent === "add-member") {
@@ -55,7 +55,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         error: error instanceof Error ? error.message : "Could not add member.",
       };
     }
-    throw redirect(householdPath(householdId, "settings"));
+    throw redirect(householdPath(householdId, "settings/household"));
   }
 
   if (intent === "remove-member") {
@@ -75,7 +75,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         error: error instanceof Error ? error.message : "Could not remove member.",
       };
     }
-    throw redirect(householdPath(householdId, "settings"));
+    throw redirect(householdPath(householdId, "settings/household"));
   }
 
   if (intent === "delete") {

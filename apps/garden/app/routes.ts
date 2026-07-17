@@ -10,7 +10,9 @@ export default [
     route("admin/allowed-emails", "routes/admin.allowed-emails.tsx"),
     route(":householdId", "routes/household.tsx", [
       index("routes/home.tsx"),
-      route("settings", "routes/household.settings.tsx"),
+      route("settings", "routes/settings.tsx"),
+      route("settings/personal", "routes/settings.personal.tsx"),
+      route("settings/household", "routes/household.settings.tsx"),
       route("plants", "routes/plants.tsx"),
       route("plants/new", "routes/plants.new.tsx"),
       route("plants/:plantId", "routes/plants.$plantId.tsx"),

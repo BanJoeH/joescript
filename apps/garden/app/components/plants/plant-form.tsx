@@ -1,6 +1,7 @@
 import { ChevronDown, Search } from "lucide-react";
 import { useState } from "react";
-import { Form, Link } from "react-router";
+import { Form } from "react-router";
+import { Link } from "~/components/link";
 
 import { PlantSpeciesSearchDialog } from "~/components/plants/plant-species-search-dialog";
 import { Button } from "~/components/ui/button";
@@ -24,6 +25,7 @@ export type PlantFormValues = {
 
 type PlantFormProps = {
   areas: Array<{ id: string; name: string }>;
+  cancelLabel?: string;
   cancelTo: string;
   defaultValues: PlantFormValues;
   error?: string | null;
@@ -36,6 +38,7 @@ type PlantFormProps = {
 
 export function PlantForm({
   areas,
+  cancelLabel = "Cancel",
   cancelTo,
   defaultValues,
   error,
@@ -50,6 +53,9 @@ export function PlantForm({
   const [areaId, setAreaId] = useState(defaultValues.areaId);
   const [latinName, setLatinName] = useState(defaultValues.latinName);
   const [cultivar, setCultivar] = useState(defaultValues.cultivar);
+  const [plantedAt, setPlantedAt] = useState(defaultValues.plantedAt);
+  const [removedAt, setRemovedAt] = useState(defaultValues.removedAt);
+  const [notes, setNotes] = useState(defaultValues.notes);
   const [detailsOpen, setDetailsOpen] = useState(
     !quickAdd ||
       Boolean(
@@ -59,6 +65,17 @@ export function PlantForm({
           defaultValues.notes,
       ),
   );
+
+  const isDirty =
+    name !== defaultValues.name ||
+    areaId !== defaultValues.areaId ||
+    latinName !== defaultValues.latinName ||
+    cultivar !== defaultValues.cultivar ||
+    plantedAt !== defaultValues.plantedAt ||
+    removedAt !== defaultValues.removedAt ||
+    notes !== defaultValues.notes;
+
+  const finishWithSave = cancelLabel === "Done" && isDirty;
 
   function handleSpeciesSelect(suggestion: PlantSpeciesSuggestion) {
     const displayName = suggestion.commonName || suggestion.latinName;
@@ -100,27 +117,35 @@ export function PlantForm({
         <div className="space-y-2">
           <Label htmlFor="plantedAt">Planted</Label>
           <Input
-            defaultValue={defaultValues.plantedAt}
             id="plantedAt"
             name="plantedAt"
+            onChange={(event) => setPlantedAt(event.target.value)}
             type="date"
+            value={plantedAt}
           />
         </div>
         {showRemovedAt ? (
           <div className="space-y-2">
             <Label htmlFor="removedAt">Removed</Label>
             <Input
-              defaultValue={defaultValues.removedAt}
               id="removedAt"
               name="removedAt"
+              onChange={(event) => setRemovedAt(event.target.value)}
               type="date"
+              value={removedAt}
             />
           </div>
         ) : null}
       </div>
       <div className="space-y-2">
         <Label htmlFor="notes">Notes</Label>
-        <Textarea defaultValue={defaultValues.notes} id="notes" name="notes" rows={3} />
+        <Textarea
+          id="notes"
+          name="notes"
+          onChange={(event) => setNotes(event.target.value)}
+          rows={3}
+          value={notes}
+        />
       </div>
     </>
   );
@@ -202,9 +227,15 @@ export function PlantForm({
           <Button name="intent" type="submit" value="save">
             {submitLabel}
           </Button>
-          <Button asChild variant="outline">
-            <Link to={cancelTo}>Cancel</Link>
-          </Button>
+          {finishWithSave ? (
+            <Button name="intent" type="submit" value="saveAndDone" variant="outline">
+              Add and done
+            </Button>
+          ) : (
+            <Button asChild variant="outline">
+              <Link to={cancelTo}>{cancelLabel}</Link>
+            </Button>
+          )}
         </div>
       </Form>
       {speciesSearchUrl ? (

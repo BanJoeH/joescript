@@ -1,6 +1,6 @@
-import { Form, Link, useActionData, useLoaderData } from "react-router";
-
+import { Form, useActionData, useLoaderData } from "react-router";
 import { DeleteForm } from "~/components/delete-form";
+import { Link } from "~/components/link";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";

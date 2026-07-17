@@ -1,5 +1,6 @@
 import { Star } from "lucide-react";
-import { Form, Link, useActionData, useLoaderData } from "react-router";
+import { Form, useActionData, useLoaderData } from "react-router";
+import { Link } from "~/components/link";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";

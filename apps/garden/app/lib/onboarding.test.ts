@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   filterSuggestedAreaNames,
   isGettingStartedComplete,
-  jobsEmptyMessage,
   resolveDuplicatePlantForm,
 } from "~/lib/onboarding";
 
@@ -66,28 +65,5 @@ describe("isGettingStartedComplete", () => {
     expect(isGettingStartedComplete({ areaCount: 1, plantCount: 0, journalCount: 1 })).toBe(false);
     expect(isGettingStartedComplete({ areaCount: 0, plantCount: 1, journalCount: 1 })).toBe(false);
     expect(isGettingStartedComplete({ areaCount: 1, plantCount: 1, journalCount: 1 })).toBe(true);
-  });
-});
-
-describe("jobsEmptyMessage", () => {
-  it("suggests journal or plants when both are empty", () => {
-    expect(jobsEmptyMessage({ areaCount: 0, plantCount: 0, journalCount: 0 }, "hh-1")).toEqual({
-      journalLink: "/hh-1/journal/new?starter=1",
-      plantsLink: "/hh-1/plants/new",
-      tone: "empty",
-    });
-  });
-
-  it("nudges plants after the first journal entry", () => {
-    expect(jobsEmptyMessage({ areaCount: 1, plantCount: 0, journalCount: 2 }, "hh-1")).toEqual({
-      plantsLink: "/hh-1/plants/new",
-      tone: "journaled",
-    });
-  });
-
-  it("returns has-plants when plants exist", () => {
-    expect(jobsEmptyMessage({ areaCount: 2, plantCount: 3, journalCount: 1 }, "hh-1")).toEqual({
-      tone: "has-plants",
-    });
   });
 });

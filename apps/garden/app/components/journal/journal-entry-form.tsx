@@ -1,6 +1,6 @@
-import { Form, Link } from "react-router";
-
+import { Form } from "react-router";
 import { JournalPhotoFields } from "~/components/journal/journal-photo-fields";
+import { Link } from "~/components/link";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";

@@ -1,12 +1,11 @@
-import { ChevronRight, Plus, Trash2, XIcon } from "lucide-react";
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronRight, Plus, Trash2, XIcon } from "lucide-react";
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Form, Link, useFetcher, useNavigation } from "react-router";
 
 import { RatingPicker } from "~/components/rating-picker";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { Select } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { formatDateInput, formatTimeInput } from "~/lib/dates";
 import { formatExerciseSetsSummary, formatSetDetails } from "~/lib/exercise-format";
@@ -19,6 +18,18 @@ import {
 import { cn } from "~/lib/utils";
 
 type CatalogExercise = { id: string; key: string; name: string };
+
+export type RecentExerciseChip = {
+  exerciseId: string;
+  key: string;
+  name: string;
+  lastSet: {
+    reps?: number | null;
+    weightKg?: number | null;
+    durationSeconds?: number | null;
+    distanceM?: number | null;
+  };
+};
 
 type DraftSet = {
   id: string;
@@ -65,6 +76,9 @@ type WorkoutLogFormProps = {
   draft?: WorkoutFormDraft | null;
   error?: string | null;
   heading: string;
+  /** Prefill energy before when the draft does not already have one. */
+  seedEnergyBefore?: number | null;
+  recentExercises?: RecentExerciseChip[];
   submitLabel: string;
   timeZone: string;
   workoutId?: string;
@@ -87,8 +101,6 @@ function draftMoment(draft: WorkoutFormDraft | null | undefined, timeZone: strin
     time: formatTimeInput(now, timeZone),
   };
 }
-
-const steps = ["Session", "After"] as const;
 
 function newClientId() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -117,8 +129,79 @@ function copySet(set: DraftSet): DraftSet {
   };
 }
 
+function setFromTemplate(lastSet: RecentExerciseChip["lastSet"]): DraftSet {
+  return {
+    id: newClientId(),
+    reps: lastSet.reps?.toString() ?? "",
+    weightKg: lastSet.weightKg?.toString() ?? "",
+    durationSeconds: lastSet.durationSeconds?.toString() ?? "",
+    distanceM: lastSet.distanceM?.toString() ?? "",
+  };
+}
+
 function setHasValue(set: DraftSet) {
   return Boolean(set.reps || set.weightKg || set.durationSeconds || set.distanceM);
+}
+
+function BottomSheet({
+  open,
+  onClose,
+  title,
+  children,
+  footer,
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [open, onClose]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <button
+        aria-label="Close"
+        className="absolute inset-0 bg-black/40"
+        onClick={onClose}
+        type="button"
+      />
+      <div
+        className="relative z-10 flex max-h-[90vh] w-full max-w-lg flex-col rounded-t-3xl border border-border bg-card shadow-soft sm:rounded-3xl"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <h2 className="text-base font-semibold tracking-tight">{title}</h2>
+          <button
+            aria-label="Close"
+            className="text-muted-foreground hover:text-foreground"
+            onClick={onClose}
+            type="button"
+          >
+            <XIcon size={20} />
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">{children}</div>
+        {footer ? <div className="border-t border-border px-4 py-3">{footer}</div> : null}
+      </div>
+    </div>
+  );
 }
 
 export function WorkoutLogForm({
@@ -129,6 +212,8 @@ export function WorkoutLogForm({
   draft,
   error,
   heading,
+  seedEnergyBefore,
+  recentExercises = [],
   submitLabel,
   timeZone,
   workoutId,
@@ -142,6 +227,7 @@ export function WorkoutLogForm({
     navigation.state !== "idle" && navigation.formData?.get("intent") === "discard";
   const catalogById = useMemo(() => new Map(exercises.map((ex) => [ex.id, ex])), [exercises]);
   const skipAutosaveRef = useRef(true);
+  const focusMetricRef = useRef<HTMLInputElement | null>(null);
   const todayInput = formatDateInput(new Date(), timeZone);
 
   const initialExercises: DraftExercise[] = useMemo(() => {
@@ -167,10 +253,11 @@ export function WorkoutLogForm({
     });
   }, [draft, catalogById]);
 
-  const [step, setStep] = useState(0);
+  const initialEnergyBefore = draft?.energyBefore ?? seedEnergyBefore ?? undefined;
+
   const [title, setTitle] = useState(draft?.title ?? "");
   const [energyBefore, setEnergyBefore] = useState<number | undefined>(
-    draft?.energyBefore ?? undefined,
+    initialEnergyBefore != null ? Number(initialEnergyBefore) : undefined,
   );
   const [energyAfter, setEnergyAfter] = useState<number | undefined>(
     draft?.energyAfter ?? undefined,
@@ -184,13 +271,27 @@ export function WorkoutLogForm({
   const [performedOn, setPerformedOn] = useState(initialMoment.date);
   const [performedAtTime, setPerformedAtTime] = useState(initialMoment.time);
   const [draftExercises, setDraftExercises] = useState<DraftExercise[]>(initialExercises);
-  const [selectedExerciseId, setSelectedExerciseId] = useState<string | null>(null);
+  // Start collapsed so repeat / continue land on summaries, not a drill-in.
+  const [expandedExerciseId, setExpandedExerciseId] = useState<string | null>(null);
   const [addingExercise, setAddingExercise] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
   const [newExerciseName, setNewExerciseName] = useState("");
   const [stepError, setStepError] = useState<string | null>(null);
+  const [focusAfterExpand, setFocusAfterExpand] = useState(false);
 
-  const selectedExercise = draftExercises.find((item) => item.id === selectedExerciseId) ?? null;
-  const selectedMetrics = metricsForExerciseKey(selectedExercise?.key);
+  const recentAvailable = useMemo(() => {
+    const used = new Set(draftExercises.map((item) => item.exerciseId).filter(Boolean));
+    return recentExercises.filter((item) => !used.has(item.exerciseId));
+  }, [recentExercises, draftExercises]);
+
+  useEffect(() => {
+    if (!focusAfterExpand || !expandedExerciseId) return;
+    const timer = window.setTimeout(() => {
+      focusMetricRef.current?.focus();
+      setFocusAfterExpand(false);
+    }, 50);
+    return () => window.clearTimeout(timer);
+  }, [focusAfterExpand, expandedExerciseId]);
 
   useEffect(() => {
     if (!autosave || !workoutId) return;
@@ -198,7 +299,6 @@ export function WorkoutLogForm({
       skipAutosaveRef.current = false;
       return;
     }
-    // Pause autosave while the final submit is in flight so it can't race complete.
     if (navigation.state !== "idle") return;
 
     const timer = window.setTimeout(() => {
@@ -212,6 +312,8 @@ export function WorkoutLogForm({
       formData.set("worthIt", worthIt?.toString() ?? "");
       formData.set("notes", notes);
       formData.set("durationMinutes", durationMinutes);
+      formData.set("performedOn", performedOn);
+      formData.set("performedAtTime", performedAtTime);
       submitDraftRef.current(formData, { method: "post" });
     }, 700);
 
@@ -226,27 +328,48 @@ export function WorkoutLogForm({
     worthIt,
     notes,
     durationMinutes,
+    performedOn,
+    performedAtTime,
     navigation.state,
   ]);
 
-  function addExerciseFromCatalog(exerciseId: string) {
-    const catalog = catalogById.get(exerciseId);
-    if (!catalog) return;
+  function expandExercise(id: string, focus = false) {
+    setExpandedExerciseId(id);
+    setFocusAfterExpand(focus);
+    setStepError(null);
+  }
+
+  function addExercise(
+    exercise: { exerciseId: string; key: string; name: string },
+    firstSet?: DraftSet,
+  ) {
     const id = newClientId();
     setDraftExercises((prev) => [
       ...prev,
       {
         id,
-        exerciseId: catalog.id,
-        key: catalog.key,
-        name: catalog.name,
-        sets: [emptySet(newClientId())],
+        exerciseId: exercise.exerciseId,
+        key: exercise.key,
+        name: exercise.name,
+        sets: [firstSet ?? emptySet(newClientId())],
       },
     ]);
     setAddingExercise(false);
     setNewExerciseName("");
-    setSelectedExerciseId(id);
-    setStepError(null);
+    expandExercise(id, true);
+  }
+
+  function addExerciseFromCatalog(exerciseId: string) {
+    const catalog = catalogById.get(exerciseId);
+    if (!catalog) return;
+    addExercise({ exerciseId: catalog.id, key: catalog.key, name: catalog.name });
+  }
+
+  function addRecentExercise(template: RecentExerciseChip) {
+    addExercise(
+      { exerciseId: template.exerciseId, key: template.key, name: template.name },
+      setFromTemplate(template.lastSet),
+    );
   }
 
   function addCustomExercise() {
@@ -262,26 +385,12 @@ export function WorkoutLogForm({
       return;
     }
 
-    const id = newClientId();
-    setDraftExercises((prev) => [
-      ...prev,
-      {
-        id,
-        exerciseId: "",
-        key: "",
-        name: trimmed,
-        sets: [emptySet(newClientId())],
-      },
-    ]);
-    setAddingExercise(false);
-    setNewExerciseName("");
-    setSelectedExerciseId(id);
-    setStepError(null);
+    addExercise({ exerciseId: "", key: "", name: trimmed });
   }
 
   function removeExercise(id: string) {
     setDraftExercises((prev) => prev.filter((item) => item.id !== id));
-    if (selectedExerciseId === id) setSelectedExerciseId(null);
+    if (expandedExerciseId === id) setExpandedExerciseId(null);
   }
 
   function addSet(exerciseLocalId: string) {
@@ -324,41 +433,27 @@ export function WorkoutLogForm({
     );
   }
 
-  function goBack() {
-    setStepError(null);
-    if (step === 0 && (selectedExerciseId || addingExercise)) {
-      setSelectedExerciseId(null);
-      setAddingExercise(false);
-      setNewExerciseName("");
+  function openFinish() {
+    if (energyBefore == null) {
+      setStepError("Pick how you feel before finishing.");
       return;
     }
-    setStep((s) => Math.max(s - 1, 0));
-  }
-
-  function goNext() {
-    if (step === 0) {
-      if (selectedExerciseId || addingExercise) {
-        setSelectedExerciseId(null);
-        setAddingExercise(false);
-        setNewExerciseName("");
-        setStepError(null);
-        return;
-      }
-      if (energyBefore == null) {
-        setStepError("Pick how you feel before continuing.");
-        return;
-      }
-      const hasSets = draftExercises.some((ex) => ex.sets.some(setHasValue));
-      if (!hasSets) {
-        setStepError("Add at least one set with reps, weight, duration, or distance.");
-        return;
-      }
+    const hasSets = draftExercises.some((ex) => ex.sets.some(setHasValue));
+    if (!hasSets) {
+      setStepError("Add at least one set with reps, weight, duration, or distance.");
+      return;
     }
     setStepError(null);
-    setStep((s) => Math.min(s + 1, steps.length - 1));
+    setFinishOpen(true);
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (energyBefore == null) {
+      event.preventDefault();
+      setFinishOpen(false);
+      setStepError("Pick how you feel before finishing.");
+      return;
+    }
     if (energyAfter == null) {
       event.preventDefault();
       setStepError("Pick how you feel now.");
@@ -371,53 +466,16 @@ export function WorkoutLogForm({
     }
   }
 
-  const continueLabel = step === 0 && (selectedExerciseId || addingExercise) ? "Done" : "Continue";
-
-  const inExerciseDrillIn = step === 0 && Boolean(selectedExerciseId || addingExercise);
   return (
-    <div className="space-y-6">
-      <div className="space-y-4">
-        <div>
-          <div className="relative">
-            <Link
-              className="absolute left-0 top-1/2 -translate-y-1/2 hover:text-foreground"
-              to={backLink}
-            >
-              <XIcon size={24} />
-            </Link>
-            <h1 className="text-center text-2xl font-bold tracking-tight">{heading}</h1>
-          </div>
-          <ol aria-label={`Step ${step + 1} of ${steps.length}`} className="mt-4 flex gap-1.5 px-8">
-            {steps.map((label, index) => (
-              <li className="min-w-0 flex-1" key={label}>
-                <button
-                  aria-current={index === step ? "step" : undefined}
-                  aria-label={`${label}${index < step ? ", completed" : index === step ? ", current" : ""}`}
-                  className={`h-1.5 w-full rounded-full transition-colors ${
-                    index <= step ? "bg-primary" : "bg-border"
-                  }`}
-                  onClick={() => {
-                    if (index < step) {
-                      setStepError(null);
-                      setSelectedExerciseId(null);
-                      setAddingExercise(false);
-                      setNewExerciseName("");
-                      setStep(index);
-                    }
-                  }}
-                  type="button"
-                />
-              </li>
-            ))}
-          </ol>
-          <p className="mt-3 text-sm text-muted-foreground">
-            {step === 0 && selectedExercise
-              ? selectedExercise.name
-              : step === 0 && addingExercise
-                ? "Add exercise"
-                : steps[step]}
-          </p>
-        </div>
+    <div className="space-y-6 pb-24">
+      <div className="relative">
+        <Link
+          className="absolute left-0 top-1/2 -translate-y-1/2 hover:text-foreground"
+          to={backLink}
+        >
+          <XIcon size={24} />
+        </Link>
+        <h1 className="text-center text-2xl font-bold tracking-tight">{heading}</h1>
       </div>
 
       {error || stepError ? (
@@ -439,220 +497,230 @@ export function WorkoutLogForm({
         <input name="performedOn" type="hidden" value={performedOn} />
         <input name="performedAtTime" type="hidden" value={performedAtTime} />
 
-        {step === 0 ? (
-          <section className="space-y-6">
-            {addingExercise ? (
-              <div className="space-y-5 rounded-2xl border border-border bg-card p-4 shadow-soft">
-                <div className="space-y-2">
-                  <Label htmlFor="catalogExercise">From your list</Label>
-                  <Select
-                    defaultValue=""
-                    id="catalogExercise"
-                    onChange={(e) => {
-                      if (e.target.value) addExerciseFromCatalog(e.target.value);
-                    }}
-                  >
-                    <option disabled value="">
-                      Select…
-                    </option>
-                    {exercises.map((ex) => (
-                      <option key={ex.id} value={ex.id}>
-                        {ex.name}
-                      </option>
-                    ))}
-                  </Select>
+        <section className="space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="titleInput">Title (optional)</Label>
+              <Input
+                id="titleInput"
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Upper body"
+                value={title}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>How are you feeling?</Label>
+              <ControlledRating
+                kind="energy"
+                name="energyBeforeUi"
+                onChange={setEnergyBefore}
+                value={energyBefore}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div>
+              <h2 className="text-base font-semibold">What are you doing?</h2>
+              <p className="text-sm text-muted-foreground">
+                Expand an exercise to log sets. Finish when you are done.
+              </p>
+            </div>
+
+            {recentAvailable.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  Recent
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {recentAvailable.map((item) => (
+                    <button
+                      className="rounded-full border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-soft transition hover:border-primary/40 hover:bg-primary-soft/40"
+                      key={item.exerciseId}
+                      onClick={() => addRecentExercise(item)}
+                      type="button"
+                    >
+                      <Plus className="mr-1 inline size-3.5 align-[-2px]" strokeWidth={2} />
+                      {item.name}
+                    </button>
+                  ))}
                 </div>
-                <div className="relative text-center text-xs text-muted-foreground">
-                  <span className="absolute inset-x-0 top-1/2 border-t border-border" />
-                  <span className="relative bg-card px-2">or create new</span>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="newExerciseName">Exercise name</Label>
-                  <Input
-                    id="newExerciseName"
-                    onChange={(e) => setNewExerciseName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addCustomExercise();
-                      }
-                    }}
-                    placeholder="e.g. Bulgarian split squat"
-                    value={newExerciseName}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    New exercises get reps, kg, and seconds. Saved when you finish the workout.
-                  </p>
-                </div>
-                <Button
-                  disabled={!newExerciseName.trim()}
-                  onClick={addCustomExercise}
-                  type="button"
-                  variant="secondary"
-                >
-                  <Plus size={16} strokeWidth={1.75} />
-                  Create exercise
-                </Button>
               </div>
-            ) : selectedExercise ? (
-              <div className="space-y-4">
-                <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-                  {selectedExercise.sets.map((set, index) => {
-                    const setSummary = formatSetDetails(set);
-                    return (
-                      <li className="p-4" key={set.id}>
-                        <div className="mb-3 flex items-center justify-between gap-2">
-                          <div>
-                            <p className="text-sm font-medium text-muted-foreground">
-                              Set {index + 1}
-                            </p>
-                            {setSummary ? (
-                              <p className="text-xs text-muted-foreground">{setSummary}</p>
-                            ) : null}
-                          </div>
-                          {selectedExercise.sets.length > 1 ? (
-                            <button
-                              aria-label={`Remove set ${index + 1}`}
-                              className="text-muted-foreground hover:text-destructive"
-                              onClick={() => removeSet(selectedExercise.id, set.id)}
-                              type="button"
-                            >
-                              <Trash2 size={16} strokeWidth={1.75} />
-                            </button>
-                          ) : null}
-                        </div>
-                        <div
-                          className={cn(
-                            "grid gap-2",
-                            selectedMetrics.length === 1
-                              ? "grid-cols-1"
-                              : selectedMetrics.length === 2
-                                ? "grid-cols-2"
-                                : "grid-cols-3",
-                          )}
-                        >
-                          {selectedMetrics.map((metric) => (
-                            <div className="space-y-1" key={metric}>
-                              <Label className="text-xs">{metricLabel(metric)}</Label>
-                              <Input
-                                inputMode={metricInputMode(metric)}
-                                onChange={(e) =>
-                                  updateSet(selectedExercise.id, set.id, metric, e.target.value)
-                                }
-                                value={set[metric] ?? ""}
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <Button onClick={() => addSet(selectedExercise.id)} type="button" variant="outline">
-                  <Plus size={16} strokeWidth={1.75} />
-                  Add set
-                </Button>
-                <Button
-                  className="text-destructive hover:text-destructive"
-                  onClick={() => removeExercise(selectedExercise.id)}
-                  type="button"
-                  variant="ghost"
-                >
-                  Remove exercise
-                </Button>
+            ) : null}
+
+            {draftExercises.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
+                No exercises yet. Add one to get started.
               </div>
             ) : (
-              <>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="titleInput">Title (optional)</Label>
-                    <Input
-                      id="titleInput"
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Upper body"
-                      value={title}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>How are you feeling?</Label>
-                    <ControlledRating
-                      kind="energy"
-                      name="energyBefore"
-                      onChange={setEnergyBefore}
-                      value={energyBefore}
-                    />
-                  </div>
-                </div>
+              <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+                {draftExercises.map((item) => {
+                  const expanded = expandedExerciseId === item.id;
+                  const metrics = metricsForExerciseKey(item.key);
+                  return (
+                    <li key={item.id}>
+                      <button
+                        aria-expanded={expanded}
+                        className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-muted/50"
+                        onClick={() =>
+                          setExpandedExerciseId((current) => (current === item.id ? null : item.id))
+                        }
+                        type="button"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold tracking-tight">{item.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {formatExerciseSetsSummary(item.sets)}
+                          </p>
+                        </div>
+                        <ChevronDown
+                          className={cn(
+                            "shrink-0 text-muted-foreground transition-transform",
+                            expanded && "rotate-180",
+                          )}
+                          size={18}
+                          strokeWidth={1.75}
+                        />
+                      </button>
 
-                <div className="space-y-3">
-                  <div>
-                    <h2 className="text-base font-semibold">What are you doing?</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Tap an exercise to log its sets.
-                    </p>
-                  </div>
-                  {draftExercises.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
-                      No exercises yet. Add one to get started.
-                    </div>
-                  ) : (
-                    <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-                      {draftExercises.map((item) => (
-                        <li key={item.id}>
-                          <button
-                            className="flex w-full items-center gap-3 px-4 py-3.5 text-left transition hover:bg-muted/50"
-                            onClick={() => {
-                              setSelectedExerciseId(item.id);
-                              setStepError(null);
-                            }}
-                            type="button"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <p className="font-semibold tracking-tight">{item.name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {formatExerciseSetsSummary(item.sets)}
-                              </p>
-                            </div>
-                            <ChevronRight
-                              className="shrink-0 text-muted-foreground"
-                              size={18}
-                              strokeWidth={1.75}
-                            />
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <Button
-                    onClick={() => {
-                      setAddingExercise(true);
-                      setNewExerciseName("");
-                      setStepError(null);
-                    }}
-                    type="button"
-                    variant="secondary"
-                  >
-                    <Plus size={16} strokeWidth={1.75} />
-                    Add exercise
-                  </Button>
-                  <div className="space-y-2">
-                    <Label htmlFor="durationMinutes">Duration (minutes, optional)</Label>
-                    <Input
-                      id="durationMinutes"
-                      inputMode="numeric"
-                      min={1}
-                      onChange={(e) => setDurationMinutes(e.target.value)}
-                      value={durationMinutes}
-                    />
-                  </div>
-                </div>
-              </>
+                      {expanded ? (
+                        <div className="space-y-4 border-t border-border bg-muted/20 px-4 py-4">
+                          <ul className="space-y-4">
+                            {item.sets.map((set, index) => {
+                              const setSummary = formatSetDetails(set);
+                              return (
+                                <li key={set.id}>
+                                  <div className="mb-3 flex items-center justify-between gap-2">
+                                    <div>
+                                      <p className="text-sm font-medium text-muted-foreground">
+                                        Set {index + 1}
+                                      </p>
+                                      {setSummary ? (
+                                        <p className="text-xs text-muted-foreground">
+                                          {setSummary}
+                                        </p>
+                                      ) : null}
+                                    </div>
+                                    {item.sets.length > 1 ? (
+                                      <button
+                                        aria-label={`Remove set ${index + 1}`}
+                                        className="text-muted-foreground hover:text-destructive"
+                                        onClick={() => removeSet(item.id, set.id)}
+                                        type="button"
+                                      >
+                                        <Trash2 size={16} strokeWidth={1.75} />
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                  <div
+                                    className={cn(
+                                      "grid gap-2",
+                                      metrics.length === 1
+                                        ? "grid-cols-1"
+                                        : metrics.length === 2
+                                          ? "grid-cols-2"
+                                          : "grid-cols-3",
+                                    )}
+                                  >
+                                    {metrics.map((metric, metricIndex) => (
+                                      <div className="space-y-1" key={metric}>
+                                        <Label className="text-xs">{metricLabel(metric)}</Label>
+                                        <Input
+                                          inputMode={metricInputMode(metric)}
+                                          onChange={(e) =>
+                                            updateSet(item.id, set.id, metric, e.target.value)
+                                          }
+                                          ref={
+                                            index === 0 && metricIndex === 0
+                                              ? focusMetricRef
+                                              : undefined
+                                          }
+                                          value={set[metric] ?? ""}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                          <div className="flex flex-wrap gap-2">
+                            <Button onClick={() => addSet(item.id)} type="button" variant="outline">
+                              <Plus size={16} strokeWidth={1.75} />
+                              Add set
+                            </Button>
+                            <Button
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => removeExercise(item.id)}
+                              type="button"
+                              variant="ghost"
+                            >
+                              Remove exercise
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
             )}
-          </section>
+
+            <Button
+              onClick={() => {
+                setAddingExercise(true);
+                setNewExerciseName("");
+                setStepError(null);
+              }}
+              type="button"
+              variant="secondary"
+            >
+              <Plus size={16} strokeWidth={1.75} />
+              Add exercise
+            </Button>
+
+            <div className="space-y-2">
+              <Label htmlFor="durationMinutes">Duration (minutes, optional)</Label>
+              <Input
+                id="durationMinutes"
+                inputMode="numeric"
+                min={1}
+                onChange={(e) => setDurationMinutes(e.target.value)}
+                value={durationMinutes}
+              />
+            </div>
+          </div>
+        </section>
+
+        {!finishOpen && !addingExercise ? (
+          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80">
+            <div className="mx-auto flex max-w-lg gap-3">
+              <Button className="btn-primary-gradient flex-1" onClick={openFinish} type="button">
+                Finish
+              </Button>
+            </div>
+          </div>
         ) : null}
 
-        {step === 1 ? (
-          <section className="space-y-6">
+        <BottomSheet
+          footer={
+            <Button className="btn-primary-gradient w-full" disabled={busy} type="submit">
+              {busy ? "Saving…" : submitLabel}
+            </Button>
+          }
+          onClose={() => {
+            setFinishOpen(false);
+            setStepError(null);
+          }}
+          open={finishOpen}
+          title="Finish workout"
+        >
+          <div className="space-y-6">
+            {stepError && finishOpen ? (
+              <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                {stepError}
+              </p>
+            ) : null}
             <div className="space-y-2">
               <Label htmlFor="performedOn">When was this?</Label>
               <div className="grid grid-cols-2 gap-3">
@@ -680,14 +748,19 @@ export function WorkoutLogForm({
               <Label>How are you feeling now?</Label>
               <ControlledRating
                 kind="energy"
-                name="energyAfter"
+                name="energyAfterUi"
                 onChange={setEnergyAfter}
                 value={energyAfter}
               />
             </div>
             <div className="space-y-2">
               <Label>Was it worth doing?</Label>
-              <ControlledRating kind="worth" name="worthIt" onChange={setWorthIt} value={worthIt} />
+              <ControlledRating
+                kind="worth"
+                name="worthItUi"
+                onChange={setWorthIt}
+                value={worthIt}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="notes">Notes (optional, 200 chars)</Label>
@@ -695,34 +768,80 @@ export function WorkoutLogForm({
                 id="notes"
                 maxLength={200}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={6}
+                rows={4}
                 value={notes}
               />
             </div>
-          </section>
-        ) : null}
+          </div>
+        </BottomSheet>
 
-        <div className="flex gap-3">
-          {step > 0 || inExerciseDrillIn ? (
-            <Button onClick={goBack} type="button" variant="outline">
-              Back
+        <BottomSheet
+          onClose={() => {
+            setAddingExercise(false);
+            setNewExerciseName("");
+          }}
+          open={addingExercise}
+          title="Add exercise"
+        >
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">From your list</p>
+              {exercises.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No exercises yet. Create one below.</p>
+              ) : (
+                <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+                  {exercises.map((ex) => (
+                    <li key={ex.id}>
+                      <button
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm font-medium tracking-tight transition hover:bg-muted/50"
+                        onClick={() => addExerciseFromCatalog(ex.id)}
+                        type="button"
+                      >
+                        <span className="min-w-0 flex-1">{ex.name}</span>
+                        <ChevronRight
+                          className="shrink-0 text-muted-foreground"
+                          size={18}
+                          strokeWidth={1.75}
+                        />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="relative text-center text-xs text-muted-foreground">
+              <span className="absolute inset-x-0 top-1/2 border-t border-border" />
+              <span className="relative bg-card px-2">or create new</span>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newExerciseName">Exercise name</Label>
+              <Input
+                id="newExerciseName"
+                onChange={(e) => setNewExerciseName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addCustomExercise();
+                  }
+                }}
+                placeholder="e.g. Bulgarian split squat"
+                value={newExerciseName}
+              />
+              <p className="text-xs text-muted-foreground">
+                New exercises get reps, kg, and seconds. Saved when you finish the workout.
+              </p>
+            </div>
+            <Button
+              disabled={!newExerciseName.trim()}
+              onClick={addCustomExercise}
+              type="button"
+              variant="secondary"
+            >
+              <Plus size={16} strokeWidth={1.75} />
+              Create exercise
             </Button>
-          ) : null}
-          <Button
-            className={step < steps.length - 1 ? "btn-primary-gradient flex-1" : "hidden"}
-            onClick={goNext}
-            type="button"
-          >
-            {continueLabel}
-          </Button>
-          <Button
-            className={step === steps.length - 1 ? "btn-primary-gradient flex-1" : "hidden"}
-            disabled={step !== steps.length - 1 || busy}
-            type="submit"
-          >
-            {busy ? "Saving…" : submitLabel}
-          </Button>
-        </div>
+          </div>
+        </BottomSheet>
       </Form>
 
       {autosave && workoutId && discardLabel ? (

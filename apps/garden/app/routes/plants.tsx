@@ -1,9 +1,8 @@
-import { Link } from "react-router";
-
 import {
   PhotoLightboxProvider,
   PhotoLightboxTrigger,
 } from "~/components/journal/journal-photo-lightbox";
+import { Link } from "~/components/link";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
@@ -19,21 +18,29 @@ export function meta(_args: Route.MetaArgs) {
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { garden } = await requireGardenService(request, getGardenEnv(), params.householdId);
-  const [plants, areas, latestPhotos] = await Promise.all([
+  const [plants, areas, latestPhotos, plantIdsWithRules] = await Promise.all([
     garden.plants.list(),
     garden.areas.list(),
     garden.photos.listLatestPerPlant(),
+    garden.careRules.listPlantIdsWithRules(),
   ]);
 
   const latestPhotoByPlantId = Object.fromEntries(
     latestPhotos.map((photo) => [photo.plantId, photo]),
   ) as Record<string, PlantLatestPhoto>;
 
-  return { householdId: params.householdId, plants, areas, latestPhotoByPlantId };
+  return {
+    householdId: params.householdId,
+    plants,
+    areas,
+    latestPhotoByPlantId,
+    plantIdsWithRules,
+  };
 }
 
 export default function Plants({ loaderData }: Route.ComponentProps) {
-  const { householdId, plants, areas, latestPhotoByPlantId } = loaderData;
+  const { householdId, plants, areas, latestPhotoByPlantId, plantIdsWithRules } = loaderData;
+  const plantIdsWithRulesSet = new Set(plantIdsWithRules);
   const plantsByArea = areas.map((area) => ({
     area,
     plants: plants.filter((plant) => plant.areaId === area.id),
@@ -66,7 +73,7 @@ export default function Plants({ loaderData }: Route.ComponentProps) {
             Create an{" "}
             <Link
               className="text-primary underline-offset-4 hover:underline"
-              to={householdPath(householdId, "areas")}
+              to={householdPath(householdId, "areas/new")}
             >
               area
             </Link>{" "}
@@ -136,6 +143,11 @@ export default function Plants({ loaderData }: Route.ComponentProps) {
                               <span className="block text-sm italic text-muted-foreground">
                                 {plant.latinName}
                                 {plant.cultivar ? ` '${plant.cultivar}'` : ""}
+                              </span>
+                            ) : null}
+                            {!plantIdsWithRulesSet.has(plant.id) ? (
+                              <span className="mt-0.5 block text-sm text-muted-foreground">
+                                No care rules
                               </span>
                             ) : null}
                           </Link>

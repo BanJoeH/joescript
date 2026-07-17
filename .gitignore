@@ -22,3 +22,4 @@ apps/garden/local.db-*
 apps/garden/worker-configuration.d.ts
 apps/garden/.dev.vars
 !apps/garden/.dev.vars.example
+tsconfig.tsbuildinfo

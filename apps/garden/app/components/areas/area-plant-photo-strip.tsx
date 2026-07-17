@@ -1,9 +1,8 @@
-import { Link } from "react-router";
-
 import {
   PhotoLightboxProvider,
   PhotoLightboxTrigger,
 } from "~/components/journal/journal-photo-lightbox";
+import { Link } from "~/components/link";
 import { formatDate } from "~/lib/dates";
 import { householdPath, photoPath } from "~/lib/household-path";
 import type { PlantLatestPhoto } from "~/services/photos.service";
