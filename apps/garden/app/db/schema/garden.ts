@@ -80,6 +80,9 @@ export const photos = sqliteTable("photos", {
   householdId: text("household_id")
     .notNull()
     .references(() => households.id, { onDelete: "cascade" }),
+  plantId: text("plant_id").references(() => plants.id, {
+    onDelete: "set null",
+  }),
   journalEntryId: text("journal_entry_id").references(() => journalEntries.id, {
     onDelete: "set null",
   }),

@@ -5,7 +5,7 @@ import { PlantForm } from "~/components/plants/plant-form";
 import { QuickAddFlashBanner } from "~/components/quick-add-flash-banner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
-import { parsePlantCreateFormData } from "~/lib/entity-forms.server";
+import { parsePlantCreateFormData, parsePlantPhotoUpload } from "~/lib/entity-forms.server";
 import { getOptionalString } from "~/lib/forms.server";
 import { householdPath } from "~/lib/household-path";
 import { resolveDuplicatePlantForm } from "~/lib/onboarding";
@@ -74,11 +74,21 @@ export async function action({ request, params }: Route.ActionArgs) {
   const { garden } = await requireGardenService(request, getGardenEnv(), params.householdId);
   const formData = await request.formData();
   const intent = getOptionalString(formData, "intent") ?? "save";
+  const photoUpload = parsePlantPhotoUpload(formData);
 
   try {
     const plant = await garden.plants.create(parsePlantCreateFormData(formData));
     if (!plant) {
       return { error: "Could not create plant." };
+    }
+
+    if (photoUpload) {
+      try {
+        await garden.photos.uploadForPlant(plant.id, photoUpload);
+      } catch (error) {
+        await garden.plants.remove(plant.id);
+        throw error;
+      }
     }
 
     if (intent === "saveAndDone") {

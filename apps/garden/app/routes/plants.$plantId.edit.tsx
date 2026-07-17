@@ -4,9 +4,9 @@ import { Link } from "~/components/link";
 import { PlantForm, toPlantFormValues } from "~/components/plants/plant-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getGardenEnv } from "~/lib/context.server";
-import { parsePlantUpdateFormData } from "~/lib/entity-forms.server";
-import { getString } from "~/lib/forms.server";
-import { householdPath } from "~/lib/household-path";
+import { parsePlantPhotoUpload, parsePlantUpdateFormData } from "~/lib/entity-forms.server";
+import { getOptionalString, getString } from "~/lib/forms.server";
+import { householdPath, photoPath } from "~/lib/household-path";
 import { requireGardenService } from "~/services";
 
 import type { Route } from "./+types/plants.$plantId.edit";
@@ -25,10 +25,12 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   if (!plant) {
     throw new Response("Plant not found", { status: 404 });
   }
+  const plantPhoto = await garden.photos.getForPlant(plant.id);
 
   return {
     householdId: params.householdId,
     plant,
+    plantPhoto,
     areas,
     plantLookupEnabled: garden.plantLookup.isConfigured(),
     speciesSearchUrl: householdPath(params.householdId, "api/plants/search"),
@@ -54,6 +56,13 @@ export async function action({ request, params }: Route.ActionArgs) {
     if (!updated) {
       return { error: "Plant not found." };
     }
+
+    const photoUpload = parsePlantPhotoUpload(formData);
+    if (photoUpload) {
+      await garden.photos.uploadForPlant(params.plantId, photoUpload);
+    } else if (getOptionalString(formData, "removePlantPhoto") === "1") {
+      await garden.photos.removeForPlant(params.plantId);
+    }
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : "Could not update plant.",
@@ -64,7 +73,8 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function EditPlant({ loaderData }: Route.ComponentProps) {
-  const { householdId, plant, areas, plantLookupEnabled, speciesSearchUrl } = loaderData;
+  const { householdId, plant, plantPhoto, areas, plantLookupEnabled, speciesSearchUrl } =
+    loaderData;
   const actionData = useActionData<typeof action>();
 
   return (
@@ -92,6 +102,7 @@ export default function EditPlant({ loaderData }: Route.ComponentProps) {
           <PlantForm
             areas={areas}
             cancelTo={householdPath(householdId, `plants/${plant.id}`)}
+            currentPhotoUrl={plantPhoto ? photoPath(householdId, plantPhoto.id) : null}
             defaultValues={toPlantFormValues(plant)}
             error={actionData?.error}
             plantLookupEnabled={plantLookupEnabled}
