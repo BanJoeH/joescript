@@ -467,7 +467,7 @@ export function WorkoutLogForm({
   }
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="space-y-6">
       <div className="relative">
         <Link
           className="absolute left-0 top-1/2 -translate-y-1/2 hover:text-foreground"
@@ -692,15 +692,9 @@ export function WorkoutLogForm({
           </div>
         </section>
 
-        {!finishOpen && !addingExercise ? (
-          <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 px-4 py-3 backdrop-blur supports-backdrop-filter:bg-background/80">
-            <div className="mx-auto flex max-w-lg gap-3">
-              <Button className="btn-primary-gradient flex-1" onClick={openFinish} type="button">
-                Finish
-              </Button>
-            </div>
-          </div>
-        ) : null}
+        <Button className="btn-primary-gradient w-full" onClick={openFinish} type="button">
+          Finish
+        </Button>
 
         <BottomSheet
           footer={
