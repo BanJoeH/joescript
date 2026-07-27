@@ -10,12 +10,19 @@ type ParsedExerciseJson = Array<{
     weightKg?: string;
     durationSeconds?: string;
     distanceM?: string;
+    roundNumber?: string | number | null;
   }>;
 }>;
 
 function parseExercisesJson(raw: string): ParsedExerciseJson {
   if (!raw.trim()) return [];
   return JSON.parse(raw) as ParsedExerciseJson;
+}
+
+function optionalPositiveInt(raw: string | number | null | undefined) {
+  if (raw == null || raw === "") return undefined;
+  const value = typeof raw === "number" ? raw : Number(raw);
+  return Number.isInteger(value) && value > 0 ? value : undefined;
 }
 
 function mapExercises(parsed: ParsedExerciseJson, { requireSets }: { requireSets: boolean }) {
@@ -29,6 +36,7 @@ function mapExercises(parsed: ParsedExerciseJson, { requireSets }: { requireSets
           weightKg: set.weightKg ? Number(set.weightKg) : undefined,
           durationSeconds: set.durationSeconds ? Number(set.durationSeconds) : undefined,
           distanceM: set.distanceM ? Number(set.distanceM) : undefined,
+          roundNumber: optionalPositiveInt(set.roundNumber),
         }))
         .filter((set) => set.reps || set.weightKg || set.durationSeconds || set.distanceM),
     }))

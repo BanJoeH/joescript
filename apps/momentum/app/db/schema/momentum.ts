@@ -60,6 +60,8 @@ export const workoutSet = sqliteTable("workout_set", {
     .notNull()
     .references(() => workoutExercise.id, { onDelete: "cascade" }),
   sortOrder: integer("sort_order").notNull().default(0),
+  /** Circuit round; null for straight-set workouts. */
+  roundNumber: integer("round_number"),
   reps: integer("reps"),
   weightKg: real("weight_kg"),
   durationSeconds: integer("duration_seconds"),

@@ -12,6 +12,7 @@ const setInputSchema = z.object({
   weightKg: z.number().nonnegative().optional(),
   durationSeconds: z.number().int().nonnegative().optional(),
   distanceM: z.number().nonnegative().optional(),
+  roundNumber: z.number().int().positive().optional().nullable(),
   notes: z.string().max(500).optional(),
 });
 
@@ -79,6 +80,7 @@ export type WorkoutFormDraft = {
       weightKg?: number | null;
       durationSeconds?: number | null;
       distanceM?: number | null;
+      roundNumber?: number | null;
     }>;
   }>;
 };
@@ -191,6 +193,7 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
           sets: (setsByExercise.get(we.id) ?? []).map((s) => ({
             id: s.id,
             sortOrder: s.sortOrder,
+            roundNumber: s.roundNumber,
             reps: s.reps,
             weightKg: s.weightKg,
             durationSeconds: s.durationSeconds,
@@ -261,6 +264,7 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
           weightKg: number | null;
           durationSeconds: number | null;
           distanceM: number | null;
+          roundNumber?: number | null;
         }>;
       }>;
     }): WorkoutFormDraft {
@@ -281,6 +285,7 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
             weightKg: set.weightKg,
             durationSeconds: set.durationSeconds,
             distanceM: set.distanceM,
+            roundNumber: set.roundNumber ?? null,
           })),
         })),
       };
@@ -566,6 +571,7 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
             id: newId(),
             workoutExerciseId,
             sortOrder: setOrder,
+            roundNumber: set.roundNumber ?? null,
             reps: set.reps ?? null,
             weightKg: set.weightKg ?? null,
             durationSeconds: set.durationSeconds ?? null,
@@ -593,6 +599,7 @@ export function createWorkoutsService({ db, userId }: MomentumContext) {
             weightKg: s.weightKg ?? undefined,
             durationSeconds: s.durationSeconds ?? undefined,
             distanceM: s.distanceM ?? undefined,
+            roundNumber: s.roundNumber ?? undefined,
             notes: s.notes ?? undefined,
           })),
         })),
