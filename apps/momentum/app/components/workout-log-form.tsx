@@ -37,6 +37,7 @@ type DraftSet = {
   weightKg?: string;
   durationSeconds?: string;
   distanceM?: string;
+  roundNumber?: number | null;
 };
 
 type DraftExercise = {
@@ -64,6 +65,7 @@ export type WorkoutFormDraft = {
       weightKg?: number | null;
       durationSeconds?: number | null;
       distanceM?: number | null;
+      roundNumber?: number | null;
     }>;
   }>;
 };
@@ -109,38 +111,81 @@ function newClientId() {
   return `id-${Math.random().toString(36).slice(2)}`;
 }
 
-function emptySet(seed = "0"): DraftSet {
+function emptySet(seed = "0", roundNumber?: number | null): DraftSet {
   return {
     id: `set-${seed}`,
     reps: "",
     weightKg: "",
     durationSeconds: "",
     distanceM: "",
+    roundNumber: roundNumber ?? null,
   };
 }
 
-function copySet(set: DraftSet): DraftSet {
+function copySet(set: DraftSet, roundNumber?: number | null): DraftSet {
   return {
     id: newClientId(),
     reps: set.reps ?? "",
     weightKg: set.weightKg ?? "",
     durationSeconds: set.durationSeconds ?? "",
     distanceM: set.distanceM ?? "",
+    roundNumber: roundNumber ?? set.roundNumber ?? null,
   };
 }
 
-function setFromTemplate(lastSet: RecentExerciseChip["lastSet"]): DraftSet {
+function setFromTemplate(lastSet: RecentExerciseChip["lastSet"], roundNumber?: number | null): DraftSet {
   return {
     id: newClientId(),
     reps: lastSet.reps?.toString() ?? "",
     weightKg: lastSet.weightKg?.toString() ?? "",
     durationSeconds: lastSet.durationSeconds?.toString() ?? "",
     distanceM: lastSet.distanceM?.toString() ?? "",
+    roundNumber: roundNumber ?? null,
   };
 }
 
 function setHasValue(set: DraftSet) {
   return Boolean(set.reps || set.weightKg || set.durationSeconds || set.distanceM);
+}
+
+function draftHasRounds(exercises: DraftExercise[]) {
+  return exercises.some((ex) => ex.sets.some((set) => set.roundNumber != null));
+}
+
+function findCircuitCursor(exercises: DraftExercise[]) {
+  if (exercises.length === 0) return { stationIndex: 0, round: 1 };
+  for (let round = 1; round <= 40; round += 1) {
+    for (let stationIndex = 0; stationIndex < exercises.length; stationIndex += 1) {
+      const has = exercises[stationIndex].sets.some(
+        (set) => set.roundNumber === round && setHasValue(set),
+      );
+      if (!has) return { stationIndex, round };
+    }
+  }
+  return { stationIndex: 0, round: 1 };
+}
+
+function metricsFromSet(set: DraftSet | undefined): Pick<
+  DraftSet,
+  "reps" | "weightKg" | "durationSeconds" | "distanceM"
+> {
+  return {
+    reps: set?.reps ?? "",
+    weightKg: set?.weightKg ?? "",
+    durationSeconds: set?.durationSeconds ?? "",
+    distanceM: set?.distanceM ?? "",
+  };
+}
+
+function prefillForStation(exercise: DraftExercise, round: number) {
+  const existing = exercise.sets.find((set) => set.roundNumber === round);
+  if (existing && setHasValue(existing)) return metricsFromSet(existing);
+  const previous = [...exercise.sets]
+    .filter((set) => set.roundNumber != null && set.roundNumber < round && setHasValue(set))
+    .sort((a, b) => (b.roundNumber ?? 0) - (a.roundNumber ?? 0))[0];
+  if (previous) return metricsFromSet(previous);
+  const lastStraight = [...exercise.sets].reverse().find(setHasValue);
+  return metricsFromSet(lastStraight);
 }
 
 function BottomSheet({
@@ -247,6 +292,7 @@ export function WorkoutLogForm({
                 weightKg: s.weightKg?.toString() ?? "",
                 durationSeconds: s.durationSeconds?.toString() ?? "",
                 distanceM: s.distanceM?.toString() ?? "",
+                roundNumber: s.roundNumber ?? null,
               }))
             : [emptySet(`${exerciseIndex}-0`)],
       };
@@ -278,6 +324,15 @@ export function WorkoutLogForm({
   const [newExerciseName, setNewExerciseName] = useState("");
   const [stepError, setStepError] = useState<string | null>(null);
   const [focusAfterExpand, setFocusAfterExpand] = useState(false);
+  const [circuitMode, setCircuitMode] = useState(() => draftHasRounds(initialExercises));
+  const initialCursor = useMemo(() => findCircuitCursor(initialExercises), [initialExercises]);
+  const [circuitStationIndex, setCircuitStationIndex] = useState(initialCursor.stationIndex);
+  const [circuitRound, setCircuitRound] = useState(initialCursor.round);
+  const [pendingSet, setPendingSet] = useState(() => {
+    const station = initialExercises[initialCursor.stationIndex];
+    return station ? prefillForStation(station, initialCursor.round) : metricsFromSet(undefined);
+  });
+  const circuitFocusRef = useRef<HTMLInputElement | null>(null);
 
   const recentAvailable = useMemo(() => {
     const used = new Set(draftExercises.map((item) => item.exerciseId).filter(Boolean));
@@ -344,18 +399,20 @@ export function WorkoutLogForm({
     firstSet?: DraftSet,
   ) {
     const id = newClientId();
-    setDraftExercises((prev) => [
-      ...prev,
-      {
-        id,
-        exerciseId: exercise.exerciseId,
-        key: exercise.key,
-        name: exercise.name,
-        sets: [firstSet ?? emptySet(newClientId())],
-      },
-    ]);
+    const next: DraftExercise = {
+      id,
+      exerciseId: exercise.exerciseId,
+      key: exercise.key,
+      name: exercise.name,
+      sets: [firstSet ?? emptySet(newClientId())],
+    };
+    setDraftExercises((prev) => [...prev, next]);
     setAddingExercise(false);
     setNewExerciseName("");
+    if (circuitMode) {
+      setStepError(null);
+      return;
+    }
     expandExercise(id, true);
   }
 
@@ -398,9 +455,10 @@ export function WorkoutLogForm({
       prev.map((item) => {
         if (item.id !== exerciseLocalId) return item;
         const last = item.sets[item.sets.length - 1];
+        // Straight-set adds stay without round numbers.
         return {
           ...item,
-          sets: [...item.sets, last ? copySet(last) : emptySet(newClientId())],
+          sets: [...item.sets, last ? copySet(last, null) : emptySet(newClientId(), null)],
         };
       }),
     );
@@ -432,6 +490,93 @@ export function WorkoutLogForm({
       }),
     );
   }
+
+  function moveCircuitCursor(
+    nextExercises: DraftExercise[],
+    stationIndex: number,
+    round: number,
+  ) {
+    const nextStation =
+      stationIndex + 1 < nextExercises.length
+        ? { stationIndex: stationIndex + 1, round }
+        : { stationIndex: 0, round: round + 1 };
+    const station = nextExercises[nextStation.stationIndex];
+    setCircuitStationIndex(nextStation.stationIndex);
+    setCircuitRound(nextStation.round);
+    setPendingSet(station ? prefillForStation(station, nextStation.round) : metricsFromSet(undefined));
+    window.setTimeout(() => circuitFocusRef.current?.focus(), 50);
+  }
+
+  function enterCircuitMode() {
+    const cursor = findCircuitCursor(draftExercises);
+    setCircuitMode(true);
+    setExpandedExerciseId(null);
+    setCircuitStationIndex(cursor.stationIndex);
+    setCircuitRound(cursor.round);
+    const station = draftExercises[cursor.stationIndex];
+    setPendingSet(station ? prefillForStation(station, cursor.round) : metricsFromSet(undefined));
+    setStepError(null);
+    window.setTimeout(() => circuitFocusRef.current?.focus(), 50);
+  }
+
+  function leaveCircuitMode() {
+    setCircuitMode(false);
+    setStepError(null);
+  }
+
+  function logCircuitSetAndNext() {
+    const station = draftExercises[circuitStationIndex];
+    if (!station) {
+      setStepError("Add stations before logging the circuit.");
+      return;
+    }
+    const draftSet: DraftSet = {
+      id: newClientId(),
+      ...pendingSet,
+      roundNumber: circuitRound,
+    };
+    if (!setHasValue(draftSet)) {
+      setStepError("Enter at least one metric for this station.");
+      return;
+    }
+
+    const nextExercises = draftExercises.map((item, index) => {
+      if (index !== circuitStationIndex) return item;
+      const existingIndex = item.sets.findIndex((set) => set.roundNumber === circuitRound);
+      if (existingIndex >= 0) {
+        return {
+          ...item,
+          sets: item.sets.map((set, setIndex) =>
+            setIndex === existingIndex
+              ? { ...set, ...pendingSet, roundNumber: circuitRound }
+              : set,
+          ),
+        };
+      }
+      // Drop a single empty placeholder set when starting circuit logging.
+      const baseSets =
+        item.sets.length === 1 && !setHasValue(item.sets[0]) && item.sets[0].roundNumber == null
+          ? []
+          : item.sets;
+      return { ...item, sets: [...baseSets, draftSet] };
+    });
+
+    setDraftExercises(nextExercises);
+    setStepError(null);
+    moveCircuitCursor(nextExercises, circuitStationIndex, circuitRound);
+  }
+
+  function skipCircuitStation() {
+    setStepError(null);
+    moveCircuitCursor(draftExercises, circuitStationIndex, circuitRound);
+  }
+
+  const activeStation = draftExercises[circuitStationIndex] ?? null;
+  const activeStationMetrics = metricsForExerciseKey(activeStation?.key);
+  const maxCircuitRound = draftExercises.reduce((max, ex) => {
+    const local = ex.sets.reduce((m, set) => Math.max(m, set.roundNumber ?? 0), 0);
+    return Math.max(max, local);
+  }, 0);
 
   function openFinish() {
     if (energyBefore == null) {
@@ -520,14 +665,29 @@ export function WorkoutLogForm({
           </div>
 
           <div className="space-y-3">
-            <div>
-              <h2 className="text-base font-semibold">What are you doing?</h2>
-              <p className="text-sm text-muted-foreground">
-                Expand an exercise to log sets. Finish when you are done.
-              </p>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold">
+                  {circuitMode ? "Circuit" : "What are you doing?"}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  {circuitMode
+                    ? "Log one station, then advance to the next. Round numbers are saved on each set."
+                    : "Expand an exercise to log sets. Or log as a circuit to rotate stations."}
+                </p>
+              </div>
+              {circuitMode ? (
+                <Button onClick={leaveCircuitMode} size="sm" type="button" variant="ghost">
+                  End circuit
+                </Button>
+              ) : (
+                <Button onClick={enterCircuitMode} size="sm" type="button" variant="outline">
+                  Log as circuit
+                </Button>
+              )}
             </div>
 
-            {recentAvailable.length > 0 ? (
+            {recentAvailable.length > 0 && !circuitMode ? (
               <div className="space-y-2">
                 <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Recent
@@ -548,7 +708,156 @@ export function WorkoutLogForm({
               </div>
             ) : null}
 
-            {draftExercises.length === 0 ? (
+            {circuitMode ? (
+              <div className="space-y-4">
+                {draftExercises.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
+                    Add stations to start the circuit.
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-3">
+                      <div className="flex flex-wrap gap-2">
+                        {draftExercises.map((item, index) => {
+                          const doneThisRound = item.sets.some(
+                            (set) => set.roundNumber === circuitRound && setHasValue(set),
+                          );
+                          const active = index === circuitStationIndex;
+                          return (
+                            <button
+                              className={cn(
+                                "rounded-full border px-3 py-1.5 text-sm font-medium transition",
+                                active
+                                  ? "border-primary bg-primary-soft text-primary"
+                                  : doneThisRound
+                                    ? "border-border bg-muted/60 text-muted-foreground"
+                                    : "border-border bg-card text-foreground",
+                              )}
+                              key={item.id}
+                              onClick={() => {
+                                setCircuitStationIndex(index);
+                                setPendingSet(prefillForStation(item, circuitRound));
+                                window.setTimeout(() => circuitFocusRef.current?.focus(), 50);
+                              }}
+                              type="button"
+                            >
+                              {index + 1}. {item.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                        {draftExercises.map((item) => {
+                          const rounds = item.sets
+                            .filter((set) => set.roundNumber != null && setHasValue(set))
+                            .sort((a, b) => (a.roundNumber ?? 0) - (b.roundNumber ?? 0));
+                          return (
+                            <li className="px-4 py-3" key={item.id}>
+                              <p className="font-medium tracking-tight">{item.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {rounds.length === 0
+                                  ? "No rounds yet"
+                                  : rounds
+                                      .map(
+                                        (set) =>
+                                          `R${set.roundNumber}: ${formatSetDetails(set) || "—"}`,
+                                      )
+                                      .join(" · ")}
+                              </p>
+                            </li>
+                          );
+                        })}
+                      </ul>
+
+                      <Button
+                        onClick={() => {
+                          setAddingExercise(true);
+                          setNewExerciseName("");
+                          setStepError(null);
+                        }}
+                        type="button"
+                        variant="secondary"
+                      >
+                        <Plus size={16} strokeWidth={1.75} />
+                        Add station
+                      </Button>
+                    </div>
+
+                    {activeStation ? (
+                      <div className="space-y-4 rounded-2xl border border-border bg-card p-4 shadow-soft">
+                        <div>
+                          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                            Round {circuitRound}
+                            {maxCircuitRound > 0 ? ` · ${maxCircuitRound} logged` : ""}
+                          </p>
+                          <h3 className="text-lg font-semibold tracking-tight">
+                            {activeStation.name}
+                          </h3>
+                        </div>
+                        <div
+                          className={cn(
+                            "grid gap-2",
+                            activeStationMetrics.length === 1
+                              ? "grid-cols-1"
+                              : activeStationMetrics.length === 2
+                                ? "grid-cols-2"
+                                : "grid-cols-3",
+                          )}
+                        >
+                          {activeStationMetrics.map((metric, metricIndex) => (
+                            <div className="space-y-1" key={metric}>
+                              <Label className="text-xs">{metricLabel(metric)}</Label>
+                              <Input
+                                inputMode={metricInputMode(metric)}
+                                onChange={(e) =>
+                                  setPendingSet((prev) => ({ ...prev, [metric]: e.target.value }))
+                                }
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    logCircuitSetAndNext();
+                                  }
+                                }}
+                                ref={metricIndex === 0 ? circuitFocusRef : undefined}
+                                value={pendingSet[metric] ?? ""}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            className="btn-primary-gradient flex-1"
+                            onClick={logCircuitSetAndNext}
+                            type="button"
+                          >
+                            Log & next
+                          </Button>
+                          <Button onClick={skipCircuitStation} type="button" variant="outline">
+                            Skip
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </>
+                )}
+
+                {draftExercises.length === 0 ? (
+                  <Button
+                    onClick={() => {
+                      setAddingExercise(true);
+                      setNewExerciseName("");
+                      setStepError(null);
+                    }}
+                    type="button"
+                    variant="secondary"
+                  >
+                    <Plus size={16} strokeWidth={1.75} />
+                    Add station
+                  </Button>
+                ) : null}
+              </div>
+            ) : draftExercises.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-border px-4 py-6 text-sm text-muted-foreground">
                 No exercises yet. Add one to get started.
               </div>
@@ -593,7 +902,9 @@ export function WorkoutLogForm({
                                   <div className="mb-3 flex items-center justify-between gap-2">
                                     <div>
                                       <p className="text-sm font-medium text-muted-foreground">
-                                        Set {index + 1}
+                                        {set.roundNumber != null
+                                          ? `Round ${set.roundNumber}`
+                                          : `Set ${index + 1}`}
                                       </p>
                                       {setSummary ? (
                                         <p className="text-xs text-muted-foreground">
@@ -666,18 +977,20 @@ export function WorkoutLogForm({
               </ul>
             )}
 
-            <Button
-              onClick={() => {
-                setAddingExercise(true);
-                setNewExerciseName("");
-                setStepError(null);
-              }}
-              type="button"
-              variant="secondary"
-            >
-              <Plus size={16} strokeWidth={1.75} />
-              Add exercise
-            </Button>
+            {!circuitMode ? (
+              <Button
+                onClick={() => {
+                  setAddingExercise(true);
+                  setNewExerciseName("");
+                  setStepError(null);
+                }}
+                type="button"
+                variant="secondary"
+              >
+                <Plus size={16} strokeWidth={1.75} />
+                Add exercise
+              </Button>
+            ) : null}
 
             <div className="space-y-2">
               <Label htmlFor="durationMinutes">Duration (minutes, optional)</Label>
@@ -775,7 +1088,7 @@ export function WorkoutLogForm({
             setNewExerciseName("");
           }}
           open={addingExercise}
-          title="Add exercise"
+          title={circuitMode ? "Add station" : "Add exercise"}
         >
           <div className="space-y-5">
             <div className="space-y-2">

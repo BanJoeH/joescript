@@ -39,6 +39,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
           weightKg: set.weightKg,
           durationSeconds: set.durationSeconds,
           distanceM: set.distanceM,
+          roundNumber: set.roundNumber,
         })),
       })),
     },

@@ -6,7 +6,7 @@ import { EnergyChangeBadge } from "~/components/energy-change";
 import { LandscapeHero } from "~/components/landscape-hero";
 import { Button } from "~/components/ui/button";
 import { formatDateTime } from "~/lib/dates";
-import { formatExerciseSetsSummary } from "~/lib/exercise-format";
+import { formatExerciseSetsSummary, groupWorkoutByRounds } from "~/lib/exercise-format";
 import { getString } from "~/lib/forms.server";
 import { cn } from "~/lib/utils";
 import { requireMomentumService } from "~/services";
@@ -87,6 +87,15 @@ export default function WorkoutDetailPage() {
   const setCount = workout.exercises.reduce((sum, e) => sum + e.sets.length, 0);
   const duration = formatDuration(workout.durationSeconds);
   const canRepeat = workout.status === "completed";
+  const rounds = groupWorkoutByRounds(workout.exercises);
+  const roundCount = rounds?.length ?? 0;
+  const metaParts = [
+    duration,
+    rounds
+      ? `${roundCount} round${roundCount === 1 ? "" : "s"}`
+      : `${setCount} sets`,
+    `${workout.exercises.length} exercises`,
+  ].filter(Boolean);
 
   return (
     <div className="space-y-6">
@@ -106,9 +115,7 @@ export default function WorkoutDetailPage() {
           <p className="text-sm text-muted-foreground">
             {workout.completedAt ? formatDateTime(workout.completedAt, timeZone) : "Recently"}
           </p>
-          <p className="text-sm text-muted-foreground">
-            {duration} · {setCount} sets · {workout.exercises.length} exercises
-          </p>
+          <p className="text-sm text-muted-foreground">{metaParts.join(" · ")}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button asChild size="sm" variant="outline">
@@ -174,20 +181,47 @@ export default function WorkoutDetailPage() {
           </div>
         </section>
       </div>
-      <section className="space-y-3">
-        <h2 className="mb-2 text-md font-extrabold ">Exercises</h2>
-        <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-          {workout.exercises.map((item) => (
-            <li className="px-4 py-3.5" key={item.id}>
-              <h3 className="font-semibold">{item.exerciseName}</h3>
-              {item.notes ? <p className="text-sm text-muted-foreground">{item.notes}</p> : null}
-              <p className="mt-2 text-sm text-muted-foreground">
-                {formatExerciseSetsSummary(item.sets)}
-              </p>
-            </li>
-          ))}
-        </ul>
-      </section>
+
+      {rounds ? (
+        <section className="space-y-3">
+          <h2 className="mb-2 text-md font-extrabold ">Rounds</h2>
+          <ul className="space-y-3">
+            {rounds.map((group) => (
+              <li
+                className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft"
+                key={group.round}
+              >
+                <div className="border-b border-border px-4 py-2.5">
+                  <h3 className="font-semibold tracking-tight">Round {group.round}</h3>
+                </div>
+                <ul className="divide-y divide-border">
+                  {group.stations.map((station) => (
+                    <li className="flex items-baseline justify-between gap-3 px-4 py-3" key={station.name}>
+                      <span className="font-medium">{station.name}</span>
+                      <span className="text-sm text-muted-foreground">{station.details}</span>
+                    </li>
+                  ))}
+                </ul>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <section className="space-y-3">
+          <h2 className="mb-2 text-md font-extrabold ">Exercises</h2>
+          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+            {workout.exercises.map((item) => (
+              <li className="px-4 py-3.5" key={item.id}>
+                <h3 className="font-semibold">{item.exerciseName}</h3>
+                {item.notes ? <p className="text-sm text-muted-foreground">{item.notes}</p> : null}
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {formatExerciseSetsSummary(item.sets)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

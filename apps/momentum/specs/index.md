@@ -414,6 +414,7 @@ Supports
 * duration_seconds
 * distance_m
 * reps_in_reserve
+* round_number (circuit round; null for straight sets)
 * notes
 
 Not every field is used.
