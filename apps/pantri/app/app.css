@@ -1,0 +1,182 @@
+@import "tailwindcss" source(".");
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --breakpoint-xs: 30rem;
+  --font-sans:
+    "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-muted-olive-50: #f2f6ee;
+  --color-muted-olive-100: #e5eedd;
+  --color-muted-olive-200: #cbddbb;
+  --color-muted-olive-300: #b1cc99;
+  --color-muted-olive-400: #97bb77;
+  --color-muted-olive-500: #7daa55;
+  --color-muted-olive-600: #648844;
+  --color-muted-olive-700: #4b6633;
+  --color-muted-olive-800: #324422;
+  --color-muted-olive-900: #192211;
+  --color-muted-olive-950: #11180c;
+
+  --color-light-gold-50: #fdf9e8;
+  --color-light-gold-100: #fbf4d0;
+  --color-light-gold-200: #f6e8a2;
+  --color-light-gold-300: #f2dd73;
+  --color-light-gold-400: #eed144;
+  --color-light-gold-500: #e9c616;
+  --color-light-gold-600: #bb9e11;
+  --color-light-gold-700: #8c770d;
+  --color-light-gold-800: #5d4f09;
+  --color-light-gold-900: #2f2804;
+  --color-light-gold-950: #211c03;
+
+  --color-sandy-brown-50: #fdf2e7;
+  --color-sandy-brown-100: #fce4cf;
+  --color-sandy-brown-200: #f9c99f;
+  --color-sandy-brown-300: #f6ae6f;
+  --color-sandy-brown-400: #f3933f;
+  --color-sandy-brown-500: #f0780f;
+  --color-sandy-brown-600: #c0600c;
+  --color-sandy-brown-700: #904809;
+  --color-sandy-brown-800: #603006;
+  --color-sandy-brown-900: #301803;
+  --color-sandy-brown-950: #221102;
+
+  --color-jungle-teal-50: #eff5f3;
+  --color-jungle-teal-100: #e0ebe7;
+  --color-jungle-teal-200: #c1d7d0;
+  --color-jungle-teal-300: #a2c3b8;
+  --color-jungle-teal-400: #83afa0;
+  --color-jungle-teal-500: #639c89;
+  --color-jungle-teal-600: #507c6d;
+  --color-jungle-teal-700: #3c5d52;
+  --color-jungle-teal-800: #283e37;
+  --color-jungle-teal-900: #141f1b;
+  --color-jungle-teal-950: #0e1613;
+
+  --color-blushed-brick-50: #f8eced;
+  --color-blushed-brick-100: #f1dadb;
+  --color-blushed-brick-200: #e3b5b7;
+  --color-blushed-brick-300: #d68f93;
+  --color-blushed-brick-400: #c86a6f;
+  --color-blushed-brick-500: #ba454b;
+  --color-blushed-brick-600: #95373c;
+  --color-blushed-brick-700: #70292d;
+  --color-blushed-brick-800: #4a1c1e;
+  --color-blushed-brick-900: #250e0f;
+  --color-blushed-brick-950: #1a0a0a;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: var(--color-light-gold-50);
+  --foreground: var(--color-jungle-teal-900);
+  --card: var(--color-light-gold-50);
+  --card-foreground: var(--color-jungle-teal-900);
+  --popover: var(--color-light-gold-50);
+  --popover-foreground: var(--color-jungle-teal-900);
+  --primary: var(--color-jungle-teal-600);
+  --primary-foreground: var(--color-light-gold-50);
+  --secondary: var(--color-sandy-brown-100);
+  --secondary-foreground: var(--color-sandy-brown-800);
+  --muted: var(--color-muted-olive-50);
+  --muted-foreground: var(--color-jungle-teal-700);
+  --accent: var(--color-sandy-brown-100);
+  --accent-foreground: var(--color-jungle-teal-900);
+  --destructive: var(--color-blushed-brick-600);
+  --border: var(--color-muted-olive-200);
+  --input: var(--color-muted-olive-200);
+  --ring: var(--color-jungle-teal-500);
+}
+
+.dark {
+  --background: var(--color-jungle-teal-950);
+  --foreground: var(--color-light-gold-100);
+  --card: var(--color-jungle-teal-900);
+  --card-foreground: var(--color-light-gold-100);
+  --popover: var(--color-jungle-teal-900);
+  --popover-foreground: var(--color-light-gold-100);
+  --primary: var(--color-jungle-teal-400);
+  --primary-foreground: var(--color-jungle-teal-950);
+  --secondary: var(--color-jungle-teal-800);
+  --secondary-foreground: var(--color-light-gold-100);
+  --muted: var(--color-jungle-teal-800);
+  --muted-foreground: var(--color-muted-olive-300);
+  --accent: var(--color-jungle-teal-800);
+  --accent-foreground: var(--color-light-gold-100);
+  --destructive: var(--color-blushed-brick-400);
+  --border: var(--color-jungle-teal-700);
+  --input: var(--color-jungle-teal-700);
+  --ring: var(--color-muted-olive-500);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+
+  dialog {
+    color: var(--foreground);
+    background-color: var(--popover);
+  }
+
+  dialog::backdrop {
+    background-color: rgb(0 0 0 / 0.5);
+  }
+
+  dialog[data-motion="enter"]::backdrop {
+    animation: settings-backdrop-in 300ms ease both;
+  }
+
+  dialog[data-motion="exit"]::backdrop {
+    animation: settings-backdrop-out 200ms ease both;
+  }
+
+  @keyframes settings-backdrop-in {
+    from {
+      background-color: rgb(0 0 0 / 0);
+    }
+    to {
+      background-color: rgb(0 0 0 / 0.5);
+    }
+  }
+
+  @keyframes settings-backdrop-out {
+    from {
+      background-color: rgb(0 0 0 / 0.5);
+    }
+    to {
+      background-color: rgb(0 0 0 / 0);
+    }
+  }
+}
