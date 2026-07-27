@@ -91,9 +91,7 @@ export default function WorkoutDetailPage() {
   const roundCount = rounds?.length ?? 0;
   const metaParts = [
     duration,
-    rounds
-      ? `${roundCount} round${roundCount === 1 ? "" : "s"}`
-      : `${setCount} sets`,
+    rounds ? `${roundCount} round${roundCount === 1 ? "" : "s"}` : `${setCount} sets`,
     `${workout.exercises.length} exercises`,
   ].filter(Boolean);
 
@@ -196,7 +194,10 @@ export default function WorkoutDetailPage() {
                 </div>
                 <ul className="divide-y divide-border">
                   {group.stations.map((station) => (
-                    <li className="flex items-baseline justify-between gap-3 px-4 py-3" key={station.name}>
+                    <li
+                      className="flex items-baseline justify-between gap-3 px-4 py-3"
+                      key={station.name}
+                    >
                       <span className="font-medium">{station.name}</span>
                       <span className="text-sm text-muted-foreground">{station.details}</span>
                     </li>

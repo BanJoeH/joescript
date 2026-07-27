@@ -44,9 +44,7 @@ export function formatExerciseSetsSummary(sets: SetMetrics[]) {
 
   const withRounds = valued.filter((set) => set.roundNumber != null);
   if (withRounds.length > 0) {
-    const sorted = [...withRounds].sort(
-      (a, b) => (a.roundNumber ?? 0) - (b.roundNumber ?? 0),
-    );
+    const sorted = [...withRounds].sort((a, b) => (a.roundNumber ?? 0) - (b.roundNumber ?? 0));
     const countLabel = `${sorted.length} round${sorted.length === 1 ? "" : "s"}`;
     return `${countLabel} · ${sorted
       .map((set) => `R${set.roundNumber}: ${formatSetDetails(set) || "—"}`)
