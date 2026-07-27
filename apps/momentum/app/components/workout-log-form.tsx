@@ -133,7 +133,10 @@ function copySet(set: DraftSet, roundNumber?: number | null): DraftSet {
   };
 }
 
-function setFromTemplate(lastSet: RecentExerciseChip["lastSet"], roundNumber?: number | null): DraftSet {
+function setFromTemplate(
+  lastSet: RecentExerciseChip["lastSet"],
+  roundNumber?: number | null,
+): DraftSet {
   return {
     id: newClientId(),
     reps: lastSet.reps?.toString() ?? "",
@@ -165,10 +168,9 @@ function findCircuitCursor(exercises: DraftExercise[]) {
   return { stationIndex: 0, round: 1 };
 }
 
-function metricsFromSet(set: DraftSet | undefined): Pick<
-  DraftSet,
-  "reps" | "weightKg" | "durationSeconds" | "distanceM"
-> {
+function metricsFromSet(
+  set: DraftSet | undefined,
+): Pick<DraftSet, "reps" | "weightKg" | "durationSeconds" | "distanceM"> {
   return {
     reps: set?.reps ?? "",
     weightKg: set?.weightKg ?? "",
@@ -491,11 +493,7 @@ export function WorkoutLogForm({
     );
   }
 
-  function moveCircuitCursor(
-    nextExercises: DraftExercise[],
-    stationIndex: number,
-    round: number,
-  ) {
+  function moveCircuitCursor(nextExercises: DraftExercise[], stationIndex: number, round: number) {
     const nextStation =
       stationIndex + 1 < nextExercises.length
         ? { stationIndex: stationIndex + 1, round }
@@ -503,7 +501,9 @@ export function WorkoutLogForm({
     const station = nextExercises[nextStation.stationIndex];
     setCircuitStationIndex(nextStation.stationIndex);
     setCircuitRound(nextStation.round);
-    setPendingSet(station ? prefillForStation(station, nextStation.round) : metricsFromSet(undefined));
+    setPendingSet(
+      station ? prefillForStation(station, nextStation.round) : metricsFromSet(undefined),
+    );
     window.setTimeout(() => circuitFocusRef.current?.focus(), 50);
   }
 
@@ -547,9 +547,7 @@ export function WorkoutLogForm({
         return {
           ...item,
           sets: item.sets.map((set, setIndex) =>
-            setIndex === existingIndex
-              ? { ...set, ...pendingSet, roundNumber: circuitRound }
-              : set,
+            setIndex === existingIndex ? { ...set, ...pendingSet, roundNumber: circuitRound } : set,
           ),
         };
       }

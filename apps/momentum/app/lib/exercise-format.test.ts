@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  formatExerciseSetsSummary,
-  groupWorkoutByRounds,
-} from "~/lib/exercise-format";
+import { formatExerciseSetsSummary, groupWorkoutByRounds } from "~/lib/exercise-format";
 
 describe("formatExerciseSetsSummary", () => {
   it("summarises straight sets", () => {
@@ -28,9 +25,7 @@ describe("formatExerciseSetsSummary", () => {
 describe("groupWorkoutByRounds", () => {
   it("returns null when no round numbers", () => {
     expect(
-      groupWorkoutByRounds([
-        { exerciseName: "Squat", sets: [{ reps: 5, weightKg: 80 }] },
-      ]),
+      groupWorkoutByRounds([{ exerciseName: "Squat", sets: [{ reps: 5, weightKg: 80 }] }]),
     ).toBeNull();
   });
 
