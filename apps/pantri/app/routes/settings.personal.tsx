@@ -1,7 +1,7 @@
 import { Form } from "react-router";
 
 import { Link } from "~/components/link";
-import { ThemeToggle } from "~/components/theme-toggle";
+import { PageHeader } from "~/components/page-header";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
 import { getPantriEnv } from "~/lib/context.server";
@@ -32,18 +32,17 @@ export default function PersonalSettings({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-sm text-muted-foreground">
-          <Link className="hover:underline" to={pantryPath(pantryId, "shopping")}>
-            Pantri
-          </Link>{" "}
-          / Personal settings ·{" "}
-          <Link className="hover:underline" to={pantryPath(pantryId, "settings/pantry")}>
-            Pantry settings
-          </Link>
-        </p>
-        <h2 className="text-2xl font-semibold tracking-tight">Personal settings</h2>
-      </div>
+      <PageHeader
+        description={
+          <>
+            Account ·{" "}
+            <Link className="hover:underline" to={pantryPath(pantryId, "settings/pantry")}>
+              Pantry settings
+            </Link>
+          </>
+        }
+        title="Personal settings"
+      />
 
       <Card>
         <CardHeader>
@@ -53,16 +52,6 @@ export default function PersonalSettings({ loaderData }: Route.ComponentProps) {
         <CardContent className="text-sm">
           {user.name ? <p className="font-medium">{user.name}</p> : null}
           <p className="text-muted-foreground">{user.email}</p>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Appearance</CardTitle>
-          <CardDescription>Choose a light, dark, or system theme.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ThemeToggle />
         </CardContent>
       </Card>
 

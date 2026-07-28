@@ -1,42 +1,56 @@
-import { Form } from "react-router";
+import { type ReactNode, useState } from "react";
 
+import { ConfirmSheet } from "~/components/confirm-sheet";
 import { Button } from "~/components/ui/button";
 
 type DeleteFormProps = {
   confirmMessage: string;
+  title?: string;
+  confirmLabel?: string;
   hiddenFields?: Record<string, string>;
   intent?: string;
-  className?: string;
+  action?: string;
+  size?: "default" | "sm" | "lg" | "icon";
+  "aria-label"?: string;
+  children?: ReactNode;
 };
 
 export function DeleteForm({
   confirmMessage,
+  title = "Delete",
+  confirmLabel = "Delete",
   hiddenFields = {},
   intent = "delete",
-  className,
+  action,
+  size = "sm",
+  "aria-label": ariaLabel,
+  children = "Delete",
 }: DeleteFormProps) {
+  const [open, setOpen] = useState(false);
+
   return (
-    <Form
-      className={className}
-      method="post"
-      onSubmit={(event) => {
-        if (!confirm(confirmMessage)) {
-          event.preventDefault();
-        }
-      }}
-    >
-      <input name="intent" type="hidden" value={intent} />
-      {Object.entries(hiddenFields).map(([name, value]) => (
-        <input key={name} name={name} type="hidden" value={value} />
-      ))}
+    <>
       <Button
+        aria-label={ariaLabel}
         className="text-destructive hover:text-destructive"
-        size="sm"
-        type="submit"
+        onClick={() => setOpen(true)}
+        size={size}
+        type="button"
         variant="outline"
       >
-        Delete
+        {children}
       </Button>
-    </Form>
+      <ConfirmSheet
+        action={action}
+        confirmLabel={confirmLabel}
+        description={confirmMessage}
+        destructive
+        hiddenFields={hiddenFields}
+        intent={intent}
+        onOpenChange={setOpen}
+        open={open}
+        title={title}
+      />
+    </>
   );
 }

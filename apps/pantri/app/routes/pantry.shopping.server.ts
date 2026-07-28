@@ -66,6 +66,18 @@ export async function action({ request, params }: Route.ActionArgs) {
       await notify();
       return { ok: true as const };
     }
+
+    if (intent === "clear-recipe-purchased") {
+      await pantri.shopping.clearPurchasedInRecipe(getString(formData, "shoppingRecipeId"));
+      await notify();
+      return { ok: true as const };
+    }
+
+    if (intent === "clear-odd-bits-purchased") {
+      await pantri.oddBits.clearAllPurchased();
+      await notify();
+      return { ok: true as const };
+    }
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Something went wrong." };
   }

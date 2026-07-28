@@ -2,6 +2,7 @@ import { useActionData, useLoaderData } from "react-router";
 
 import { DeleteForm } from "~/components/delete-form";
 import { Link } from "~/components/link";
+import { PageHeader } from "~/components/page-header";
 import { RecipeForm } from "~/components/recipes/recipe-form";
 import { pantryPath } from "~/lib/pantry-path";
 
@@ -21,18 +22,18 @@ export default function EditRecipePage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-sm text-muted-foreground">
+      <PageHeader
+        actions={<DeleteForm confirmMessage={`Delete "${recipe.name}"? This cannot be undone.`} />}
+        description={
+          <>
             <Link className="hover:underline" to={pantryPath(pantryId, "recipes")}>
               Recipes
             </Link>{" "}
             / Edit
-          </p>
-          <h2 className="text-2xl font-semibold tracking-tight">{recipe.name}</h2>
-        </div>
-        <DeleteForm confirmMessage={`Delete "${recipe.name}"? This cannot be undone.`} />
-      </div>
+          </>
+        }
+        title={recipe.name}
+      />
 
       <RecipeForm
         defaultValues={{

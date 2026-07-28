@@ -1,7 +1,8 @@
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
-import { useId, useState } from "react";
+import { type KeyboardEvent, useEffect, useId, useState } from "react";
 import { Form } from "react-router";
 
+import { UnitCombobox } from "~/components/recipes/unit-combobox";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -34,7 +35,12 @@ function nextKey() {
   return `row-${keySeed}`;
 }
 
+function emptyIngredientRow(key = nextKey()): IngredientRow {
+  return { key, name: "", amount: null, unit: null, notes: "" };
+}
+
 function toIngredientRows(ingredients: RecipeIngredient[]): IngredientRow[] {
+  if (ingredients.length === 0) return [emptyIngredientRow()];
   return ingredients.map((ingredient) => ({ ...ingredient, key: nextKey() }));
 }
 
@@ -55,21 +61,51 @@ export function RecipeForm({
     toIngredientRows(defaultValues.ingredients),
   );
   const [steps, setSteps] = useState<StepRow[]>(() => toStepRows(defaultValues.steps));
+  const [focusIngredientKey, setFocusIngredientKey] = useState<string | null>(null);
   const formId = useId();
+
+  useEffect(() => {
+    if (!focusIngredientKey) return;
+    const key = focusIngredientKey;
+    setFocusIngredientKey(null);
+    requestAnimationFrame(() => {
+      const input = document.getElementById(`${formId}-ingredient-${key}-name`);
+      if (input instanceof HTMLInputElement) {
+        input.focus();
+        input.select();
+      }
+    });
+  }, [focusIngredientKey, formId]);
 
   function updateIngredient(key: string, patch: Partial<RecipeIngredient>) {
     setIngredients((rows) => rows.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   }
 
-  function addIngredient() {
-    setIngredients((rows) => [
-      ...rows,
-      { key: nextKey(), name: "", amount: null, unit: null, notes: "" },
-    ]);
+  function addIngredient(afterKey?: string) {
+    const key = nextKey();
+    setIngredients((rows) => {
+      const row = emptyIngredientRow(key);
+      if (!afterKey) return [...rows, row];
+      const index = rows.findIndex((candidate) => candidate.key === afterKey);
+      if (index === -1) return [...rows, row];
+      const next = [...rows];
+      next.splice(index + 1, 0, row);
+      return next;
+    });
+    setFocusIngredientKey(key);
   }
 
   function removeIngredient(key: string) {
-    setIngredients((rows) => rows.filter((row) => row.key !== key));
+    setIngredients((rows) => {
+      const next = rows.filter((row) => row.key !== key);
+      return next.length === 0 ? [emptyIngredientRow()] : next;
+    });
+  }
+
+  function onIngredientKeyDown(event: KeyboardEvent<HTMLInputElement>, key: string) {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    addIngredient(key);
   }
 
   function updateStep(key: string, text: string) {
@@ -157,61 +193,58 @@ export function RecipeForm({
           <CardTitle>Ingredients</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {ingredients.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No ingredients yet.</p>
-          ) : (
-            <div className="space-y-2">
-              {ingredients.map((row) => (
-                <div
-                  className="grid grid-cols-[4.5rem_4.5rem_1fr_auto] gap-2 sm:grid-cols-[5rem_5rem_1fr_1fr_auto]"
-                  key={row.key}
+          <div className="space-y-2">
+            {ingredients.map((row) => (
+              <div
+                className="grid grid-cols-[4.5rem_4.5rem_1fr_auto] gap-2 sm:grid-cols-[5rem_5rem_1fr_1fr_auto]"
+                key={row.key}
+              >
+                <Input
+                  aria-label="Amount"
+                  inputMode="decimal"
+                  onChange={(event) =>
+                    updateIngredient(row.key, {
+                      amount: event.target.value === "" ? null : Number(event.target.value),
+                    })
+                  }
+                  onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
+                  placeholder="Amt"
+                  value={row.amount ?? ""}
+                />
+                <UnitCombobox
+                  onChange={(next) => updateIngredient(row.key, { unit: next || null })}
+                  onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
+                  value={row.unit ?? ""}
+                />
+                <Input
+                  aria-label="Ingredient name"
+                  id={`${formId}-ingredient-${row.key}-name`}
+                  onChange={(event) => updateIngredient(row.key, { name: event.target.value })}
+                  onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
+                  placeholder="Ingredient"
+                  value={row.name}
+                />
+                <Input
+                  aria-label="Notes"
+                  className="hidden sm:block"
+                  onChange={(event) => updateIngredient(row.key, { notes: event.target.value })}
+                  onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
+                  placeholder="Notes (optional)"
+                  value={row.notes ?? ""}
+                />
+                <Button
+                  aria-label="Remove ingredient"
+                  onClick={() => removeIngredient(row.key)}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
                 >
-                  <Input
-                    aria-label="Amount"
-                    inputMode="decimal"
-                    onChange={(event) =>
-                      updateIngredient(row.key, {
-                        amount: event.target.value === "" ? null : Number(event.target.value),
-                      })
-                    }
-                    placeholder="Amt"
-                    value={row.amount ?? ""}
-                  />
-                  <Input
-                    aria-label="Unit"
-                    onChange={(event) =>
-                      updateIngredient(row.key, { unit: event.target.value || null })
-                    }
-                    placeholder="Unit"
-                    value={row.unit ?? ""}
-                  />
-                  <Input
-                    aria-label="Ingredient name"
-                    onChange={(event) => updateIngredient(row.key, { name: event.target.value })}
-                    placeholder="Ingredient"
-                    value={row.name}
-                  />
-                  <Input
-                    aria-label="Notes"
-                    className="hidden sm:block"
-                    onChange={(event) => updateIngredient(row.key, { notes: event.target.value })}
-                    placeholder="Notes (optional)"
-                    value={row.notes ?? ""}
-                  />
-                  <Button
-                    aria-label="Remove ingredient"
-                    onClick={() => removeIngredient(row.key)}
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-          <Button onClick={addIngredient} size="sm" type="button" variant="outline">
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+          <Button onClick={() => addIngredient()} size="sm" type="button" variant="outline">
             <Plus className="size-4" /> Add ingredient
           </Button>
         </CardContent>

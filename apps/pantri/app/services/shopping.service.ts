@@ -169,6 +169,42 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
 
       return true;
     },
+
+    async clearPurchasedInRecipe(shoppingRecipeId: string): Promise<boolean> {
+      const record = await this.get(shoppingRecipeId);
+      if (!record) return false;
+      if (!record.ingredients.some((ingredient) => ingredient.purchased)) return false;
+
+      const ingredients = record.ingredients.map((ingredient) =>
+        ingredient.purchased ? { ...ingredient, purchased: false } : ingredient,
+      );
+
+      await db
+        .update(shoppingRecipes)
+        .set({ ingredients: serializeShoppingIngredients(ingredients), updatedAt: new Date() })
+        .where(eq(shoppingRecipes.id, shoppingRecipeId));
+
+      return true;
+    },
+
+    async clearAllPurchased(): Promise<boolean> {
+      const rows = await this.list();
+      let changed = false;
+
+      for (const row of rows) {
+        if (!row.ingredients.some((ingredient) => ingredient.purchased)) continue;
+        changed = true;
+        const ingredients = row.ingredients.map((ingredient) =>
+          ingredient.purchased ? { ...ingredient, purchased: false } : ingredient,
+        );
+        await db
+          .update(shoppingRecipes)
+          .set({ ingredients: serializeShoppingIngredients(ingredients), updatedAt: new Date() })
+          .where(eq(shoppingRecipes.id, row.id));
+      }
+
+      return changed;
+    },
   };
 }
 

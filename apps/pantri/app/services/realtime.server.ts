@@ -33,11 +33,15 @@ export async function notifyPantryChange({
   try {
     const id = env.PANTRY_HUB.idFromName(pantryId);
     const stub = env.PANTRY_HUB.get(id);
-    await stub.fetch("https://pantry-hub/broadcast", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ revision, actorId: actorId ?? null }),
-    });
+    // Cap wait so a stuck DO/SSE path can't leave the mutation POST pending.
+    await Promise.race([
+      stub.fetch("https://pantry-hub/broadcast", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ revision, actorId: actorId ?? null }),
+      }),
+      new Promise<void>((resolve) => setTimeout(resolve, 1500)),
+    ]);
   } catch {
     // Best effort: a broadcast failure (missing binding in local/test envs,
     // transient DO error) should never fail the underlying mutation.

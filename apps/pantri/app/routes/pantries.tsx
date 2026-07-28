@@ -1,6 +1,7 @@
 import { Star } from "lucide-react";
 import { Form, useActionData, useLoaderData } from "react-router";
 import { Link } from "~/components/link";
+import { PageHeader } from "~/components/page-header";
 
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -23,12 +24,10 @@ export default function PantriesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h2 className="text-2xl font-semibold tracking-tight">Pantries</h2>
-        <p className="text-sm text-muted-foreground">
-          Choose a pantry to open, set a favourite for quick access, or create a new one.
-        </p>
-      </div>
+      <PageHeader
+        description="Choose a pantry to open, set a favourite for quick access, or create a new one."
+        title="Pantries"
+      />
 
       {actionData?.error ? (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">

@@ -19,7 +19,7 @@ jobs:
   deploy-dev:
     if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
-    environment: dev
+    environment: garden-dev
     defaults:
       run:
         working-directory: apps/garden
@@ -57,7 +57,7 @@ jobs:
   deploy-prod:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: production
+    environment: garden-production
     defaults:
       run:
         working-directory: apps/garden

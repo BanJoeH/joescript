@@ -8,7 +8,14 @@ import { requirePantriService } from "~/services";
 import type { Route } from "./+types/pantry.settings";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const { pantri, pantryId } = await requirePantriService(request, getPantriEnv(), params.pantryId);
+  const { pantri, session, pantryId } = await requirePantriService(
+    request,
+    getPantriEnv(),
+    params.pantryId,
+  );
+  const url = new URL(request.url);
+  const invitedEmail = url.searchParams.get("invited");
+  const invitedStatus = url.searchParams.get("status");
   const [pantry, members] = await Promise.all([
     pantri.pantries.get(pantryId),
     pantri.pantries.listMembers(pantryId),
@@ -18,7 +25,16 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     throw new Response("Pantry not found", { status: 404 });
   }
 
-  return { pantry, members, pantryId };
+  return {
+    pantry,
+    members,
+    pantryId,
+    currentUserId: session.user.id,
+    inviteFlash:
+      invitedEmail && (invitedStatus === "pending" || invitedStatus === "joined")
+        ? { email: invitedEmail, status: invitedStatus }
+        : null,
+  };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -43,18 +59,25 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (intent === "add-member") {
     try {
-      await pantri.pantries.addMember(pantryId, {
+      const result = await pantri.pantries.addMember(pantryId, {
         email: getString(formData, "email"),
       });
+      const search = new URLSearchParams({
+        invited: result.email,
+        status: result.status,
+      });
+      throw redirect(`${pantryPath(pantryId, "settings/pantry")}?${search}`);
     } catch (error) {
+      if (error instanceof Response) {
+        throw error;
+      }
       return {
         error: error instanceof Error ? error.message : "Could not add member.",
       };
     }
-    throw redirect(pantryPath(pantryId, "settings/pantry"));
   }
 
-  if (intent === "remove-member") {
+  if (intent === "remove-member" || intent === "cancel-invite") {
     const membershipId = getString(formData, "membershipId");
     try {
       const members = await pantri.pantries.listMembers(pantryId);
@@ -75,6 +98,10 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   if (intent === "delete") {
+    const confirm = getString(formData, "confirm");
+    if (confirm !== "DELETE") {
+      return { error: "Type DELETE to confirm pantry deletion." };
+    }
     try {
       const deleted = await pantri.pantries.remove(pantryId);
       if (!deleted) {

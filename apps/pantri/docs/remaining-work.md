@@ -55,7 +55,7 @@ Mirror garden’s domain notes in [`apps/garden/docs/domains.md`](../garden/docs
 - [ ] Put URLs + tokens into:
   - [ ] `apps/pantri/.env.migrate.dev` / `.env.migrate.prod`
   - [ ] Worker secrets (see §D)
-  - [ ] GitHub Actions environment secrets (see §E) — **separate values** for `dev` vs `production` environments
+  - [ ] GitHub Actions environment secrets (see §E) — `pantri-dev` vs `pantri-production`
 - [ ] Run migrations against remote:
   - [ ] `pnpm --filter @joescript/pantri db:migrate` (dev)
   - [ ] `pnpm --filter @joescript/pantri db:migrate:prod` (when ready)
@@ -134,9 +134,9 @@ Set secrets on `pantri-dev` and `pantri-prod` (dashboard or `wrangler secret put
 
 - [ ] Review + commit `apps/pantri` (+ root `dev:pantri`, `deploy-pantri.yml`, lockfile) in joescript
 - [ ] Push to `dev` → workflow [`.github/workflows/deploy-pantri.yml`](../../.github/workflows/deploy-pantri.yml) should deploy `pantri-dev`
-- [ ] Confirm GitHub **Environments** `dev` / `production` have:
-  - [ ] `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` (pantri-specific; don’t reuse garden DB)
-  - [ ] `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` (often already shared)
+- [ ] Confirm GitHub **Environments** `pantri-dev` / `pantri-production` have:
+  - [ ] `TURSO_DATABASE_URL` / `TURSO_AUTH_TOKEN` (pantri DBs only — not garden’s)
+  - [ ] `CLOUDFLARE_API_TOKEN` / `CLOUDFLARE_ACCOUNT_ID` (same account token is fine)
 - [ ] Custom domains attach on deploy if `joescript.io` is an active Cloudflare zone (see garden domains doc)
 - [ ] Open `https://pantri-dev.joescript.io` — Google login → create pantry → CRUD smoke test
 - [ ] Merge / push `main` only after dev is healthy → `pantri.joescript.io`
@@ -152,7 +152,7 @@ Importer: `pnpm --filter @joescript/pantri import:firestore -- <export.json>`
 - [ ] Dry-run import against **local** or **dev** Turso; verify one known account
 - [ ] Import to **prod** Turso when cutting over (idempotent on `legacy_firebase_uid`)
 - [ ] Announce: “Sign in with Google using your Pantri email”
-- [ ] Invite household partners by email after cutover (import is 1 Firebase user → 1 pantry)
+- [x] Invite household partners from **Pantry settings** (Settings sheet → Pantry settings → Members). Pending invites claim on Google sign-in with that email; copy invite text from the pending list. No outbound email yet.
 
 **Auth reminder:** passwords don’t migrate. Email/password users must use Google with the same email.
 
@@ -171,13 +171,13 @@ Importer: `pnpm --filter @joescript/pantri import:firestore -- <export.json>`
 
 Product / eng follow-ups that are **out of the v1 roadmap** or nice-to-haves:
 
-- [ ] Favicon / brand assets beyond copied garden defaults
+- [x] Favicon / brand assets (classic Pantri icons restored)
 - [ ] Harden Workers AI extraction prompts / model choice after real cookbook photos
 - [ ] Pantry roles (owner vs member)
 - [ ] Offline write sync / PWA data caching
 - [ ] Live cursors / OT (explicitly out of scope)
 - [ ] Shared `packages/*` for recipe schema across joescript apps
-- [ ] Email invite notifications (today: add email in settings; user just signs in)
+- [ ] Email invite notifications (today: Settings sheet → Pantry settings → invite by email; user signs in with Google — no outbound mail)
 - [ ] Automated E2E against `pantri-dev`
 
 ---

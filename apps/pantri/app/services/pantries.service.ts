@@ -161,13 +161,15 @@ export function createPantriesService({ db, userId }: { db: Database; userId: st
         throw new Error("That person is already a member");
       }
 
+      const userIdForMember = targetUser?.id ?? null;
+
       if (existing?.deletedAt) {
         await db
           .update(pantryMembers)
           .set({
             deletedAt: null,
             email,
-            userId: targetUser?.id ?? null,
+            userId: userIdForMember,
             updatedAt: new Date(),
           })
           .where(eq(pantryMembers.id, existing.id));
@@ -175,14 +177,17 @@ export function createPantriesService({ db, userId }: { db: Database; userId: st
         await db.insert(pantryMembers).values({
           id: newId(),
           pantryId,
-          userId: targetUser?.id ?? null,
+          userId: userIdForMember,
           email,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
       }
 
-      return this.listMembers(pantryId);
+      return {
+        email,
+        status: userIdForMember ? ("joined" as const) : ("pending" as const),
+      };
     },
 
     async removeMember(pantryId: string, membershipId: string) {

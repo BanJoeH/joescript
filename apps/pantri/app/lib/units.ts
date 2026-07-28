@@ -37,6 +37,33 @@ const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
   each: { canonical: "each", dimension: "count", toBase: 1 },
 };
 
+/**
+ * Units offered in free-solo pickers. Prefer short canonical forms that also
+ * appear in `UNIT_DEFINITIONS` when conversion matters; cooking count units
+ * (clove, can, …) are included even though they stay "count" dimensionally.
+ */
+export const SUGGESTED_UNITS = [
+  "g",
+  "kg",
+  "ml",
+  "l",
+  "tsp",
+  "tbsp",
+  "cup",
+  "oz",
+  "lb",
+  "clove",
+  "can",
+  "pinch",
+  "pack",
+  "bunch",
+  "dash",
+  "handful",
+  "slice",
+  "stick",
+  "each",
+] as const;
+
 /** Normalize a free-text unit to its canonical short form, or `null` for a unitless count. */
 export function normalizeUnit(unit: string | null | undefined): string | null {
   if (!unit) return null;

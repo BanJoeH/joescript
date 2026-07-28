@@ -1,8 +1,10 @@
-import { ListChecks, type LucideIcon, Settings, ShoppingCart, UtensilsCrossed } from "lucide-react";
+import { type LucideIcon, Settings, ShoppingCart, UtensilsCrossed } from "lucide-react";
+import { useState } from "react";
 import { useLocation, useParams, useRouteLoaderData } from "react-router";
 
 import { Link } from "~/components/link";
 import { PantriBrand } from "~/components/pantri-brand";
+import { SettingsSheet } from "~/components/settings-sheet";
 import { pantryPath } from "~/lib/pantry-path";
 import { cn } from "~/lib/utils";
 
@@ -24,36 +26,25 @@ function getPantryNavItems(pantryId: string): PantryNavItem[] {
       icon: ShoppingCart,
     },
     {
-      href: pantryPath(pantryId, "sorted"),
-      label: "Sorted",
-      exact: false,
-      icon: ListChecks,
-    },
-    {
       href: pantryPath(pantryId, "recipes"),
       label: "Recipes",
       exact: false,
       icon: UtensilsCrossed,
     },
-    {
-      href: pantryPath(pantryId, "settings"),
-      label: "Settings",
-      exact: false,
-      icon: Settings,
-    },
   ];
 }
 
 function isNavItemActive(pathname: string, href: string, exact: boolean) {
-  return exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+  if (exact) return pathname === href;
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function topNavClassName(isActive: boolean) {
   return cn(
-    "inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium",
+    "inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]",
     isActive
-      ? "bg-primary/10 text-primary"
-      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+      ? "bg-accent text-foreground"
+      : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
   );
 }
 
@@ -92,12 +83,36 @@ function TopNavLink({ href, label, exact, icon }: PantryNavItem) {
 
 function bottomNavClassName(isActive: boolean) {
   return cn(
-    "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 pt-1.5 text-[0.6875rem] font-medium",
-    isActive ? "text-primary" : "text-muted-foreground",
+    "flex min-h-14 flex-1 flex-col items-center justify-center gap-0.5 px-1 pt-1.5 text-[0.625rem] font-semibold uppercase tracking-[0.06em]",
+    isActive ? "text-foreground" : "text-muted-foreground",
   );
 }
 
-function BottomNavLink({ href, label, exact, icon: Icon }: PantryNavItem) {
+function BottomNavContent({
+  icon: Icon,
+  label,
+  isActive,
+}: {
+  icon: LucideIcon;
+  label: string;
+  isActive: boolean;
+}) {
+  return (
+    <>
+      <span
+        className={cn(
+          "inline-flex items-center justify-center rounded-full px-3 py-1",
+          isActive && "bg-accent",
+        )}
+      >
+        <Icon aria-hidden className="size-5 shrink-0" strokeWidth={isActive ? 2.25 : 2} />
+      </span>
+      <span>{label}</span>
+    </>
+  );
+}
+
+function BottomNavLink({ href, label, exact, icon }: PantryNavItem) {
   const location = useLocation();
   const isActive = isNavItemActive(location.pathname, href, exact);
 
@@ -108,15 +123,7 @@ function BottomNavLink({ href, label, exact, icon: Icon }: PantryNavItem) {
       prefetch="viewport"
       to={href}
     >
-      <span
-        className={cn(
-          "inline-flex items-center justify-center rounded-full px-3 py-1",
-          isActive && "bg-primary/15",
-        )}
-      >
-        <Icon aria-hidden className="size-5 shrink-0" strokeWidth={isActive ? 2.25 : 2} />
-      </span>
-      <span>{label}</span>
+      <BottomNavContent icon={icon} isActive={isActive} label={label} />
     </Link>
   );
 }
@@ -124,48 +131,79 @@ function BottomNavLink({ href, label, exact, icon: Icon }: PantryNavItem) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pantryData = useRouteLoaderData<PantryRoute.ComponentProps["loaderData"]>("routes/pantry");
   const params = useParams();
+  const location = useLocation();
   const pantryId = params.pantryId ?? pantryData?.pantryId;
   const navItems = pantryId ? getPantryNavItems(pantryId) : null;
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsActive = settingsOpen || location.pathname.includes("/settings");
 
   return (
     <div
       className={cn(
-        "mx-auto flex min-h-screen max-w-3xl flex-col gap-4 p-4 md:gap-6 md:p-6",
+        "mx-auto flex min-h-screen w-full max-w-180 flex-col gap-4 px-[2.5%] py-4 md:gap-6 md:py-6",
         navItems && "pb-24 md:pb-6",
       )}
     >
-      <header className="flex items-center justify-between">
+      <header className="sticky top-0 z-30 mx-[-2.5%] flex items-center justify-between border-b border-border bg-background/95 px-[2.5%] py-3 backdrop-blur-sm">
         <h1>
-          <PantriBrand titleClassName="text-xl" />
+          <Link to={pantryId ? pantryPath(pantryId, "shopping") : "/pantries"}>
+            <PantriBrand titleClassName="text-base" />
+          </Link>
         </h1>
         {pantryData?.pantryName ? (
-          <Link className="text-sm text-muted-foreground hover:underline" to="/pantries">
+          <Link
+            className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground hover:text-foreground"
+            to="/pantries"
+          >
             {pantryData.pantryName}
           </Link>
         ) : null}
       </header>
 
       {navItems ? (
-        <nav aria-label="Pantry" className="hidden flex-wrap gap-1 border-b pb-4 md:flex">
+        <nav aria-label="Pantry" className="hidden flex-wrap gap-1 md:flex">
           {navItems.map((item) => (
             <TopNavLink key={item.href} {...item} />
           ))}
+          <button
+            className={cn(topNavClassName(settingsActive), "ml-auto")}
+            onClick={() => setSettingsOpen(true)}
+            type="button"
+          >
+            <NavContent icon={Settings} isActive={settingsActive} label="Settings" />
+          </button>
         </nav>
       ) : null}
 
-      {children}
+      <div className="pantri-page flex flex-1 flex-col gap-4 md:gap-6">{children}</div>
 
       {navItems ? (
         <nav
           aria-label="Pantry"
-          className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden"
+          className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm md:hidden"
         >
-          <div className="mx-auto flex max-w-3xl">
+          <div className="mx-auto flex max-w-180">
             {navItems.map((item) => (
               <BottomNavLink key={item.href} {...item} />
             ))}
+            <button
+              className={bottomNavClassName(settingsActive)}
+              onClick={() => setSettingsOpen(true)}
+              type="button"
+            >
+              <BottomNavContent icon={Settings} isActive={settingsActive} label="Settings" />
+            </button>
           </div>
         </nav>
+      ) : null}
+
+      {pantryId ? (
+        <SettingsSheet
+          onOpenChange={setSettingsOpen}
+          open={settingsOpen}
+          pantryId={pantryId}
+          pantryName={pantryData?.pantryName}
+        />
       ) : null}
     </div>
   );

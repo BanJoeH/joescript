@@ -73,12 +73,12 @@ export class PantryHub extends DurableObject<Env> {
     });
     const message = encoder.encode(`event: pantry:invalidate\ndata: ${payload}\n\n`);
 
+    // Don't await writes: backpressure + a busy browser (e.g. waiting on the
+    // mutation that triggered this broadcast) can deadlock the DO forever.
     for (const session of this.sessions) {
-      try {
-        await session.writer.write(message);
-      } catch {
+      session.writer.write(message).catch(() => {
         this.sessions.delete(session);
-      }
+      });
     }
 
     return new Response(null, { status: 204 });

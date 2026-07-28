@@ -52,16 +52,32 @@ export async function action({ request, params }: Route.ActionArgs) {
       const photoBytes = [];
       for (const photo of pending) {
         const object = await pantri.photos.getObject(photo.id);
-        if (!object) continue;
+        if (!object) {
+          console.info("[pantri:extract]", "action:missing-r2-object", { photoId: photo.id });
+          continue;
+        }
+        const bytes = new Uint8Array(await new Response(object.body).arrayBuffer());
+        console.info("[pantri:extract]", "action:loaded-photo", {
+          photoId: photo.id,
+          bytes: bytes.byteLength,
+          contentType: object.contentType,
+        });
         photoBytes.push({
-          bytes: new Uint8Array(await new Response(object.body).arrayBuffer()),
+          bytes,
           contentType: object.contentType,
         });
       }
 
+      console.info("[pantri:extract]", "action:calling-extract", { photos: photoBytes.length });
       const extracted = await extractRecipeFromPhotos({
         photos: photoBytes,
         ai: env.AI,
+      });
+      console.info("[pantri:extract]", "action:extracted", {
+        name: extracted.name,
+        servings: extracted.servings,
+        ingredientCount: extracted.ingredients.length,
+        stepCount: extracted.steps.length,
       });
       const recipe = await pantri.recipes.create({
         name: extracted.name,
@@ -69,11 +85,17 @@ export async function action({ request, params }: Route.ActionArgs) {
         ingredients: extracted.ingredients,
         steps: extracted.steps,
       });
+      console.info("[pantri:extract]", "action:created-recipe", { recipeId: recipe.id });
       await pantri.photos.attachToRecipe(
         pending.map((photo) => photo.id),
         recipe.id,
       );
+      console.info("[pantri:extract]", "action:attached-photos", {
+        recipeId: recipe.id,
+        photoCount: pending.length,
+      });
       await notifyPantryChange({ db: context.db, env, pantryId: context.pantryId });
+      console.info("[pantri:extract]", "action:redirecting", { recipeId: recipe.id });
       throw redirect(pantryPath(context.pantryId, `recipes/${recipe.id}/edit`));
     } catch (error) {
       if (error instanceof Response) throw error;

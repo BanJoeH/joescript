@@ -12,11 +12,10 @@
  *
  * ## Expected export shape
  *
- * The legacy app (see /src/types.ts in the original Pantri repo) stored data
- * per signed-in user, not per shared household — there was no multi-user
- * pantry concept. A Firestore export script (not included here, since it
- * depends on how you dump your project) should therefore produce one JSON
- * document per legacy user, shaped like `LegacyPantriExport` below:
+ * Produce this JSON with `pnpm export:firestore` (see `scripts/export-firestore.ts`),
+ * or any dump that matches `LegacyPantriExport` below. The legacy app stored data
+ * per signed-in user, not per shared household — there was no multi-user pantry
+ * concept. One export document per legacy user:
  *
  *   - `legacyUid`: the Firebase Auth uid. Stored on `pantries.legacy_firebase_uid`
  *     so this script is safe to re-run against the same export (it upserts by
@@ -41,9 +40,9 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { createClient } from "@libsql/client";
-import { and, eq } from "drizzle-orm";
+import { and as drizzleAnd, eq as drizzleEq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
-
+import { user } from "../app/db/schema/auth";
 import { pantries, pantryMembers } from "../app/db/schema/domain";
 import { ingredientCategories, oddBits, recipes, shoppingRecipes } from "../app/db/schema/pantri";
 import type { RecipeIngredient, RecipeStep, ShoppingIngredient } from "../app/lib/recipe-schema";
@@ -52,6 +51,12 @@ import {
   serializeRecipeSteps,
   serializeShoppingIngredients,
 } from "../app/lib/recipe-schema";
+
+// pnpm installs two peer-variant copies of drizzle-orm; cast across them.
+// biome-ignore lint/suspicious/noExplicitAny: dual package copies of drizzle-orm
+const eq = drizzleEq as (...args: any[]) => any;
+// biome-ignore lint/suspicious/noExplicitAny: dual package copies of drizzle-orm
+const and = drizzleAnd as (...args: any[]) => any;
 
 type RawIngredient = string | { name: string; purchased?: boolean };
 
@@ -260,17 +265,38 @@ async function main() {
     const normalizedEmail = email.trim().toLowerCase();
     if (!normalizedEmail) continue;
 
+    const [existingUser] = await db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, normalizedEmail))
+      .limit(1);
+
     const [alreadyMember] = await db
-      .select({ id: pantryMembers.id })
+      .select({ id: pantryMembers.id, userId: pantryMembers.userId })
       .from(pantryMembers)
       .where(and(eq(pantryMembers.pantryId, pantryId), eq(pantryMembers.email, normalizedEmail)))
       .limit(1);
 
-    if (!alreadyMember) {
-      await db.insert(pantryMembers).values({ pantryId, email: normalizedEmail });
+    if (alreadyMember) {
+      // Import may have run before the account existed; backfill userId when we can.
+      if (!alreadyMember.userId && existingUser) {
+        await db
+          .update(pantryMembers)
+          .set({ userId: existingUser.id })
+          .where(eq(pantryMembers.id, alreadyMember.id));
+      }
+      continue;
     }
+
+    await db.insert(pantryMembers).values({
+      pantryId,
+      email: normalizedEmail,
+      userId: existingUser?.id ?? null,
+    });
   }
-  console.log(`Ensured ${data.memberEmails?.length ?? 0} pending member(s) by email.`);
+  console.log(
+    `Ensured ${data.memberEmails?.length ?? 0} member(s) by email (linked when the user already exists).`,
+  );
 
   // This script is meant to be run once per export, so it replaces existing
   // domain rows for the pantry rather than trying to diff/merge them.

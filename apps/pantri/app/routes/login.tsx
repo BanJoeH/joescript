@@ -1,6 +1,5 @@
 import { redirect } from "react-router";
 import { PantriBrand } from "~/components/pantri-brand";
-import { ThemeToggle } from "~/components/theme-toggle";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "~/components/ui/card";
 import { authClient } from "~/lib/auth.client";
@@ -22,12 +21,9 @@ export async function loader({ request }: Route.LoaderArgs) {
 export default function Login() {
   return (
     <main className="relative flex min-h-screen items-center justify-center p-6">
-      <div className="absolute top-6 right-6">
-        <ThemeToggle />
-      </div>
       <Card className="w-full max-w-md">
         <CardHeader className="items-center text-center">
-          <PantriBrand className="mb-2" iconClassName="size-16" titleClassName="text-2xl" />
+          <PantriBrand className="mb-2" iconClassName="size-14" titleClassName="text-2xl" />
           <CardDescription>Sign in with Google to access your shared pantry.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

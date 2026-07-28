@@ -96,6 +96,17 @@ export function createOddBitsService({ db, pantryId }: PantriContext) {
       );
       return true;
     },
+
+    async clearAllPurchased(): Promise<boolean> {
+      const current = await this.list();
+      if (!current.some((ingredient) => ingredient.purchased)) return false;
+      await setIngredients(
+        current.map((ingredient) =>
+          ingredient.purchased ? { ...ingredient, purchased: false } : ingredient,
+        ),
+      );
+      return true;
+    },
   };
 }
 

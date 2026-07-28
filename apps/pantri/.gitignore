@@ -17,6 +17,12 @@ worker-configuration.d.ts
 local.db
 local.db-*
 
+# Firestore migration dumps / service accounts (never commit)
+firestore-export*.json
+firestore-exports/
+*-firebase-adminsdk-*.json
+serviceAccount*.json
+
 !.dev.vars.example
 !.env.migrate.*.example
 !.env.example

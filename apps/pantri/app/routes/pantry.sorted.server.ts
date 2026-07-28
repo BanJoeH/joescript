@@ -75,5 +75,15 @@ export async function action({ request, params }: Route.ActionArgs) {
     return { ok: true as const };
   }
 
+  if (intent === "clear-all-purchased") {
+    try {
+      await Promise.all([pantri.shopping.clearAllPurchased(), pantri.oddBits.clearAllPurchased()]);
+      await notifyPantryChange({ db: context.db, env: getWorkerEnv(), pantryId: context.pantryId });
+    } catch (error) {
+      return { error: error instanceof Error ? error.message : "Could not clear checked items." };
+    }
+    return { ok: true as const };
+  }
+
   return { error: "Unknown action." };
 }
