@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
-import { type KeyboardEvent, useEffect, useId, useState } from "react";
+import { type KeyboardEvent, useId, useState } from "react";
+import { flushSync } from "react-dom";
 import { Form } from "react-router";
 
 import { UnitCombobox } from "~/components/recipes/unit-combobox";
@@ -29,23 +30,17 @@ export const emptyRecipeFormDefaultValues: RecipeFormDefaultValues = {
   steps: [],
 };
 
-let keySeed = 0;
-function nextKey() {
-  keySeed += 1;
-  return `row-${keySeed}`;
-}
-
-function emptyIngredientRow(key = nextKey()): IngredientRow {
+function emptyIngredientRow(key = crypto.randomUUID()): IngredientRow {
   return { key, name: "", amount: null, unit: null, notes: "" };
 }
 
 function toIngredientRows(ingredients: RecipeIngredient[]): IngredientRow[] {
   if (ingredients.length === 0) return [emptyIngredientRow()];
-  return ingredients.map((ingredient) => ({ ...ingredient, key: nextKey() }));
+  return ingredients.map((ingredient) => ({ ...ingredient, key: crypto.randomUUID() }));
 }
 
 function toStepRows(steps: RecipeStep[]): StepRow[] {
-  return steps.map((step) => ({ ...step, key: nextKey() }));
+  return steps.map((step) => ({ ...step, key: crypto.randomUUID() }));
 }
 
 export function RecipeForm({
@@ -61,38 +56,30 @@ export function RecipeForm({
     toIngredientRows(defaultValues.ingredients),
   );
   const [steps, setSteps] = useState<StepRow[]>(() => toStepRows(defaultValues.steps));
-  const [focusIngredientKey, setFocusIngredientKey] = useState<string | null>(null);
   const formId = useId();
-
-  useEffect(() => {
-    if (!focusIngredientKey) return;
-    const key = focusIngredientKey;
-    setFocusIngredientKey(null);
-    requestAnimationFrame(() => {
-      const input = document.getElementById(`${formId}-ingredient-${key}-name`);
-      if (input instanceof HTMLInputElement) {
-        input.focus();
-        input.select();
-      }
-    });
-  }, [focusIngredientKey, formId]);
 
   function updateIngredient(key: string, patch: Partial<RecipeIngredient>) {
     setIngredients((rows) => rows.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   }
 
   function addIngredient(afterKey?: string) {
-    const key = nextKey();
-    setIngredients((rows) => {
-      const row = emptyIngredientRow(key);
-      if (!afterKey) return [...rows, row];
-      const index = rows.findIndex((candidate) => candidate.key === afterKey);
-      if (index === -1) return [...rows, row];
-      const next = [...rows];
-      next.splice(index + 1, 0, row);
-      return next;
+    const key = crypto.randomUUID();
+    flushSync(() => {
+      setIngredients((rows) => {
+        const row = emptyIngredientRow(key);
+        if (!afterKey) return [...rows, row];
+        const index = rows.findIndex((candidate) => candidate.key === afterKey);
+        if (index === -1) return [...rows, row];
+        const next = [...rows];
+        next.splice(index + 1, 0, row);
+        return next;
+      });
     });
-    setFocusIngredientKey(key);
+    const input = document.getElementById(`${formId}-ingredient-${key}-name`);
+    if (input instanceof HTMLInputElement) {
+      input.focus();
+      input.select();
+    }
   }
 
   function removeIngredient(key: string) {
@@ -113,7 +100,7 @@ export function RecipeForm({
   }
 
   function addStep() {
-    setSteps((rows) => [...rows, { key: nextKey(), order: rows.length, text: "" }]);
+    setSteps((rows) => [...rows, { key: crypto.randomUUID(), order: rows.length, text: "" }]);
   }
 
   function removeStep(key: string) {
@@ -133,7 +120,10 @@ export function RecipeForm({
 
   const cleanIngredients: RecipeIngredient[] = ingredients
     .filter((row) => row.name.trim().length > 0)
-    .map(({ key: _key, ...rest }) => rest);
+    .map(({ key: _key, notes, ...rest }) => {
+      const trimmedNotes = notes?.trim();
+      return trimmedNotes ? { ...rest, notes: trimmedNotes } : rest;
+    });
 
   const cleanSteps: RecipeStep[] = steps
     .filter((row) => row.text.trim().length > 0)

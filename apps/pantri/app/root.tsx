@@ -8,6 +8,7 @@ import {
 } from "react-router";
 
 import { ThemeProvider } from "~/components/theme-provider";
+import { ToastProvider } from "~/components/toast";
 import { themeInitScript } from "~/lib/theme";
 
 import type { Route } from "./+types/root";
@@ -56,7 +57,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ThemeProvider>
-      <Outlet />
+      <ToastProvider>
+        <Outlet />
+      </ToastProvider>
     </ThemeProvider>
   );
 }

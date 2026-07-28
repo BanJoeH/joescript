@@ -3,18 +3,18 @@ import { describe, expect, it } from "vitest";
 import { splitIndexedByPurchased } from "~/lib/split-purchased";
 
 describe("splitIndexedByPurchased", () => {
-  it("keeps source indexes while splitting to-buy / got-it", () => {
+  it("keeps source indexes while splitting to-buy / got-it, sorted by name", () => {
     const items = [
-      { name: "a", purchased: false },
-      { name: "b", purchased: true },
-      { name: "c", purchased: false },
-      { name: "d", purchased: true },
+      { name: "zucchini", purchased: false },
+      { name: "butter", purchased: true },
+      { name: "apples", purchased: false },
+      { name: "milk", purchased: true },
     ];
 
     expect(splitIndexedByPurchased(items)).toEqual({
       toBuy: [
-        { item: items[0], index: 0 },
         { item: items[2], index: 2 },
+        { item: items[0], index: 0 },
       ],
       gotIt: [
         { item: items[1], index: 1 },

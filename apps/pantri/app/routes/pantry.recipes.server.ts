@@ -23,14 +23,14 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (intent === "add-to-shopping") {
     try {
-      await pantri.shopping.addFromRecipe(recipeId);
+      const shoppingRecipe = await pantri.shopping.addFromRecipe(recipeId);
       await notifyPantryChange({ db: context.db, env: getWorkerEnv(), pantryId: context.pantryId });
+      return { added: shoppingRecipe.name };
     } catch (error) {
       return {
         error: error instanceof Error ? error.message : "Could not add recipe to shopping list.",
       };
     }
-    throw redirect(pantryPath(context.pantryId, "shopping"));
   }
 
   if (intent === "delete") {

@@ -50,7 +50,9 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
         .from(shoppingRecipes)
         .where(scope)
         .orderBy(asc(shoppingRecipes.name));
-      return rows.map(toRecord);
+      return rows
+        .map(toRecord)
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
     },
 
     async get(shoppingRecipeId: string): Promise<ShoppingRecipeRecord | null> {

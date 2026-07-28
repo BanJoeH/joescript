@@ -17,11 +17,18 @@ export type RecipeStep = {
   text: string;
 };
 
+/** Optional note: empty/whitespace strings become `undefined`. */
+const optionalNotesSchema = z
+  .string()
+  .trim()
+  .optional()
+  .transform((value) => (value && value.length > 0 ? value : undefined));
+
 const recipeIngredientSchema = z.object({
   name: z.string().trim().min(1),
   amount: z.number().finite().nullable(),
   unit: z.string().trim().nullable(),
-  notes: z.string().trim().min(1).optional(),
+  notes: optionalNotesSchema,
 });
 
 const shoppingIngredientSchema = recipeIngredientSchema.extend({

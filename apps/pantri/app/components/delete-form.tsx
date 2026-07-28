@@ -2,6 +2,7 @@ import { type ReactNode, useState } from "react";
 
 import { ConfirmSheet } from "~/components/confirm-sheet";
 import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/utils";
 
 type DeleteFormProps = {
   confirmMessage: string;
@@ -11,6 +12,8 @@ type DeleteFormProps = {
   intent?: string;
   action?: string;
   size?: "default" | "sm" | "lg" | "icon";
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  className?: string;
   "aria-label"?: string;
   children?: ReactNode;
 };
@@ -23,6 +26,8 @@ export function DeleteForm({
   intent = "delete",
   action,
   size = "sm",
+  variant = "outline",
+  className,
   "aria-label": ariaLabel,
   children = "Delete",
 }: DeleteFormProps) {
@@ -32,11 +37,11 @@ export function DeleteForm({
     <>
       <Button
         aria-label={ariaLabel}
-        className="text-destructive hover:text-destructive"
+        className={cn("text-destructive hover:text-destructive", className)}
         onClick={() => setOpen(true)}
         size={size}
         type="button"
-        variant="outline"
+        variant={variant}
       >
         {children}
       </Button>

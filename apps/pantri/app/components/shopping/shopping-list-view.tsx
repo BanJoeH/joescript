@@ -1,4 +1,4 @@
-import { ArrowRightLeft, ChevronDown, Plus, Trash2 } from "lucide-react";
+import { ArrowRightLeft, ChevronDown, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
 
@@ -6,7 +6,7 @@ import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
 import { ShoppingGotItSection } from "~/components/shopping/shopping-got-it-section";
 import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
 import { pantryPath } from "~/lib/pantry-path";
 import type { ShoppingIngredient } from "~/lib/recipe-schema";
@@ -25,14 +25,16 @@ function IngredientCheckbox({
   onToggle: (next: boolean) => void;
 }) {
   return (
-    <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-1.5 text-sm hover:bg-accent/50">
+    <label className="flex cursor-pointer items-center gap-3 rounded-sm px-1 py-1 text-sm hover:bg-accent/50">
       <input
         checked={checked}
         className="size-4 shrink-0 accent-foreground"
         onChange={(event) => onToggle(event.target.checked)}
         type="checkbox"
       />
-      <span className={cn(checked && "text-muted-foreground line-through")}>{label}</span>
+      <span className={cn("capitalize", checked && "text-muted-foreground line-through")}>
+        {label}
+      </span>
     </label>
   );
 }
@@ -167,7 +169,7 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
   const { toBuy: oddBitsToBuy, gotIt: oddBitsGotIt } = splitIndexedByPurchased(optimisticOddBits);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4">
       <PageHeader
         actions={
           <Button asChild size="sm" variant="outline">
@@ -181,125 +183,118 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
         title="Shopping list"
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="uppercase tracking-[0.06em]">Odd bits</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {optimisticOddBits.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Things you need that aren't part of a recipe — a few odds and ends.
-            </p>
-          ) : (
-            <>
-              {oddBitsToBuy.length > 0 ? (
-                <div>
-                  {oddBitsToBuy.map(({ item: bit }) => (
-                    <OddBitRow
-                      action={action}
-                      bit={bit}
-                      key={
-                        bit.pendingAdd
-                          ? `odd-bit-pending-${bit.name}`
-                          : `odd-bit-${bit.sourceIndex}-${bit.name}`
-                      }
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p className="px-2 text-sm text-muted-foreground">
-                  All done — nothing left to buy.
-                </p>
-              )}
+      <CardList>
+        <CardListItem className="px-4 py-3">
+          <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.06em]">Odd bits</h3>
+          <div className="space-y-2">
+            {optimisticOddBits.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {optimisticRecipes.length === 0
+                  ? "Your shopping list is empty. Add a recipe from the Recipes page, or add an odd bit below."
+                  : "Things you need that aren't part of a recipe — a few odds and ends."}
+              </p>
+            ) : (
+              <>
+                {oddBitsToBuy.length > 0 ? (
+                  <div>
+                    {oddBitsToBuy.map(({ item: bit }) => (
+                      <OddBitRow
+                        action={action}
+                        bit={bit}
+                        key={
+                          bit.pendingAdd
+                            ? `odd-bit-pending-${bit.name}`
+                            : `odd-bit-${bit.sourceIndex}-${bit.name}`
+                        }
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="px-1 text-sm text-muted-foreground">
+                    All done — nothing left to buy.
+                  </p>
+                )}
 
-              {oddBitsGotIt.length > 0 ? (
-                <ShoppingGotItSection
-                  count={oddBitsGotIt.length}
-                  onResetAll={() => {
-                    clearOddBitsFetcher.submit(
-                      { intent: "clear-odd-bits-purchased" },
-                      { method: "post", action },
-                    );
-                  }}
-                >
-                  {oddBitsGotIt.map(({ item: bit }) => (
-                    <OddBitRow
-                      action={action}
-                      bit={bit}
-                      key={`odd-bit-got-${bit.sourceIndex}-${bit.name}`}
-                    />
-                  ))}
-                </ShoppingGotItSection>
-              ) : null}
-            </>
-          )}
+                {oddBitsGotIt.length > 0 ? (
+                  <ShoppingGotItSection
+                    count={oddBitsGotIt.length}
+                    onResetAll={() => {
+                      clearOddBitsFetcher.submit(
+                        { intent: "clear-odd-bits-purchased" },
+                        { method: "post", action },
+                      );
+                    }}
+                  >
+                    {oddBitsGotIt.map(({ item: bit }) => (
+                      <OddBitRow
+                        action={action}
+                        bit={bit}
+                        key={`odd-bit-got-${bit.sourceIndex}-${bit.name}`}
+                      />
+                    ))}
+                  </ShoppingGotItSection>
+                ) : null}
+              </>
+            )}
 
-          <addOddBitFetcher.Form
-            action={action}
-            className="flex flex-wrap items-end gap-2"
-            method="post"
-            onSubmit={() => {
-              requestAnimationFrame(() => addOddBitFormRef.current?.reset());
-            }}
-            ref={addOddBitFormRef}
-          >
-            <input name="intent" type="hidden" value="add-odd-bit" />
-            <Input
-              aria-label="Amount"
-              className="w-20"
-              inputMode="decimal"
-              name="amount"
-              placeholder="Amt"
+            <addOddBitFetcher.Form
+              action={action}
+              className="flex flex-wrap items-end gap-2"
+              method="post"
+              onSubmit={() => {
+                requestAnimationFrame(() => addOddBitFormRef.current?.reset());
+              }}
+              ref={addOddBitFormRef}
+            >
+              <input name="intent" type="hidden" value="add-odd-bit" />
+              <Input
+                aria-label="Amount"
+                className="w-20"
+                inputMode="decimal"
+                name="amount"
+                placeholder="Amt"
+              />
+              <Input aria-label="Unit" className="w-20" name="unit" placeholder="Unit" />
+              <Input
+                aria-label="Name"
+                className="min-w-32 flex-1"
+                name="name"
+                placeholder="e.g. paper towels"
+                required
+              />
+              <Button size="sm" type="submit">
+                <Plus className="size-4" /> Add
+              </Button>
+            </addOddBitFetcher.Form>
+          </div>
+        </CardListItem>
+
+        {optimisticRecipes.map((recipe) => {
+          const expanded = expandedIds.has(recipe.id);
+          const { toBuy, gotIt } = splitIndexedByPurchased(recipe.ingredients);
+          const remaining = toBuy.length;
+          const panelId = `shopping-recipe-${recipe.id}`;
+
+          return (
+            <RecipeRow
+              action={action}
+              expanded={expanded}
+              gotIt={gotIt}
+              key={recipe.id}
+              onToggleExpanded={() => toggleExpanded(recipe.id)}
+              panelId={panelId}
+              recipe={recipe}
+              remaining={remaining}
+              toBuy={toBuy}
             />
-            <Input aria-label="Unit" className="w-20" name="unit" placeholder="Unit" />
-            <Input
-              aria-label="Name"
-              className="min-w-32 flex-1"
-              name="name"
-              placeholder="e.g. paper towels"
-              required
-            />
-            <Button size="sm" type="submit">
-              <Plus className="size-4" /> Add
-            </Button>
-          </addOddBitFetcher.Form>
-        </CardContent>
-      </Card>
-
-      {optimisticRecipes.length === 0 && optimisticOddBits.length === 0 ? (
-        <Card>
-          <CardContent className="pt-6 text-sm text-muted-foreground">
-            Your shopping list is empty. Add a recipe from the Recipes page, or add an odd bit
-            below.
-          </CardContent>
-        </Card>
-      ) : null}
-
-      {optimisticRecipes.map((recipe) => {
-        const expanded = expandedIds.has(recipe.id);
-        const { toBuy, gotIt } = splitIndexedByPurchased(recipe.ingredients);
-        const remaining = toBuy.length;
-        const panelId = `shopping-recipe-${recipe.id}`;
-
-        return (
-          <RecipeCard
-            action={action}
-            expanded={expanded}
-            gotIt={gotIt}
-            key={recipe.id}
-            onToggleExpanded={() => toggleExpanded(recipe.id)}
-            panelId={panelId}
-            recipe={recipe}
-            remaining={remaining}
-            toBuy={toBuy}
-          />
-        );
-      })}
+          );
+        })}
+      </CardList>
     </div>
   );
 }
 
-function RecipeCard({
+function RecipeRow({
   action,
   recipe,
   expanded,
@@ -321,12 +316,12 @@ function RecipeCard({
   const clearFetcher = useFetcher({ key: `shopping-clear-recipe:${recipe.id}` });
 
   return (
-    <Card>
-      <CardHeader className="flex-row items-center justify-between gap-2 space-y-0 p-3 sm:p-4">
+    <CardListItem className={cn(expanded && "bg-muted/40")}>
+      <div className="flex items-center justify-between gap-2 px-4 py-3">
         <button
           aria-controls={panelId}
           aria-expanded={expanded}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-md text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-sm text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onClick={onToggleExpanded}
           type="button"
         >
@@ -338,7 +333,7 @@ function RecipeCard({
             )}
           />
           <span className="min-w-0 flex-1">
-            <span className="block text-base font-semibold uppercase tracking-[0.06em]">
+            <span className="block text-sm font-semibold uppercase tracking-[0.06em]">
               {recipe.name}
             </span>
             {!expanded ? (
@@ -350,12 +345,26 @@ function RecipeCard({
             ) : null}
           </span>
         </button>
-        <RemoveRecipeButton action={action} recipeId={recipe.id} recipeName={recipe.name} />
-      </CardHeader>
+        <div className="flex shrink-0 items-center gap-0">
+          {recipe.link ? (
+            <Button asChild className="size-8" size="icon" variant="ghost">
+              <a
+                aria-label={`Open source link for ${recipe.name}`}
+                href={recipe.link}
+                rel="noreferrer"
+                target="_blank"
+              >
+                <ExternalLink className="size-4" />
+              </a>
+            </Button>
+          ) : null}
+          <RemoveRecipeButton action={action} recipeId={recipe.id} recipeName={recipe.name} />
+        </div>
+      </div>
       {expanded ? (
-        <CardContent className="space-y-1 pt-0" id={panelId}>
+        <div className="space-y-1 px-4 pb-3" id={panelId}>
           {recipe.ingredients.length === 0 ? (
-            <p className="px-2 text-sm text-muted-foreground">No ingredients</p>
+            <p className="px-1 text-sm text-muted-foreground">No ingredients</p>
           ) : (
             <>
               {toBuy.length > 0 ? (
@@ -369,7 +378,7 @@ function RecipeCard({
                   />
                 ))
               ) : (
-                <p className="px-2 text-sm text-muted-foreground">
+                <p className="px-1 text-sm text-muted-foreground">
                   All done — nothing left to buy.
                 </p>
               )}
@@ -397,9 +406,9 @@ function RecipeCard({
               ) : null}
             </>
           )}
-        </CardContent>
+        </div>
       ) : null}
-    </Card>
+    </CardListItem>
   );
 }
 
@@ -420,6 +429,7 @@ function RemoveRecipeButton({
       <input name="shoppingRecipeId" type="hidden" value={recipeId} />
       <Button
         aria-label={`Remove ${recipeName} from shopping list`}
+        className="size-8"
         size="icon"
         type="submit"
         variant="ghost"

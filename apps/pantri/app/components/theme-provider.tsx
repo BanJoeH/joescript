@@ -18,16 +18,8 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<ThemePreference>("system");
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
-
-  useEffect(() => {
-    const stored = getStoredTheme();
-    setThemeState(stored);
-    const resolved = resolveTheme(stored);
-    setResolvedTheme(resolved);
-    applyThemeClass(resolved);
-  }, []);
+  const [theme, setThemeState] = useState(getStoredTheme);
+  const [resolvedTheme, setResolvedTheme] = useState(() => resolveTheme(getStoredTheme()));
 
   useEffect(() => {
     const resolved = resolveTheme(theme);

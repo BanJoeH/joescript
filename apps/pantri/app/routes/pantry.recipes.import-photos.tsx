@@ -70,9 +70,11 @@ export default function ImportPhotosPage() {
 
   const stagingRef = useRef(staging);
   stagingRef.current = staging;
+  const clearStagingAfterUploadRef = useRef(false);
 
   useEffect(() => {
-    if (navigation.state !== "idle") return;
+    if (navigation.state !== "idle" || !clearStagingAfterUploadRef.current) return;
+    clearStagingAfterUploadRef.current = false;
     setPreparing(false);
     setStaging((current) => {
       for (const photo of current) URL.revokeObjectURL(photo.previewUrl);
@@ -117,6 +119,7 @@ export default function ImportPhotosPage() {
       for (const { file } of resized) {
         formData.append("photos", file);
       }
+      clearStagingAfterUploadRef.current = true;
       submit(formData, { method: "post", encType: "multipart/form-data" });
     } catch (error) {
       setUploadError(error instanceof Error ? error.message : "Could not prepare photos.");

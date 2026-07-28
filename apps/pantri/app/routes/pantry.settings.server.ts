@@ -13,9 +13,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     getPantriEnv(),
     params.pantryId,
   );
-  const url = new URL(request.url);
-  const invitedEmail = url.searchParams.get("invited");
-  const invitedStatus = url.searchParams.get("status");
   const [pantry, members] = await Promise.all([
     pantri.pantries.get(pantryId),
     pantri.pantries.listMembers(pantryId),
@@ -30,10 +27,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
     members,
     pantryId,
     currentUserId: session.user.id,
-    inviteFlash:
-      invitedEmail && (invitedStatus === "pending" || invitedStatus === "joined")
-        ? { email: invitedEmail, status: invitedStatus }
-        : null,
   };
 }
 
@@ -62,15 +55,10 @@ export async function action({ request, params }: Route.ActionArgs) {
       const result = await pantri.pantries.addMember(pantryId, {
         email: getString(formData, "email"),
       });
-      const search = new URLSearchParams({
-        invited: result.email,
-        status: result.status,
-      });
-      throw redirect(`${pantryPath(pantryId, "settings/pantry")}?${search}`);
+      return {
+        inviteFlash: { email: result.email, status: result.status },
+      };
     } catch (error) {
-      if (error instanceof Response) {
-        throw error;
-      }
       return {
         error: error instanceof Error ? error.message : "Could not add member.",
       };
