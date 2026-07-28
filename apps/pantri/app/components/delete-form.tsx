@@ -1,8 +1,9 @@
 import { type ReactNode, useState } from "react";
 
 import { ConfirmSheet } from "~/components/confirm-sheet";
-import { Button } from "~/components/ui/button";
+import { Button, buttonVariants } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
+import type { VariantProps } from "class-variance-authority";
 
 type DeleteFormProps = {
   confirmMessage: string;
@@ -11,8 +12,8 @@ type DeleteFormProps = {
   hiddenFields?: Record<string, string>;
   intent?: string;
   action?: string;
-  size?: "default" | "sm" | "lg" | "icon";
-  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+  size?: VariantProps<typeof buttonVariants>["size"];
+  variant?: VariantProps<typeof buttonVariants>["variant"];
   className?: string;
   "aria-label"?: string;
   children?: ReactNode;
