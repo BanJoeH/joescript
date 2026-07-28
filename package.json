@@ -10,7 +10,8 @@
     "format": "biome format --write .",
     "lint": "biome lint .",
     "typecheck": "pnpm -r typecheck",
-    "dev:momentum": "pnpm --filter @joescript/momentum dev"
+    "dev:momentum": "pnpm --filter @joescript/momentum dev",
+    "dev:pantri": "pnpm --filter @joescript/pantri dev"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.0.0",

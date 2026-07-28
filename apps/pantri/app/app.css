@@ -1,0 +1,153 @@
+@import "tailwindcss" source(".");
+@import "tw-animate-css";
+@import "swiper/css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --breakpoint-xs: 30rem;
+  --font-sans:
+    "Poppins", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji",
+    "Segoe UI Symbol", "Noto Color Emoji";
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-charcoal-0: #202124;
+  --color-charcoal-1: #28292b;
+  --color-charcoal-2: #404143;
+  --color-charcoal-muted: #b3b4b6;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+/* Always-dark charcoal skin (matches classic Pantri). */
+:root,
+.dark {
+  --radius: 0.5rem;
+  --background: var(--color-charcoal-0);
+  --foreground: #ffffff;
+  --card: var(--color-charcoal-0);
+  --card-foreground: #ffffff;
+  --popover: var(--color-charcoal-1);
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: var(--color-charcoal-0);
+  --secondary: var(--color-charcoal-2);
+  --secondary-foreground: #ffffff;
+  --muted: var(--color-charcoal-1);
+  --muted-foreground: var(--color-charcoal-muted);
+  --accent: var(--color-charcoal-2);
+  --accent-foreground: #ffffff;
+  --destructive: #e57373;
+  --border: var(--color-charcoal-2);
+  --input: var(--color-charcoal-2);
+  --ring: var(--color-charcoal-muted);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply text-foreground font-sans antialiased;
+    background-color: var(--color-charcoal-0);
+    background-image: url("/background-dark.png");
+    background-repeat: repeat;
+    background-size: 40vmin;
+    min-height: 100vh;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  dialog {
+    color: var(--foreground);
+    background-color: var(--popover);
+  }
+
+  dialog::backdrop {
+    background-color: rgb(0 0 0 / 0.5);
+  }
+
+  dialog[data-motion="enter"]::backdrop {
+    animation: settings-backdrop-in 300ms ease both;
+  }
+
+  dialog[data-motion="exit"]::backdrop {
+    animation: settings-backdrop-out 200ms ease both;
+  }
+
+  @keyframes settings-backdrop-in {
+    from {
+      background-color: rgb(0 0 0 / 0);
+    }
+    to {
+      background-color: rgb(0 0 0 / 0.5);
+    }
+  }
+
+  @keyframes settings-backdrop-out {
+    from {
+      background-color: rgb(0 0 0 / 0.5);
+    }
+    to {
+      background-color: rgb(0 0 0 / 0);
+    }
+  }
+
+  @keyframes pantri-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .pantri-page {
+    animation: pantri-fade-in 0.8s ease;
+  }
+
+  /* Fill remaining viewport so shopping/recipes swipes work on empty page area. */
+  .home-swiper {
+    min-height: 100%;
+  }
+
+  .home-swiper .swiper-wrapper {
+    align-items: stretch;
+  }
+
+  .home-swiper .swiper-slide {
+    height: auto;
+    min-height: 100%;
+    box-sizing: border-box;
+  }
+
+  .home-slide-content {
+    width: 100%;
+    min-height: 100%;
+  }
+}

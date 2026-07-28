@@ -22,4 +22,14 @@ apps/garden/local.db-*
 apps/garden/worker-configuration.d.ts
 apps/garden/.dev.vars
 !apps/garden/.dev.vars.example
+
+# React Router / Cloudflare (pantri app)
+apps/pantri/.react-router
+apps/pantri/build
+apps/pantri/.mf
+apps/pantri/local.db
+apps/pantri/local.db-*
+apps/pantri/worker-configuration.d.ts
+apps/pantri/.dev.vars
+!apps/pantri/.dev.vars.example
 tsconfig.tsbuildinfo

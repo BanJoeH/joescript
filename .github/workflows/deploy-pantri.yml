@@ -1,28 +1,28 @@
-name: Deploy Garden
+name: Deploy Pantri
 
 on:
   push:
     branches: [dev, main]
     paths:
-      - "apps/garden/**"
+      - "apps/pantri/**"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "package.json"
-      - ".github/workflows/deploy-garden.yml"
+      - ".github/workflows/deploy-pantri.yml"
   workflow_dispatch:
 
 concurrency:
-  group: deploy-garden-${{ github.ref }}
+  group: deploy-pantri-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   deploy-dev:
     if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
-    environment: garden-dev
+    environment: pantri-dev
     defaults:
       run:
-        working-directory: apps/garden
+        working-directory: apps/pantri
     steps:
       - uses: actions/checkout@v6
 
@@ -43,7 +43,7 @@ jobs:
 
       - name: Migrate database
         env:
-          GARDEN_MIGRATE_ENV: dev
+          PANTRI_MIGRATE_ENV: dev
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: pnpm db:migrate
@@ -57,10 +57,10 @@ jobs:
   deploy-prod:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: garden-production
+    environment: pantri-production
     defaults:
       run:
-        working-directory: apps/garden
+        working-directory: apps/pantri
     steps:
       - uses: actions/checkout@v6
 
@@ -81,7 +81,7 @@ jobs:
 
       - name: Migrate database
         env:
-          GARDEN_MIGRATE_ENV: prod
+          PANTRI_MIGRATE_ENV: prod
           TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: pnpm db:migrate:prod
