@@ -14,7 +14,11 @@ const addOddBitInput = z.object({
   name: z.string().trim().min(1),
   amount: z.number().finite().nullable().optional(),
   unit: z.string().trim().min(1).nullable().optional(),
-  notes: z.string().trim().min(1).optional(),
+  notes: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => (value && value.length > 0 ? value : undefined)),
 });
 
 export type AddOddBitInput = z.input<typeof addOddBitInput>;

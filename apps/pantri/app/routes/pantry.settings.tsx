@@ -1,6 +1,6 @@
 import { Copy } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Form, useActionData, useLoaderData, useSearchParams } from "react-router";
+import { useState } from "react";
+import { Form, useActionData, useLoaderData } from "react-router";
 
 import { DeletePantrySheet } from "~/components/delete-pantry-sheet";
 import { Link } from "~/components/link";
@@ -12,6 +12,7 @@ import { Label } from "~/components/ui/label";
 import { pantryPath } from "~/lib/pantry-path";
 
 import type { Route } from "./+types/pantry.settings";
+import type { loader } from "./pantry.settings.server";
 
 export { action, loader } from "./pantry.settings.server";
 
@@ -24,25 +25,15 @@ function inviteInstructions(email: string, pantryName: string) {
 }
 
 export default function PantrySettings() {
-  const { pantry, members, pantryId, currentUserId, inviteFlash } =
-    useLoaderData<typeof import("./pantry.settings.server").loader>();
+  const { pantry, members, pantryId, currentUserId } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof import("./pantry.settings.server").action>();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [flash] = useState(inviteFlash);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const activeMembers = members.filter((member) => !member.pending);
   const pendingMembers = members.filter((member) => member.pending);
   const isLastMember = members.length === 1;
-
-  useEffect(() => {
-    if (!searchParams.has("invited")) return;
-    const next = new URLSearchParams(searchParams);
-    next.delete("invited");
-    next.delete("status");
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  const flash = actionData && "inviteFlash" in actionData ? actionData.inviteFlash : null;
 
   async function copyInvite(membershipId: string, email: string) {
     try {
@@ -71,7 +62,7 @@ export default function PantrySettings() {
         title="Pantry settings"
       />
 
-      {actionData?.error ? (
+      {actionData && "error" in actionData && actionData.error ? (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {actionData.error}
         </p>

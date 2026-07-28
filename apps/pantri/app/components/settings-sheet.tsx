@@ -40,10 +40,8 @@ export function SettingsSheet({ open, onOpenChange, pantryId, pantryName }: Sett
       return;
     }
 
-    if (dialog.open && motion !== "exit") {
-      setMotion("exit");
-    }
-  }, [open, motion]);
+    setMotion((current) => (dialog.open && current !== "exit" ? "exit" : current));
+  }, [open]);
 
   const links: SheetLink[] = [
     {

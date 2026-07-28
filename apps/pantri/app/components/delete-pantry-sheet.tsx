@@ -40,10 +40,8 @@ export function DeletePantrySheet({ open, onOpenChange, pantryName }: DeletePant
       return;
     }
 
-    if (dialog.open && motion !== "exit") {
-      setMotion("exit");
-    }
-  }, [open, motion]);
+    setMotion((current) => (dialog.open && current !== "exit" ? "exit" : current));
+  }, [open]);
 
   function requestClose() {
     if (motion !== "exit") {
