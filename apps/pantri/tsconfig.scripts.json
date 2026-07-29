@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "scripts/**/*.ts",
+    "app/db/schema/**/*.ts",
+    "app/lib/recipe-schema.ts",
+    "app/lib/ingredient-name.ts"
+  ],
+  "compilerOptions": {
+    "composite": true,
+    "strict": true,
+    "types": ["node"],
+    "lib": ["ES2022"],
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  }
+}

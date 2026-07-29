@@ -1,0 +1,19 @@
+# Copy to .dev.vars — runtime secrets for `pnpm dev` / wrangler.
+#
+# For migrations, use separate files (keeps prod creds out of dev):
+#   cp .env.migrate.dev.example .env.migrate.dev
+#   cp .env.migrate.prod.example .env.migrate.prod
+#
+# Turso pantri-dev (runtime + can duplicate in .env.migrate.dev):
+#   turso db show pantri-dev --url
+#   turso db tokens create pantri-dev
+#
+TURSO_DATABASE_URL=
+TURSO_AUTH_TOKEN=
+BETTER_AUTH_SECRET=
+# Local dev only. Deployed URLs are set in wrangler.jsonc vars:
+#   dev  → https://pantri-dev.joescript.io
+#   prod → https://pantri.joescript.io
+BETTER_AUTH_URL=http://localhost:5173
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=

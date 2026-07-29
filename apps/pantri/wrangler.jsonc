@@ -1,0 +1,75 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pantri-dev",
+  "compatibility_date": "2026-06-30",
+  "main": "./workers/app.ts",
+  "observability": {
+    "enabled": true
+  },
+  "upload_source_maps": true,
+  "compatibility_flags": ["nodejs_compat"],
+  "routes": [
+    {
+      "pattern": "pantri-dev.joescript.io",
+      "custom_domain": true
+    }
+  ],
+  "vars": {
+    "BETTER_AUTH_URL": "https://pantri-dev.joescript.io"
+  },
+  "ai": {
+    "binding": "AI"
+  },
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "pantri-photos-dev",
+      "remote": true
+    }
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "PANTRY_HUB",
+        "class_name": "PantryHub"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["PantryHub"]
+    }
+  ],
+  "env": {
+    "production": {
+      "name": "pantri-prod",
+      "routes": [
+        {
+          "pattern": "pantri.joescript.io",
+          "custom_domain": true
+        }
+      ],
+      "vars": {
+        "BETTER_AUTH_URL": "https://pantri.joescript.io"
+      },
+      "ai": {
+        "binding": "AI"
+      },
+      "r2_buckets": [
+        {
+          "binding": "PHOTOS",
+          "bucket_name": "pantri-photos-prod"
+        }
+      ],
+      "durable_objects": {
+        "bindings": [
+          {
+            "name": "PANTRY_HUB",
+            "class_name": "PantryHub"
+          }
+        ]
+      }
+    }
+  }
+}

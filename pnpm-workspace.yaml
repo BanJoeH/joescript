@@ -1,9 +1,18 @@
 packages:
   - "apps/*"
 allowBuilds:
+  '@firebase/util': true
   esbuild: true
+  protobufjs: true
   sharp: true
   workerd: true
+# Force a single drizzle-orm peer variant. Without this, pnpm installs two
+# copies (with/without @opentelemetry/api) and TypeScript treats their SQL
+# types as incompatible (`shouldInlineParams`).
+packageExtensions:
+  drizzle-orm:
+    peerDependencies:
+      "@opentelemetry/api": "*"
 minimumReleaseAgeExclude:
   - '@better-auth/core@1.6.23'
   - '@better-auth/drizzle-adapter@1.6.23'

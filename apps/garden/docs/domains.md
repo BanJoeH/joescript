@@ -87,7 +87,7 @@ Keep existing `*.workers.dev` URIs until you’ve switched over, then remove the
 
 Workers → `garden-dev` / `garden-prod` → **Settings → Variables** — delete `BETTER_AUTH_URL` from **Secrets** if present (the var from wrangler takes precedence).
 
-Ensure these **secrets** still exist per worker (or via GitHub `dev` / `production` environments):
+Ensure these **secrets** still exist per worker (or via GitHub `garden-dev` / `garden-production` environments):
 
 | Secret | Notes |
 |--------|--------|
