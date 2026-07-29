@@ -30,6 +30,50 @@ const TRANSCRIBE_QUESTION = `Transcribe this recipe photo verbatim.
 Include the title, servings if shown, every ingredient line exactly as printed (one line each), and the full method/steps.
 Copy only what you can read. Do not invent ingredients, blurbs, or rewrite the recipe. Output plain text only.`;
 
+const DIRECT_JSON_QUESTION = `Extract the recipe from this image.
+
+Return exactly one valid JSON object with this structure:
+{
+  "name": "string",
+  "servings": null,
+  "ingredients": [
+    {
+      "name": "string",
+      "amount": null,
+      "unit": null
+    }
+  ],
+  "steps": [
+    {
+      "order": 1,
+      "text": "string"
+    }
+  ]
+}
+
+Rules:
+- Return JSON only. No markdown, no code fences, no commentary.
+- Use only information visible in the image.
+- Do not guess or invent missing information.
+- Use null for missing or unclear servings, amounts, or units.
+- Include "notes" only when there is preparation/detail text to preserve.
+- Include exactly one ingredient per item.
+- Ingredient "name" must contain only the food name, in lowercase.
+- Put preparation details like "finely diced", "minced", or "room temperature" in "notes".
+- Keep quantities as numbers only.
+- Convert simple fractions to decimals, for example 1/2 -> 0.5.
+- Keep units lowercase and singular where practical.
+- Keep recipe steps in their original order.
+- Set step "order" starting at 1 and increment by 1.
+- Ignore marketing text, stories, captions, serving suggestions, and unrelated text.
+- If no readable recipe is present, return:
+  {
+    "name": "",
+    "servings": null,
+    "ingredients": [],
+    "steps": []
+  }`;
+
 const STRUCTURE_SYSTEM = `You convert recipe transcriptions into JSON. Output only valid JSON — no markdown, no commentary.`;
 
 const STRUCTURE_QUESTION = `Convert the recipe transcription below into JSON with this shape:
@@ -465,27 +509,56 @@ function textFromChatResponse(response: unknown): string {
     if (message && typeof message === "object") {
       const content = (message as Record<string, unknown>).content;
       if (typeof content === "string") return content.trim();
+      if (Array.isArray(content)) {
+        const text = content
+          .map((part) => {
+            if (typeof part === "string") return part;
+            if (!part || typeof part !== "object") return "";
+            const textPart = (part as Record<string, unknown>).text;
+            return typeof textPart === "string" ? textPart : "";
+          })
+          .filter(Boolean)
+          .join("");
+        if (text) return text.trim();
+      }
     }
     const text = (choices[0] as Record<string, unknown>).text;
     if (typeof text === "string") return text.trim();
   }
 
-  return "";
+  // Some deployed Workers AI routes return the parsed JSON object directly when
+  // `response_format: { type: "json_object" }` is used.
+  try {
+    return JSON.stringify(response);
+  } catch {
+    return "";
+  }
 }
 
-async function structureTranscript(ai: Ai, transcript: string, pageHint: string): Promise<string> {
-  const response = await ai.run(STRUCTURE_MODEL, {
-    messages: [
-      { role: "system", content: STRUCTURE_SYSTEM },
-      {
-        role: "user",
-        content: `${STRUCTURE_QUESTION}${transcript}${pageHint}`,
-      },
-    ],
-    max_tokens: 4096,
-    temperature: 0,
-    response_format: { type: "json_object" },
-  });
+async function structureTranscript(
+  ai: Ai,
+  transcript: string,
+  pageHint: string,
+  jsonMode = true,
+): Promise<string> {
+  const response = await ai.run(
+    STRUCTURE_MODEL as keyof AiModels,
+    {
+      messages: [
+        { role: "system", content: STRUCTURE_SYSTEM },
+        {
+          role: "user",
+          content: `${STRUCTURE_QUESTION}${transcript}${pageHint}`,
+        },
+      ],
+      // Qwen reasoning models can spend the full token budget on
+      // internal reasoning in deployed Workers AI and never emit JSON.
+      reasoning_effort: null,
+      max_tokens: 4096,
+      temperature: 0,
+      ...(jsonMode ? { response_format: { type: "json_object" as const } } : {}),
+    } as never,
+  );
 
   const text = textFromChatResponse(response);
   if (!text) {
@@ -512,20 +585,50 @@ async function extractFromSinglePhoto(
     photoCount,
   });
 
-  // Vision OCR only, then a text model structures the transcript into JSON.
+  try {
+    const directText = await runMoondreamQuery(ai, photo, `${DIRECT_JSON_QUESTION}${pageHint}`);
+    logExtract(`photo[${photoIndex}]:direct-text`, {
+      chars: directText.length,
+      preview: truncateForLog(directText),
+    });
+    const parsed = extractJsonObject(directText);
+    logExtract(`photo[${photoIndex}]:parsed-json-direct`, parsed);
+    const normalized = normalizeExtracted(parsed, nameHint);
+    logExtract(`photo[${photoIndex}]:done-direct`, summarizeRecipe(normalized));
+    return normalized;
+  } catch (error) {
+    logExtract(`photo[${photoIndex}]:direct-failed`, {
+      reason: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  // Fallback: OCR first, then structure the transcript into JSON.
   const transcript = await runMoondreamQuery(ai, photo, `${TRANSCRIBE_QUESTION}${pageHint}`);
   logExtract(`photo[${photoIndex}]:transcript`, {
     chars: transcript.length,
     preview: truncateForLog(transcript),
   });
 
-  const structuredText = await structureTranscript(ai, transcript, pageHint);
+  let structuredText = await structureTranscript(ai, transcript, pageHint);
   logExtract(`photo[${photoIndex}]:structured-text`, {
     chars: structuredText.length,
     preview: truncateForLog(structuredText),
   });
 
-  const parsed = extractJsonObject(structuredText);
+  let parsed: unknown;
+  try {
+    parsed = extractJsonObject(structuredText);
+  } catch (error) {
+    logExtract(`photo[${photoIndex}]:structured-retry`, {
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    structuredText = await structureTranscript(ai, transcript, pageHint, false);
+    logExtract(`photo[${photoIndex}]:structured-text-retry`, {
+      chars: structuredText.length,
+      preview: truncateForLog(structuredText),
+    });
+    parsed = extractJsonObject(structuredText);
+  }
   logExtract(`photo[${photoIndex}]:parsed-json`, parsed);
   const normalized = normalizeExtracted(parsed, nameHint);
   logExtract(`photo[${photoIndex}]:done`, summarizeRecipe(normalized));

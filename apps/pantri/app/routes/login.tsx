@@ -24,7 +24,7 @@ export default function Login() {
       <Card className="w-full max-w-md">
         <CardHeader className="items-center text-center">
           <PantriBrand className="mb-2" iconClassName="size-14" titleClassName="text-2xl" />
-          <CardDescription>Sign in with Google to access your shared pantry.</CardDescription>
+          <CardDescription>Sign in with Google to use your pantry.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button

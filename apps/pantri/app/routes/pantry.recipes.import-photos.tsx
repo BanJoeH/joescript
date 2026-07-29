@@ -98,9 +98,7 @@ export default function ImportPhotosPage() {
     }
 
     if (pendingPhotos.length + usable.length > MAX_PHOTOS_PER_IMPORT) {
-      setUploadError(
-        `You can import at most ${MAX_PHOTOS_PER_IMPORT} photos at once. Remove some first.`,
-      );
+      setUploadError(`At most ${MAX_PHOTOS_PER_IMPORT} photos. Remove some first.`);
       return;
     }
 
@@ -176,19 +174,15 @@ export default function ImportPhotosPage() {
       {submitting && intent === "upload" ? (
         <StatusBanner tone="accent">Uploading photos…</StatusBanner>
       ) : null}
-      {extracting ? (
-        <StatusBanner tone="accent">
-          Reading recipe with AI (transcribe + structure) — this can take a little longer…
-        </StatusBanner>
-      ) : null}
+      {extracting ? <StatusBanner tone="accent">Reading recipe…</StatusBanner> : null}
       {removing ? <StatusBanner>Removing photo…</StatusBanner> : null}
 
       <Card>
         <CardHeader>
           <CardTitle>Upload photos</CardTitle>
           <CardDescription>
-            Drop photos of a recipe card, cookbook page, or screenshot. Large images are resized
-            automatically, then you can create a draft to review.
+            Photos of a recipe card, cookbook page, or screenshot. Large images are resized
+            automatically.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -343,19 +337,19 @@ export default function ImportPhotosPage() {
                   {extracting ? (
                     <>
                       <Loader2 className="animate-spin" />
-                      Creating recipe draft…
+                      Creating draft…
                     </>
                   ) : (
                     <>
                       <Sparkles />
-                      Create recipe draft
+                      Create draft
                     </>
                   )}
                 </Button>
               </Form>
             </div>
           ) : staging.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No photos uploaded yet.</p>
+            <p className="text-sm text-muted-foreground">No photos yet.</p>
           ) : null}
         </CardContent>
       </Card>

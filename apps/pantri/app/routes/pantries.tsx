@@ -24,10 +24,7 @@ export default function PantriesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        description="Choose a pantry to open, set a favourite for quick access, or create a new one."
-        title="Pantries"
-      />
+      <PageHeader description="Open, favourite, or create." title="Pantries" />
 
       {actionData?.error ? (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
@@ -79,7 +76,7 @@ export default function PantriesPage() {
       ) : (
         <Card>
           <CardContent className="pt-6 text-sm text-muted-foreground">
-            You are not in any pantries yet. Create one below to get started.
+            No pantries yet. Create one below.
           </CardContent>
         </Card>
       )}
@@ -87,9 +84,7 @@ export default function PantriesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Create pantry</CardTitle>
-          <CardDescription>
-            Shared with anyone you invite — for example, your household.
-          </CardDescription>
+          <CardDescription>Shared with anyone you invite.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form className="space-y-4" method="post">

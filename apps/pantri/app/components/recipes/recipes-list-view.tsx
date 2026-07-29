@@ -7,6 +7,7 @@ import {
   Search,
   ShoppingCart,
   Trash2,
+  UtensilsCrossed,
 } from "lucide-react";
 import { matchSorter } from "match-sorter";
 import { useDeferredValue, useMemo, useState } from "react";
@@ -74,7 +75,7 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
 
   useFetcherSuccessToast(addFetcher, (data) => {
     if (data.added) {
-      toast({ title: data.added, message: "Added to your shopping list" });
+      toast({ title: data.added, message: "Added to shopping" });
     }
   });
 
@@ -104,7 +105,7 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
             </Button>
           </>
         }
-        description="Your pantry's shared recipe collection."
+        description="Shared recipes"
         title="Recipes"
       />
 
@@ -119,7 +120,7 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
             autoComplete="off"
             className="pl-9"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name or ingredient…"
+            placeholder="Search…"
             type="search"
             value={query}
           />
@@ -135,7 +136,7 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
       {recipes.length === 0 ? (
         <CardList>
           <CardListItem className="px-4 py-3 text-sm text-muted-foreground">
-            No recipes yet. Add one to get started.
+            No recipes yet.
           </CardListItem>
         </CardList>
       ) : filteredRecipes.length === 0 ? (
@@ -167,38 +168,19 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                         !expanded && "-rotate-90",
                       )}
                     />
-                    <span className="min-w-0 flex-1">
+                    <div className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold uppercase tracking-[0.06em]">
                         {recipe.name}
                       </span>
-                      {!expanded ? (
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
-                          {recipe.ingredients.length} ingredient
-                          {recipe.ingredients.length === 1 ? "" : "s"}
-                          {recipe.servings ? ` · Serves ${recipe.servings}` : ""}
-                        </span>
-                      ) : null}
-                    </span>
+                    </div>
                   </button>
                   <div className="flex shrink-0 items-center gap-0">
-                    {recipe.link ? (
-                      <Button asChild className="size-8" size="icon" variant="ghost">
-                        <a
-                          aria-label={`Open source link for ${recipe.name}`}
-                          href={recipe.link}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          <ExternalLink className="size-4" />
-                        </a>
-                      </Button>
-                    ) : null}
                     <Button asChild className="size-8" size="icon" variant="ghost">
                       <Link
-                        aria-label={`Edit ${recipe.name}`}
-                        to={pantryPath(pantryId, `recipes/${recipe.id}/edit`)}
+                        aria-label={`Cook ${recipe.name}`}
+                        to={pantryPath(pantryId, `recipes/${recipe.id}`)}
                       >
-                        <Pencil className="size-4" />
+                        <UtensilsCrossed className="size-4" />
                       </Link>
                     </Button>
                     <addFetcher.Form action={action} method="post">
@@ -214,31 +196,36 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                         <ShoppingCart className="size-4" />
                       </Button>
                     </addFetcher.Form>
-                    <DeleteForm
-                      action={action}
-                      aria-label={`Delete ${recipe.name}`}
-                      className="size-8"
-                      confirmMessage={`Delete "${recipe.name}"? This cannot be undone.`}
-                      hiddenFields={{ recipeId: recipe.id }}
-                      size="icon"
-                      variant="ghost"
-                    >
-                      <Trash2 className="size-4" />
-                    </DeleteForm>
                   </div>
                 </div>
                 {expanded ? (
                   <div className="space-y-2 px-4 pb-3" id={panelId}>
-                    {recipe.link ? (
-                      <a
-                        className="block truncate text-sm text-muted-foreground hover:underline"
-                        href={recipe.link}
-                        rel="noreferrer"
-                        target="_blank"
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={pantryPath(pantryId, `recipes/${recipe.id}/edit`)}>
+                          <Pencil className="size-4" />
+                          Edit
+                        </Link>
+                      </Button>
+                      {recipe.link ? (
+                        <Button asChild size="sm" variant="outline">
+                          <a href={recipe.link} rel="noreferrer" target="_blank">
+                            <ExternalLink className="size-4" />
+                            Source
+                          </a>
+                        </Button>
+                      ) : null}
+                      <DeleteForm
+                        action={action}
+                        confirmMessage={`Delete "${recipe.name}"?`}
+                        hiddenFields={{ recipeId: recipe.id }}
+                        size="sm"
+                        variant="outline"
                       >
-                        {recipe.link}
-                      </a>
-                    ) : null}
+                        <Trash2 className="size-4" />
+                        Delete
+                      </DeleteForm>
+                    </div>
                     {recipe.ingredients.length === 0 ? (
                       <p className="px-1 text-sm text-muted-foreground">No ingredients</p>
                     ) : (

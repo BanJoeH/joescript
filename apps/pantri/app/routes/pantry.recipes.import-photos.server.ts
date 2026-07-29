@@ -96,7 +96,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       });
       await notifyPantryChange({ db: context.db, env, pantryId: context.pantryId });
       console.info("[pantri:extract]", "action:redirecting", { recipeId: recipe.id });
-      throw redirect(pantryPath(context.pantryId, `recipes/${recipe.id}/edit`));
+      throw redirect(pantryPath(context.pantryId, `recipes/${recipe.id}`));
     } catch (error) {
       if (error instanceof Response) throw error;
       return { error: error instanceof Error ? error.message : "Could not create recipe draft." };

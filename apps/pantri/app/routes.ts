@@ -17,6 +17,7 @@ export default [
       route("sorted", "routes/pantry.sorted-redirect.tsx"),
       route("recipes/new", "routes/pantry.recipes.new.tsx"),
       route("recipes/import-photos", "routes/pantry.recipes.import-photos.tsx"),
+      route("recipes/:recipeId", "routes/pantry.recipes.$recipeId.tsx"),
       route("recipes/:recipeId/edit", "routes/pantry.recipes.$recipeId.edit.tsx"),
       route("photos/:photoId", "routes/pantry.photos.$photoId.tsx"),
       route("settings", "routes/settings.tsx"),

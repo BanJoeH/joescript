@@ -33,7 +33,7 @@
  * imported recipes afterwards, especially anything with unusual units.
  *
  * Steps aren't part of the legacy schema at all, so imported recipes land
- * with a single placeholder step asking the user to fill in the method.
+ * with an empty method — add steps in the cook view or full editor afterwards.
  */
 
 import { randomUUID } from "node:crypto";
@@ -45,7 +45,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { user } from "../app/db/schema/auth";
 import { pantries, pantryMembers } from "../app/db/schema/domain";
 import { ingredientCategories, oddBits, recipes, shoppingRecipes } from "../app/db/schema/pantri";
-import type { RecipeIngredient, RecipeStep, ShoppingIngredient } from "../app/lib/recipe-schema";
+import type { RecipeIngredient, ShoppingIngredient } from "../app/lib/recipe-schema";
 import {
   serializeRecipeIngredients,
   serializeRecipeSteps,
@@ -178,10 +178,6 @@ function parseRawIngredient(raw: RawIngredient): ShoppingIngredient {
     return { ...parseLegacyIngredientLine(raw), purchased: false };
   }
   return { ...parseLegacyIngredientLine(raw.name), purchased: raw.purchased ?? false };
-}
-
-function placeholderSteps(): RecipeStep[] {
-  return [{ order: 0, text: "Imported from the legacy app — add the method here." }];
 }
 
 function loadEnvFile(path: string) {
@@ -319,7 +315,7 @@ async function main() {
       name: recipe.name,
       link: recipe.link ?? null,
       ingredients: serializeRecipeIngredients(ingredients),
-      steps: serializeRecipeSteps(placeholderSteps()),
+      steps: serializeRecipeSteps([]),
     });
   }
   console.log(`Imported ${data.recipes?.length ?? 0} recipe(s).`);
