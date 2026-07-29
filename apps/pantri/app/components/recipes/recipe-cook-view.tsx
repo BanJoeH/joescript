@@ -1,14 +1,4 @@
-import {
-  ChevronLeft,
-  ChevronRight,
-  ExternalLink,
-  List,
-  Pencil,
-  Plus,
-  ShoppingCart,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, List, Pencil, Plus, Trash2, X } from "lucide-react";
 import { type AnimationEvent, useEffect, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 
@@ -29,7 +19,6 @@ type SheetMotion = "enter" | "exit" | "idle";
 type CookViewActionData = {
   error?: string;
   saved?: true;
-  added?: string;
 };
 
 /** -1 = ingredients screen; 0..n-1 = method steps. */
@@ -223,7 +212,6 @@ function clampCookIndex(index: number, stepCount: number) {
 export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
   const { toast } = useToast();
   const saveFetcher = useFetcher<CookViewActionData>({ key: `recipe-cook-save:${recipe.id}` });
-  const shopFetcher = useFetcher<CookViewActionData>({ key: `recipe-cook-shop:${recipe.id}` });
   const recipeIdRef = useRef(recipe.id);
 
   const [editing, setEditing] = useState(false);
@@ -261,15 +249,8 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
     }
   });
 
-  useFetcherSuccessToast(shopFetcher, (data) => {
-    if (data.added) {
-      toast({ title: data.added, message: "Added to shopping" });
-    }
-  });
-
   const saving = saveFetcher.state !== "idle";
-  const shopping = shopFetcher.state !== "idle";
-  const error = saveFetcher.data?.error ?? shopFetcher.data?.error;
+  const error = saveFetcher.data?.error;
 
   const cleanIngredients: RecipeIngredient[] = ingredients
     .filter((row) => row.name.trim().length > 0)
@@ -364,62 +345,21 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
       ) : null}
 
       <Card>
-        <CardHeader className="gap-3 space-y-0 p-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 flex-1 space-y-2">
+        <CardHeader className="gap-3 space-y-0 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm uppercase tracking-[0.06em]">
+                {isIngredientsScreen ? "Ingredients" : `Step ${cookIndex + 1}`}
+                {editing ? " · Edit" : null}
+              </CardTitle>
+              {totalScreens > 1 ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {screenNumber} of {totalScreens}
+                </p>
+              ) : null}
+            </div>
             {editing ? (
-              <>
-                <Input
-                  aria-label="Recipe name"
-                  className="text-base font-semibold uppercase tracking-[0.06em]"
-                  onChange={(event) => setName(event.target.value)}
-                  required
-                  value={name}
-                />
-                <div className="flex flex-wrap gap-2">
-                  <Input
-                    aria-label="Servings"
-                    className="w-28"
-                    inputMode="numeric"
-                    min={1}
-                    onChange={(event) => setServings(event.target.value)}
-                    placeholder="Servings"
-                    type="number"
-                    value={servings}
-                  />
-                  <Input
-                    aria-label="Source link"
-                    className="min-w-48 flex-1"
-                    onChange={(event) => setLink(event.target.value)}
-                    placeholder="https://..."
-                    type="url"
-                    value={link}
-                  />
-                </div>
-              </>
-            ) : (
-              <>
-                <CardTitle className="text-xl uppercase tracking-[0.08em]">{recipe.name}</CardTitle>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-                  {recipe.servings ? <span>Serves {recipe.servings}</span> : null}
-                  {recipe.link ? (
-                    <a
-                      className="inline-flex items-center gap-1 hover:underline"
-                      href={recipe.link}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      <ExternalLink className="size-3.5" />
-                      Source
-                    </a>
-                  ) : null}
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="flex shrink-0 flex-wrap gap-2">
-            {editing ? (
-              <>
+              <div className="flex shrink-0 flex-wrap gap-2">
                 <Button
                   disabled={saving}
                   onClick={cancelEditing}
@@ -444,35 +384,8 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
                     {saving ? "Saving…" : "Save"}
                   </Button>
                 </saveFetcher.Form>
-              </>
+              </div>
             ) : (
-              <shopFetcher.Form method="post">
-                <input name="intent" type="hidden" value="add-to-shopping" />
-                <Button disabled={shopping} size="sm" type="submit">
-                  <ShoppingCart className="size-4" />
-                  {shopping ? "Adding…" : "Shop"}
-                </Button>
-              </shopFetcher.Form>
-            )}
-          </div>
-        </CardHeader>
-      </Card>
-
-      <Card>
-        <CardHeader className="gap-3 space-y-0 p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <CardTitle className="text-sm uppercase tracking-[0.06em]">
-                {isIngredientsScreen ? "Ingredients" : `Step ${cookIndex + 1}`}
-                {editing ? " · Edit" : null}
-              </CardTitle>
-              {totalScreens > 1 ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {screenNumber} of {totalScreens}
-                </p>
-              ) : null}
-            </div>
-            {!editing ? (
               <Button
                 aria-label={isIngredientsScreen ? "Edit ingredients" : `Edit step ${cookIndex + 1}`}
                 className="size-8 shrink-0"
@@ -483,7 +396,7 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
               >
                 <Pencil className="size-4" />
               </Button>
-            ) : null}
+            )}
           </div>
 
           {!editing && (!isIngredientsScreen || totalScreens > 1) ? (
@@ -532,6 +445,36 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
         <CardContent className="flex min-h-56 flex-col gap-6 p-4 pt-0">
           {editing ? (
             <div className="space-y-6">
+              <div className="space-y-2 border-b border-border pb-4">
+                <Input
+                  aria-label="Recipe name"
+                  className="text-base font-semibold uppercase tracking-[0.06em]"
+                  onChange={(event) => setName(event.target.value)}
+                  required
+                  value={name}
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Input
+                    aria-label="Servings"
+                    className="w-28"
+                    inputMode="numeric"
+                    min={1}
+                    onChange={(event) => setServings(event.target.value)}
+                    placeholder="Servings"
+                    type="number"
+                    value={servings}
+                  />
+                  <Input
+                    aria-label="Source link"
+                    className="min-w-48 flex-1"
+                    onChange={(event) => setLink(event.target.value)}
+                    placeholder="https://..."
+                    type="url"
+                    value={link}
+                  />
+                </div>
+              </div>
+
               {isIngredientsScreen ? (
                 <IngredientEditor
                   ingredients={ingredients}

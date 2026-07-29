@@ -7,6 +7,7 @@ import {
   Search,
   ShoppingCart,
   Trash2,
+  UtensilsCrossed,
 } from "lucide-react";
 import { matchSorter } from "match-sorter";
 import { useDeferredValue, useMemo, useState } from "react";
@@ -153,62 +154,33 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
             return (
               <CardListItem className={cn(expanded && "bg-muted/40")} key={recipe.id}>
                 <div className="flex items-center justify-between gap-2 px-4 py-3">
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <button
-                      aria-controls={panelId}
-                      aria-expanded={expanded}
-                      aria-label={expanded ? `Collapse ${recipe.name}` : `Expand ${recipe.name}`}
-                      className="rounded-sm p-0.5 text-muted-foreground hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      onClick={() => toggleExpanded(recipe.id)}
-                      type="button"
-                    >
-                      <ChevronDown
-                        aria-hidden
-                        className={cn(
-                          "size-4 shrink-0 transition-transform",
-                          !expanded && "-rotate-90",
-                        )}
-                      />
-                    </button>
+                  <button
+                    aria-controls={panelId}
+                    aria-expanded={expanded}
+                    className="flex min-w-0 flex-1 items-center gap-2 rounded-sm text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    onClick={() => toggleExpanded(recipe.id)}
+                    type="button"
+                  >
+                    <ChevronDown
+                      aria-hidden
+                      className={cn(
+                        "size-4 shrink-0 text-muted-foreground transition-transform",
+                        !expanded && "-rotate-90",
+                      )}
+                    />
                     <div className="min-w-0 flex-1">
-                      <Link
-                        className="block truncate text-sm font-semibold uppercase tracking-[0.06em] hover:underline"
-                        to={pantryPath(pantryId, `recipes/${recipe.id}`)}
-                        title={recipe.name}
-                      >
+                      <span className="block truncate text-sm font-semibold uppercase tracking-[0.06em]">
                         {recipe.name}
-                      </Link>
-                      {!expanded ? (
-                        <span className="mt-0.5 block text-xs text-muted-foreground">
-                          {recipe.ingredients.length} ingredient
-                          {recipe.ingredients.length === 1 ? "" : "s"}
-                          {recipe.servings ? ` · Serves ${recipe.servings}` : ""}
-                          {recipe.steps.length > 0
-                            ? ` · ${recipe.steps.length} step${recipe.steps.length === 1 ? "" : "s"}`
-                            : ""}
-                        </span>
-                      ) : null}
+                      </span>
                     </div>
-                  </div>
+                  </button>
                   <div className="flex shrink-0 items-center gap-0">
-                    {recipe.link ? (
-                      <Button asChild className="size-8" size="icon" variant="ghost">
-                        <a
-                          aria-label={`Open source link for ${recipe.name}`}
-                          href={recipe.link}
-                          rel="noreferrer"
-                          target="_blank"
-                        >
-                          <ExternalLink className="size-4" />
-                        </a>
-                      </Button>
-                    ) : null}
                     <Button asChild className="size-8" size="icon" variant="ghost">
                       <Link
-                        aria-label={`Edit ${recipe.name}`}
-                        to={pantryPath(pantryId, `recipes/${recipe.id}/edit`)}
+                        aria-label={`Cook ${recipe.name}`}
+                        to={pantryPath(pantryId, `recipes/${recipe.id}`)}
                       >
-                        <Pencil className="size-4" />
+                        <UtensilsCrossed className="size-4" />
                       </Link>
                     </Button>
                     <addFetcher.Form action={action} method="post">
@@ -224,31 +196,36 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                         <ShoppingCart className="size-4" />
                       </Button>
                     </addFetcher.Form>
-                    <DeleteForm
-                      action={action}
-                      aria-label={`Delete ${recipe.name}`}
-                      className="size-8"
-                      confirmMessage={`Delete "${recipe.name}"?`}
-                      hiddenFields={{ recipeId: recipe.id }}
-                      size="icon"
-                      variant="ghost"
-                    >
-                      <Trash2 className="size-4" />
-                    </DeleteForm>
                   </div>
                 </div>
                 {expanded ? (
                   <div className="space-y-2 px-4 pb-3" id={panelId}>
-                    {recipe.link ? (
-                      <a
-                        className="block truncate text-sm text-muted-foreground hover:underline"
-                        href={recipe.link}
-                        rel="noreferrer"
-                        target="_blank"
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={pantryPath(pantryId, `recipes/${recipe.id}/edit`)}>
+                          <Pencil className="size-4" />
+                          Edit
+                        </Link>
+                      </Button>
+                      {recipe.link ? (
+                        <Button asChild size="sm" variant="outline">
+                          <a href={recipe.link} rel="noreferrer" target="_blank">
+                            <ExternalLink className="size-4" />
+                            Source
+                          </a>
+                        </Button>
+                      ) : null}
+                      <DeleteForm
+                        action={action}
+                        confirmMessage={`Delete "${recipe.name}"?`}
+                        hiddenFields={{ recipeId: recipe.id }}
+                        size="sm"
+                        variant="outline"
                       >
-                        {recipe.link}
-                      </a>
-                    ) : null}
+                        <Trash2 className="size-4" />
+                        Delete
+                      </DeleteForm>
+                    </div>
                     {recipe.ingredients.length === 0 ? (
                       <p className="px-1 text-sm text-muted-foreground">No ingredients</p>
                     ) : (
@@ -272,11 +249,6 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                           ))}
                       </ul>
                     )}
-                    {recipe.steps.length > 0 ? (
-                      <p className="px-1 pt-1 text-xs text-muted-foreground">
-                        {recipe.steps.length} step{recipe.steps.length === 1 ? "" : "s"}
-                      </p>
-                    ) : null}
                   </div>
                 ) : null}
               </CardListItem>

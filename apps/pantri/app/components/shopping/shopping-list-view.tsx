@@ -1,4 +1,11 @@
-import { ArrowRightLeft, ChevronDown, ExternalLink, Plus, Trash2 } from "lucide-react";
+import {
+  ArrowRightLeft,
+  ChevronDown,
+  ExternalLink,
+  Plus,
+  Trash2,
+  UtensilsCrossed,
+} from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
 
@@ -270,7 +277,6 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
         {optimisticRecipes.map((recipe) => {
           const expanded = expandedIds.has(recipe.id);
           const { toBuy, gotIt } = splitIndexedByPurchased(recipe.ingredients);
-          const remaining = toBuy.length;
           const panelId = `shopping-recipe-${recipe.id}`;
 
           return (
@@ -281,8 +287,8 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
               key={recipe.id}
               onToggleExpanded={() => toggleExpanded(recipe.id)}
               panelId={panelId}
+              pantryId={pantryId}
               recipe={recipe}
-              remaining={remaining}
               toBuy={toBuy}
             />
           );
@@ -297,7 +303,7 @@ function RecipeRow({
   recipe,
   expanded,
   panelId,
-  remaining,
+  pantryId,
   toBuy,
   gotIt,
   onToggleExpanded,
@@ -306,12 +312,15 @@ function RecipeRow({
   recipe: ShoppingRecipeRecord;
   expanded: boolean;
   panelId: string;
-  remaining: number;
+  pantryId: string;
   toBuy: { item: ShoppingIngredient; index: number }[];
   gotIt: { item: ShoppingIngredient; index: number }[];
   onToggleExpanded: () => void;
 }) {
   const clearFetcher = useFetcher({ key: `shopping-clear-recipe:${recipe.id}` });
+  const cookPath = recipe.sourceRecipeId
+    ? pantryPath(pantryId, `recipes/${recipe.sourceRecipeId}`)
+    : null;
 
   return (
     <CardListItem className={cn(expanded && "bg-muted/40")}>
@@ -330,37 +339,36 @@ function RecipeRow({
               !expanded && "-rotate-90",
             )}
           />
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-semibold uppercase tracking-[0.06em]">
+          <div className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold uppercase tracking-[0.06em]">
               {recipe.name}
             </span>
-            {!expanded ? (
-              <span className="mt-0.5 block text-xs text-muted-foreground">
-                {remaining === 0
-                  ? "All got"
-                  : `${remaining} left · ${recipe.ingredients.length} total`}
-              </span>
-            ) : null}
-          </span>
+          </div>
         </button>
         <div className="flex shrink-0 items-center gap-0">
-          {recipe.link ? (
+          {cookPath ? (
             <Button asChild className="size-8" size="icon" variant="ghost">
-              <a
-                aria-label={`Open source link for ${recipe.name}`}
-                href={recipe.link}
-                rel="noreferrer"
-                target="_blank"
-              >
-                <ExternalLink className="size-4" />
-              </a>
+              <Link aria-label={`Cook ${recipe.name}`} to={cookPath}>
+                <UtensilsCrossed className="size-4" />
+              </Link>
             </Button>
           ) : null}
           <RemoveRecipeButton action={action} recipeId={recipe.id} recipeName={recipe.name} />
         </div>
       </div>
       {expanded ? (
-        <div className="space-y-1 px-4 pb-3" id={panelId}>
+        <div className="space-y-2 px-4 pb-3" id={panelId}>
+          {recipe.link ? (
+            <a
+              className="inline-flex items-center gap-1 truncate text-sm text-muted-foreground hover:underline"
+              href={recipe.link}
+              rel="noreferrer"
+              target="_blank"
+            >
+              <ExternalLink className="size-3.5 shrink-0" />
+              Source
+            </a>
+          ) : null}
           {recipe.ingredients.length === 0 ? (
             <p className="px-1 text-sm text-muted-foreground">No ingredients</p>
           ) : (
