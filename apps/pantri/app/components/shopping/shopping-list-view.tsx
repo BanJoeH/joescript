@@ -175,11 +175,11 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
           <Button asChild size="sm" variant="outline">
             <Link to={pantryPath(pantryId, "shopping/sorted")}>
               <ArrowRightLeft className="size-4" />
-              Sort Shopping
+              Sort
             </Link>
           </Button>
         }
-        description="Grouped by recipe. Check off what you've got."
+        description="By recipe"
         title="Shopping list"
       />
 
@@ -190,8 +190,8 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
             {optimisticOddBits.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {optimisticRecipes.length === 0
-                  ? "Your shopping list is empty. Add a recipe from the Recipes page, or add an odd bit below."
-                  : "Things you need that aren't part of a recipe — a few odds and ends."}
+                  ? "Empty. Add a recipe or an odd bit below."
+                  : "Extras that aren't on a recipe."}
               </p>
             ) : (
               <>
@@ -210,9 +210,7 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                     ))}
                   </div>
                 ) : (
-                  <p className="px-1 text-sm text-muted-foreground">
-                    All done — nothing left to buy.
-                  </p>
+                  <p className="px-1 text-sm text-muted-foreground">All done.</p>
                 )}
 
                 {oddBitsGotIt.length > 0 ? (
@@ -378,9 +376,7 @@ function RecipeRow({
                   />
                 ))
               ) : (
-                <p className="px-1 text-sm text-muted-foreground">
-                  All done — nothing left to buy.
-                </p>
+                <p className="px-1 text-sm text-muted-foreground">All done.</p>
               )}
 
               {gotIt.length > 0 ? (

@@ -38,7 +38,7 @@ export function createPhotosService({ db, userId, pantryId, photosBucket }: Pant
       }
 
       if (usable.length > MAX_PHOTOS_PER_IMPORT) {
-        throw new Error(`You can import at most ${MAX_PHOTOS_PER_IMPORT} photos at once.`);
+        throw new Error(`At most ${MAX_PHOTOS_PER_IMPORT} photos at once.`);
       }
 
       const created: RecipePhotoRecord[] = [];

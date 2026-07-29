@@ -219,7 +219,7 @@ export function RecipeForm({
                   className="hidden sm:block"
                   onChange={(event) => updateIngredient(row.key, { notes: event.target.value })}
                   onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
-                  placeholder="Notes (optional)"
+                  placeholder="Notes"
                   value={row.notes ?? ""}
                 />
                 <Button
@@ -246,7 +246,7 @@ export function RecipeForm({
         </CardHeader>
         <CardContent className="space-y-3">
           {steps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No steps yet.</p>
+            <p className="text-sm text-muted-foreground">No steps.</p>
           ) : (
             <div className="space-y-2">
               {steps.map((row, index) => (
@@ -277,7 +277,7 @@ export function RecipeForm({
                   <Textarea
                     aria-label={`Step ${index + 1}`}
                     onChange={(event) => updateStep(row.key, event.target.value)}
-                    placeholder="Describe this step"
+                    placeholder="Step"
                     rows={2}
                     value={row.text}
                   />

@@ -23,11 +23,15 @@ export default function EditRecipePage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        actions={<DeleteForm confirmMessage={`Delete "${recipe.name}"? This cannot be undone.`} />}
+        actions={<DeleteForm confirmMessage={`Delete "${recipe.name}"?`} />}
         description={
           <>
             <Link className="hover:underline" to={pantryPath(pantryId, "recipes")}>
               Recipes
+            </Link>{" "}
+            /{" "}
+            <Link className="hover:underline" to={pantryPath(pantryId, `recipes/${recipe.id}`)}>
+              {recipe.name}
             </Link>{" "}
             / Edit
           </>

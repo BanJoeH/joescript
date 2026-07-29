@@ -133,18 +133,18 @@ export default function SortedPage() {
           <Button asChild size="sm" variant="outline">
             <Link to={pantryPath(pantryId, "shopping")}>
               <ArrowLeft className="size-4" />
-              Back to list
+              Back
             </Link>
           </Button>
         }
-        description="Every ingredient across your shopping list, combined and grouped for the store."
+        description="By aisle"
         title="Sorted by aisle"
       />
 
       {isEmpty ? (
         <Card>
           <CardContent className="pt-6 text-sm text-muted-foreground">
-            Nothing to shop for yet. Add recipes to your shopping list first.
+            Nothing to shop for.
           </CardContent>
         </Card>
       ) : (
@@ -164,9 +164,7 @@ export default function SortedPage() {
             ))
           ) : (
             <Card>
-              <CardContent className="pt-6 text-sm text-muted-foreground">
-                All done — nothing left to buy.
-              </CardContent>
+              <CardContent className="pt-6 text-sm text-muted-foreground">All done.</CardContent>
             </Card>
           )}
 

@@ -47,7 +47,7 @@ export default function PersonalSettings({ loaderData }: Route.ComponentProps) {
       <Card>
         <CardHeader>
           <CardTitle>Account</CardTitle>
-          <CardDescription>The Google account you signed in with.</CardDescription>
+          <CardDescription>Signed-in Google account.</CardDescription>
         </CardHeader>
         <CardContent className="text-sm">
           {user.name ? <p className="font-medium">{user.name}</p> : null}
@@ -58,7 +58,7 @@ export default function PersonalSettings({ loaderData }: Route.ComponentProps) {
       <Card>
         <CardHeader>
           <CardTitle>Switch pantry</CardTitle>
-          <CardDescription>Open a different shared pantry or create one.</CardDescription>
+          <CardDescription>Open or create a pantry.</CardDescription>
         </CardHeader>
         <CardContent>
           <Link to="/pantries">
@@ -72,7 +72,7 @@ export default function PersonalSettings({ loaderData }: Route.ComponentProps) {
       <Card>
         <CardHeader>
           <CardTitle>Sign out</CardTitle>
-          <CardDescription>End your session on this device.</CardDescription>
+          <CardDescription>End this session.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form action="/logout" method="post">

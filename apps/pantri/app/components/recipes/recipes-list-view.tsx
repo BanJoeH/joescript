@@ -74,7 +74,7 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
 
   useFetcherSuccessToast(addFetcher, (data) => {
     if (data.added) {
-      toast({ title: data.added, message: "Added to your shopping list" });
+      toast({ title: data.added, message: "Added to shopping" });
     }
   });
 
@@ -104,7 +104,7 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
             </Button>
           </>
         }
-        description="Your pantry's shared recipe collection."
+        description="Shared recipes"
         title="Recipes"
       />
 
@@ -119,7 +119,7 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
             autoComplete="off"
             className="pl-9"
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by name or ingredient…"
+            placeholder="Search…"
             type="search"
             value={query}
           />
@@ -135,7 +135,7 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
       {recipes.length === 0 ? (
         <CardList>
           <CardListItem className="px-4 py-3 text-sm text-muted-foreground">
-            No recipes yet. Add one to get started.
+            No recipes yet.
           </CardListItem>
         </CardList>
       ) : filteredRecipes.length === 0 ? (
@@ -153,33 +153,43 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
             return (
               <CardListItem className={cn(expanded && "bg-muted/40")} key={recipe.id}>
                 <div className="flex items-center justify-between gap-2 px-4 py-3">
-                  <button
-                    aria-controls={panelId}
-                    aria-expanded={expanded}
-                    className="flex min-w-0 flex-1 items-center gap-2 rounded-sm text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    onClick={() => toggleExpanded(recipe.id)}
-                    type="button"
-                  >
-                    <ChevronDown
-                      aria-hidden
-                      className={cn(
-                        "size-4 shrink-0 text-muted-foreground transition-transform",
-                        !expanded && "-rotate-90",
-                      )}
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold uppercase tracking-[0.06em]">
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <button
+                      aria-controls={panelId}
+                      aria-expanded={expanded}
+                      aria-label={expanded ? `Collapse ${recipe.name}` : `Expand ${recipe.name}`}
+                      className="rounded-sm p-0.5 text-muted-foreground hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => toggleExpanded(recipe.id)}
+                      type="button"
+                    >
+                      <ChevronDown
+                        aria-hidden
+                        className={cn(
+                          "size-4 shrink-0 transition-transform",
+                          !expanded && "-rotate-90",
+                        )}
+                      />
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        className="block truncate text-sm font-semibold uppercase tracking-[0.06em] hover:underline"
+                        to={pantryPath(pantryId, `recipes/${recipe.id}`)}
+                        title={recipe.name}
+                      >
                         {recipe.name}
-                      </span>
+                      </Link>
                       {!expanded ? (
                         <span className="mt-0.5 block text-xs text-muted-foreground">
                           {recipe.ingredients.length} ingredient
                           {recipe.ingredients.length === 1 ? "" : "s"}
                           {recipe.servings ? ` · Serves ${recipe.servings}` : ""}
+                          {recipe.steps.length > 0
+                            ? ` · ${recipe.steps.length} step${recipe.steps.length === 1 ? "" : "s"}`
+                            : ""}
                         </span>
                       ) : null}
-                    </span>
-                  </button>
+                    </div>
+                  </div>
                   <div className="flex shrink-0 items-center gap-0">
                     {recipe.link ? (
                       <Button asChild className="size-8" size="icon" variant="ghost">
@@ -218,7 +228,7 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                       action={action}
                       aria-label={`Delete ${recipe.name}`}
                       className="size-8"
-                      confirmMessage={`Delete "${recipe.name}"? This cannot be undone.`}
+                      confirmMessage={`Delete "${recipe.name}"?`}
                       hiddenFields={{ recipeId: recipe.id }}
                       size="icon"
                       variant="ghost"
@@ -262,6 +272,11 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                           ))}
                       </ul>
                     )}
+                    {recipe.steps.length > 0 ? (
+                      <p className="px-1 pt-1 text-xs text-muted-foreground">
+                        {recipe.steps.length} step{recipe.steps.length === 1 ? "" : "s"}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
               </CardListItem>

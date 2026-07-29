@@ -21,7 +21,7 @@ export function meta(_args: Route.MetaArgs) {
 }
 
 function inviteInstructions(email: string, pantryName: string) {
-  return `You're invited to join “${pantryName}” on Pantri.\n\nSign in with Google using ${email}, then open the app — you'll get access automatically.`;
+  return `You're invited to join “${pantryName}” on Pantri.\n\nSign in with Google as ${email}, then open the app.`;
 }
 
 export default function PantrySettings() {
@@ -72,13 +72,12 @@ export default function PantrySettings() {
         <p className="rounded-md border border-border bg-card px-3 py-2 text-sm">
           {flash.status === "joined" ? (
             <>
-              <span className="font-medium">{flash.email}</span> already had an account and was
-              added to this pantry.
+              <span className="font-medium">{flash.email}</span> added to this pantry.
             </>
           ) : (
             <>
-              Invited <span className="font-medium">{flash.email}</span>. They get access when they
-              sign in with Google using that address — no email is sent from Pantri.
+              Invited <span className="font-medium">{flash.email}</span>. Access starts when they
+              sign in with Google. No email is sent.
             </>
           )}
         </p>
@@ -104,8 +103,7 @@ export default function PantrySettings() {
         <CardHeader>
           <CardTitle>Members</CardTitle>
           <CardDescription>
-            Invite by email. No message is sent — share that they should sign in with Google using
-            that address.
+            Invite by email. No message is sent; they sign in with Google using that address.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -114,7 +112,7 @@ export default function PantrySettings() {
               Active
             </h3>
             {activeMembers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No active members yet.</p>
+              <p className="text-sm text-muted-foreground">No active members.</p>
             ) : (
               <ul className="space-y-2">
                 {activeMembers.map((member) => {
@@ -214,8 +212,7 @@ export default function PantrySettings() {
         <CardHeader>
           <CardTitle>Delete pantry</CardTitle>
           <CardDescription>
-            Permanently removes this pantry and all its recipes, shopping lists, and odd bits.
-            Members lose access. This cannot be undone.
+            Deletes this pantry, its recipes, shopping lists, and odd bits. Cannot be undone.
           </CardDescription>
         </CardHeader>
         <CardContent>

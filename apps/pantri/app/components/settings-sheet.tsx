@@ -47,21 +47,19 @@ export function SettingsSheet({ open, onOpenChange, pantryId, pantryName }: Sett
     {
       to: pantryPath(pantryId, "settings/personal"),
       label: "Personal settings",
-      description: "Your account and sign-out",
+      description: "Account and sign-out",
       icon: User,
     },
     {
       to: pantryPath(pantryId, "settings/pantry"),
       label: "Pantry settings",
-      description: pantryName
-        ? `${pantryName} · name, members, and deletion`
-        : "Name, members, and deletion",
+      description: pantryName ? `${pantryName} · name, members, delete` : "Name, members, delete",
       icon: ListChecks,
     },
     {
       to: "/pantries",
       label: "Switch pantry",
-      description: "Open a different pantry or create one",
+      description: "Open or create a pantry",
       icon: Home,
     },
   ];

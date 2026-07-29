@@ -15,7 +15,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   try {
     const servingsRaw = getOptionalString(formData, "servings");
-    await pantri.recipes.create({
+    const recipe = await pantri.recipes.create({
       name: getString(formData, "name"),
       link: getOptionalString(formData, "link"),
       servings: servingsRaw ? Number(servingsRaw) : undefined,
@@ -25,7 +25,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       steps: parseRecipeSteps(JSON.parse(getString(formData, "stepsJson") || "[]")),
     });
     await notifyPantryChange({ db: context.db, env: getWorkerEnv(), pantryId: context.pantryId });
-    throw redirect(pantryPath(context.pantryId, "recipes"));
+    throw redirect(pantryPath(context.pantryId, `recipes/${recipe.id}`));
   } catch (error) {
     if (error instanceof Response) throw error;
     return { error: error instanceof Error ? error.message : "Could not create recipe." };

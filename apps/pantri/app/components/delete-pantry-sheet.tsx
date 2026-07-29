@@ -85,9 +85,8 @@ export function DeletePantrySheet({ open, onOpenChange, pantryName }: DeletePant
           <div className="min-w-0">
             <h2 className="text-lg font-semibold tracking-tight text-destructive">Delete pantry</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              This permanently deletes{" "}
-              <span className="font-medium text-foreground">{pantryName}</span> and all of its
-              recipes, shopping lists, and odd bits. Members lose access. This cannot be undone.
+              Deletes <span className="font-medium text-foreground">{pantryName}</span>, its
+              recipes, shopping lists, and odd bits. Cannot be undone.
             </p>
           </div>
           <Button
