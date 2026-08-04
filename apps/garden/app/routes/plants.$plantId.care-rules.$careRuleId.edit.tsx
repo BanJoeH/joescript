@@ -1,4 +1,4 @@
-import { redirect, useActionData } from "react-router";
+import { redirect } from "react-router";
 import { CareRuleForm } from "~/components/care-rules/care-rule-form";
 import { DeleteForm } from "~/components/delete-form";
 import { Link } from "~/components/link";
@@ -72,9 +72,8 @@ export async function action({ request, params }: Route.ActionArgs) {
   throw redirect(householdPath(params.householdId, `plants/${params.plantId}`));
 }
 
-export default function EditCareRule({ loaderData }: Route.ComponentProps) {
+export default function EditCareRule({ loaderData, actionData }: Route.ComponentProps) {
   const { householdId, plant, careRule } = loaderData;
-  const actionData = useActionData<typeof action>();
 
   return (
     <div className="flex flex-col gap-6">

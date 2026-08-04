@@ -1,4 +1,4 @@
-import { redirect, useActionData } from "react-router";
+import { redirect } from "react-router";
 import { AreaForm } from "~/components/areas/area-form";
 import { Link } from "~/components/link";
 import { QuickAddFlashBanner } from "~/components/quick-add-flash-banner";
@@ -68,9 +68,8 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 }
 
-export default function NewArea({ loaderData }: Route.ComponentProps) {
+export default function NewArea({ loaderData, actionData }: Route.ComponentProps) {
   const { householdId, flash, formKey, suggestedNames } = loaderData;
-  const actionData = useActionData<typeof action>();
 
   return (
     <div className="flex flex-col gap-6">

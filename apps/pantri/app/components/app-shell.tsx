@@ -5,6 +5,12 @@ import { useLocation, useParams, useRouteLoaderData } from "react-router";
 import { Link } from "~/components/link";
 import { PantriBrand } from "~/components/pantri-brand";
 import { SettingsSheet } from "~/components/settings-sheet";
+import {
+  type HomeTab,
+  HomeTabScrollProvider,
+  useHomeTabScroll,
+  useMainScrollPaneRef,
+} from "~/lib/home-tab-scroll";
 import { pantryPath } from "~/lib/pantry-path";
 import { cn } from "~/lib/utils";
 
@@ -15,6 +21,7 @@ type PantryNavItem = {
   label: string;
   exact: boolean;
   icon: LucideIcon;
+  tab: HomeTab;
 };
 
 function getPantryNavItems(pantryId: string): PantryNavItem[] {
@@ -24,12 +31,14 @@ function getPantryNavItems(pantryId: string): PantryNavItem[] {
       label: "Shopping",
       exact: false,
       icon: ShoppingCart,
+      tab: "shopping",
     },
     {
       href: pantryPath(pantryId, "recipes"),
       label: "Recipes",
       exact: false,
       icon: UtensilsCrossed,
+      tab: "recipes",
     },
   ];
 }
@@ -65,14 +74,21 @@ function NavContent({
   );
 }
 
-function TopNavLink({ href, label, exact, icon }: PantryNavItem) {
+function TopNavLink({ href, label, exact, icon, tab }: PantryNavItem) {
   const location = useLocation();
+  const homeTabScroll = useHomeTabScroll();
   const isActive = isNavItemActive(location.pathname, href, exact);
 
   return (
     <Link
       aria-current={isActive ? "page" : undefined}
       className={topNavClassName(isActive)}
+      onClick={(event) => {
+        if (isActive) {
+          event.preventDefault();
+          homeTabScroll?.scrollToTop(tab);
+        }
+      }}
       prefetch="viewport"
       to={href}
     >
@@ -112,14 +128,21 @@ function BottomNavContent({
   );
 }
 
-function BottomNavLink({ href, label, exact, icon }: PantryNavItem) {
+function BottomNavLink({ href, label, exact, icon, tab }: PantryNavItem) {
   const location = useLocation();
+  const homeTabScroll = useHomeTabScroll();
   const isActive = isNavItemActive(location.pathname, href, exact);
 
   return (
     <Link
       aria-current={isActive ? "page" : undefined}
       className={bottomNavClassName(isActive)}
+      onClick={(event) => {
+        if (isActive) {
+          event.preventDefault();
+          homeTabScroll?.scrollToTop(tab);
+        }
+      }}
       prefetch="viewport"
       to={href}
     >
@@ -128,7 +151,20 @@ function BottomNavLink({ href, label, exact, icon }: PantryNavItem) {
   );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+function MainScrollPane({ children }: { children: React.ReactNode }) {
+  const paneRef = useMainScrollPaneRef();
+
+  return (
+    <div
+      className="pantri-page flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto md:gap-6"
+      ref={paneRef}
+    >
+      {children}
+    </div>
+  );
+}
+
+function AppShellContent({ children }: { children: React.ReactNode }) {
   const pantryData = useRouteLoaderData<PantryRoute.ComponentProps["loaderData"]>("routes/pantry");
   const params = useParams();
   const location = useLocation();
@@ -140,11 +176,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       className={cn(
-        "mx-auto flex min-h-screen w-full max-w-180 flex-col gap-4 px-[2.5%] py-4 md:gap-6 md:py-6",
-        navItems && "pb-24 md:pb-6",
+        "mx-auto flex h-dvh w-full max-w-180 flex-col gap-4 overflow-hidden px-[2.5%] pt-0 md:gap-6",
+        navItems ? "pb-24 md:pb-6" : "pb-4 md:pb-6",
       )}
     >
-      <header className="sticky top-0 z-30 mx-[-2.5%] flex items-center justify-between border-b border-border bg-background/95 px-[2.5%] py-3 backdrop-blur-sm">
+      <header className="z-30 mx-[-2.5%] flex shrink-0 items-center justify-between border-b border-border bg-background/95 px-[2.5%] py-3 backdrop-blur-sm">
         <h1>
           <Link to={pantryId ? pantryPath(pantryId, "shopping") : "/pantries"}>
             <PantriBrand titleClassName="text-base" />
@@ -161,7 +197,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       {navItems ? (
-        <nav aria-label="Pantry" className="hidden flex-wrap gap-1 md:flex">
+        <nav aria-label="Pantry" className="hidden shrink-0 flex-wrap gap-1 md:flex">
           {navItems.map((item) => (
             <TopNavLink key={item.href} {...item} />
           ))}
@@ -175,7 +211,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
       ) : null}
 
-      <div className="pantri-page flex flex-1 flex-col gap-4 md:gap-6">{children}</div>
+      <MainScrollPane>{children}</MainScrollPane>
 
       {navItems ? (
         <nav
@@ -206,5 +242,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         />
       ) : null}
     </div>
+  );
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  return (
+    <HomeTabScrollProvider>
+      <AppShellContent>{children}</AppShellContent>
+    </HomeTabScrollProvider>
   );
 }

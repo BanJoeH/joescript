@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { redirect, useActionData, useLoaderData } from "react-router";
+import { redirect } from "react-router";
 import { JournalEntryForm } from "~/components/journal/journal-entry-form";
 import { Link } from "~/components/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -113,9 +113,8 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 }
 
-export default function NewJournalEntry() {
-  const { householdId, plants, areas, defaults, starter } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+export default function NewJournalEntry({ loaderData, actionData }: Route.ComponentProps) {
+  const { householdId, plants, areas, defaults, starter } = loaderData;
   const formId = useId();
 
   return (

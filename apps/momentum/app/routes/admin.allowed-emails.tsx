@@ -1,4 +1,4 @@
-import { Form, Link, useActionData, useLoaderData } from "react-router";
+import { Form, Link } from "react-router";
 
 import { DeleteForm } from "~/components/delete-form";
 import { Button } from "~/components/ui/button";
@@ -16,10 +16,8 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Invited emails · Momentum" }];
 }
 
-export default function AdminAllowedEmailsPage() {
-  const { emails, timeZone } =
-    useLoaderData<typeof import("./admin.allowed-emails.server").loader>();
-  const actionData = useActionData<typeof import("./admin.allowed-emails.server").action>();
+export default function AdminAllowedEmailsPage({ loaderData, actionData }: Route.ComponentProps) {
+  const { emails, timeZone } = loaderData;
 
   return (
     <div className="flex flex-col gap-6">

@@ -1,4 +1,4 @@
-import { redirect, useActionData } from "react-router";
+import { redirect } from "react-router";
 import { Link } from "~/components/link";
 
 import { PlantForm } from "~/components/plants/plant-form";
@@ -107,7 +107,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 }
 
-export default function NewPlant({ loaderData }: Route.ComponentProps) {
+export default function NewPlant({ loaderData, actionData }: Route.ComponentProps) {
   const {
     householdId,
     areas,
@@ -118,7 +118,6 @@ export default function NewPlant({ loaderData }: Route.ComponentProps) {
     duplicateFromName,
     formKey,
   } = loaderData;
-  const actionData = useActionData<typeof action>();
 
   return (
     <div className="flex flex-col gap-6">

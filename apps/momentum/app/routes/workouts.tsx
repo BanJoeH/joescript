@@ -1,4 +1,4 @@
-import { Link, useLoaderData } from "react-router";
+import { Link } from "react-router";
 
 import { formatEnergyLabel, formatWorthItLabel } from "~/components/rating-picker";
 import { formatDate } from "~/lib/dates";
@@ -15,8 +15,8 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Workouts · Momentum" }];
 }
 
-export default function WorkoutsPage() {
-  const { workouts, timeZone } = useLoaderData<typeof loader>();
+export default function WorkoutsPage({ loaderData }: Route.ComponentProps) {
+  const { workouts, timeZone } = loaderData;
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,5 @@
 import { Star } from "lucide-react";
-import { Link, redirect, useActionData, useLoaderData } from "react-router";
+import { Link, redirect } from "react-router";
 
 import { DeleteForm } from "~/components/delete-form";
 import { EnergyChangeBadge } from "~/components/energy-change";
@@ -81,9 +81,8 @@ function worthItTone(value: number | null | undefined) {
   }
 }
 
-export default function WorkoutDetailPage() {
-  const { workout, timeZone, hasInProgress } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+export default function WorkoutDetailPage({ loaderData, actionData }: Route.ComponentProps) {
+  const { workout, timeZone, hasInProgress } = loaderData;
   const setCount = workout.exercises.reduce((sum, e) => sum + e.sets.length, 0);
   const duration = formatDuration(workout.durationSeconds);
   const canRepeat = workout.status === "completed";

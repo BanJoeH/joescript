@@ -1,4 +1,4 @@
-import { redirect, useActionData, useLoaderData } from "react-router";
+import { redirect } from "react-router";
 
 import { WorkoutLogForm } from "~/components/workout-log-form";
 import { parseWorkoutFormData } from "~/lib/workout-form.server";
@@ -72,9 +72,8 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Edit workout · Momentum" }];
 }
 
-export default function EditWorkoutPage() {
-  const { exercises, recentExercises, draft, workoutId, timeZone } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+export default function EditWorkoutPage({ loaderData, actionData }: Route.ComponentProps) {
+  const { exercises, recentExercises, draft, workoutId, timeZone } = loaderData;
 
   return (
     <WorkoutLogForm

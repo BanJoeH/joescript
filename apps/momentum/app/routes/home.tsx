@@ -1,5 +1,5 @@
 import { ArrowRight, ChevronRight, Dumbbell, Leaf, Star } from "lucide-react";
-import { Form, Link, redirect, useLoaderData, useNavigation } from "react-router";
+import { Form, Link, redirect, useNavigation } from "react-router";
 
 import { EnergyChangeBadge } from "~/components/energy-change";
 import { LandscapeHero } from "~/components/landscape-hero";
@@ -70,7 +70,7 @@ function formatDuration(seconds: number | null) {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
-export default function HomePage() {
+export default function HomePage({ loaderData }: Route.ComponentProps) {
   const {
     firstName,
     userImage,
@@ -81,7 +81,7 @@ export default function HomePage() {
     hasInProgress,
     inProgressId,
     timeZone,
-  } = useLoaderData<typeof loader>();
+  } = loaderData;
   const navigation = useNavigation();
   const discarding =
     navigation.state !== "idle" && navigation.formData?.get("intent") === "discard";

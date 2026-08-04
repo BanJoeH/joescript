@@ -1,4 +1,4 @@
-import { redirect, useActionData } from "react-router";
+import { redirect } from "react-router";
 import { CareRuleForm } from "~/components/care-rules/care-rule-form";
 import { Link } from "~/components/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
@@ -52,9 +52,8 @@ export async function action({ request, params }: Route.ActionArgs) {
   throw redirect(householdPath(params.householdId, `plants/${params.plantId}`));
 }
 
-export default function NewCareRule({ loaderData }: Route.ComponentProps) {
+export default function NewCareRule({ loaderData, actionData }: Route.ComponentProps) {
   const { householdId, plant } = loaderData;
-  const actionData = useActionData<typeof action>();
   const currentMonth = new Date().getMonth() + 1;
 
   return (

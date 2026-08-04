@@ -1,4 +1,4 @@
-import { Form, redirect, useActionData, useLoaderData, useSearchParams } from "react-router";
+import { Form, redirect, useSearchParams } from "react-router";
 
 import { DeleteForm } from "~/components/delete-form";
 import { SparklineChart } from "~/components/sparkline-chart";
@@ -123,10 +123,8 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Progress · Momentum" }];
 }
 
-export default function ProgressPage() {
-  const { types, selected, series, timeframe, timeZone, rangeFrom, rangeTo } =
-    useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+export default function ProgressPage({ loaderData, actionData }: Route.ComponentProps) {
+  const { types, selected, series, timeframe, timeZone, rangeFrom, rangeTo } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
 
   function updateParam(key: string, value: string) {

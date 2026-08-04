@@ -1,4 +1,3 @@
-import { useActionData } from "react-router";
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
 import { emptyRecipeFormDefaultValues, RecipeForm } from "~/components/recipes/recipe-form";
@@ -12,9 +11,7 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "New recipe · Pantri" }];
 }
 
-export default function NewRecipePage({ params }: Route.ComponentProps) {
-  const actionData = useActionData<typeof import("./pantry.recipes.new.server").action>();
-
+export default function NewRecipePage({ params, actionData }: Route.ComponentProps) {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
