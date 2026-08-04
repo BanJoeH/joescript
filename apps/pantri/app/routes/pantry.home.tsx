@@ -1,62 +1,29 @@
 import { useEffect, useRef } from "react";
-import { Outlet, useLoaderData, useLocation, useNavigate } from "react-router";
+import { Outlet, useLocation, useNavigate } from "react-router";
 import type { Swiper as SwiperClass } from "swiper";
 import { Swiper, SwiperSlide } from "swiper/react";
 
 import { RecipesListView } from "~/components/recipes/recipes-list-view";
 import { ShoppingListView } from "~/components/shopping/shopping-list-view";
+import { type HomeTab, useHomeTabPaneRef } from "~/lib/home-tab-scroll";
 import { pantryPath } from "~/lib/pantry-path";
 
 import type { Route } from "./+types/pantry.home";
 
 export { loader } from "./pantry.home.server";
 
-function HomeSlide({
-  active,
-  children,
-  swiperRef,
-}: {
-  active: boolean;
-  children: React.ReactNode;
-  swiperRef: React.MutableRefObject<SwiperClass | null>;
-}) {
-  const contentRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    if (!active) return;
-
-    const updateHeight = () => {
-      swiperRef.current?.update();
-      swiperRef.current?.updateAutoHeight(0);
-    };
-
-    updateHeight();
-    const animationFrame = window.requestAnimationFrame(updateHeight);
-
-    const content = contentRef.current;
-    if (!content || typeof ResizeObserver === "undefined") {
-      return () => window.cancelAnimationFrame(animationFrame);
-    }
-
-    const observer = new ResizeObserver(updateHeight);
-    observer.observe(content);
-
-    return () => {
-      window.cancelAnimationFrame(animationFrame);
-      observer.disconnect();
-    };
-  }, [active, swiperRef]);
+function HomeTabPane({ tab, children }: { tab: HomeTab; children: React.ReactNode }) {
+  const paneRef = useHomeTabPaneRef(tab);
 
   return (
-    <div className="home-slide-content px-0.5 pb-2" ref={contentRef}>
+    <div className="home-slide-scroll px-0.5 pb-2" ref={paneRef}>
       {children}
     </div>
   );
 }
 
-export default function PantryHomePage() {
-  const { shoppingRecipes, oddBits, recipes, pantryId } =
-    useLoaderData<typeof import("./pantry.home.server").loader>();
+export default function PantryHomePage({ loaderData }: Route.ComponentProps) {
+  const { shoppingRecipes, oddBits, recipes, pantryId } = loaderData;
   const location = useLocation();
   const navigate = useNavigate();
   const swiperRef = useRef<SwiperClass | null>(null);
@@ -66,15 +33,13 @@ export default function PantryHomePage() {
     if (swiperRef.current && swiperRef.current.activeIndex !== activeIndex) {
       swiperRef.current.slideTo(activeIndex);
     }
-    window.scrollTo({ top: 0 });
   }, [activeIndex]);
 
   return (
     <>
-      <div className="mx-[-2.5%] flex min-h-[calc(100dvh-11rem)] flex-1 flex-col px-[2.5%] md:min-h-[calc(100dvh-9rem)]">
+      <div className="home-swiper-shell flex h-full min-h-0 min-w-0 w-full max-w-full flex-1 flex-col">
         <Swiper
-          autoHeight
-          className="home-swiper w-full flex-1"
+          className="home-swiper"
           // Allow horizontal swipes that start on checkboxes/labels/buttons;
           // only block steal-prevention on real text entry fields.
           focusableElements="input[type=text], input[type=search], input[type=email], input[type=password], input[type=number], input:not([type]), textarea, select"
@@ -85,7 +50,6 @@ export default function PantryHomePage() {
                 ? pantryPath(pantryId, "shopping")
                 : pantryPath(pantryId, "recipes");
             if (location.pathname !== nextPath) {
-              window.scrollTo({ top: 0 });
               void navigate(nextPath);
             }
           }}
@@ -94,16 +58,17 @@ export default function PantryHomePage() {
           }}
           slidesPerView={1}
           touchEventsTarget="container"
+          touchStartPreventDefault={false}
         >
           <SwiperSlide>
-            <HomeSlide active={activeIndex === 0} swiperRef={swiperRef}>
+            <HomeTabPane tab="shopping">
               <ShoppingListView oddBits={oddBits} pantryId={pantryId} recipes={shoppingRecipes} />
-            </HomeSlide>
+            </HomeTabPane>
           </SwiperSlide>
           <SwiperSlide>
-            <HomeSlide active={activeIndex === 1} swiperRef={swiperRef}>
+            <HomeTabPane tab="recipes">
               <RecipesListView pantryId={pantryId} recipes={recipes} />
-            </HomeSlide>
+            </HomeTabPane>
           </SwiperSlide>
         </Swiper>
       </div>

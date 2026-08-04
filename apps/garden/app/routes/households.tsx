@@ -1,5 +1,5 @@
 import { Star } from "lucide-react";
-import { Form, useActionData, useLoaderData } from "react-router";
+import { Form } from "react-router";
 import { Link } from "~/components/link";
 
 import { Button } from "~/components/ui/button";
@@ -17,10 +17,8 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Households · Garden" }];
 }
 
-export default function HouseholdsPage() {
-  const { households, favoriteHouseholdId } =
-    useLoaderData<typeof import("./households.server").loader>();
-  const actionData = useActionData<typeof import("./households.server").action>();
+export default function HouseholdsPage({ loaderData, actionData }: Route.ComponentProps) {
+  const { households, favoriteHouseholdId } = loaderData;
 
   return (
     <div className="flex flex-col gap-6">

@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { LogOut } from "lucide-react";
-import { Form, Link, redirect, useActionData, useLoaderData, useNavigation } from "react-router";
+import { Form, Link, redirect, useNavigation } from "react-router";
 
 import { ThemeToggle } from "~/components/theme-toggle";
 import { Button } from "~/components/ui/button";
@@ -48,9 +48,8 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Settings · Momentum" }];
 }
 
-export default function SettingsPage() {
-  const { name, preferredName, email, isAdmin } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+export default function SettingsPage({ loaderData, actionData }: Route.ComponentProps) {
+  const { name, preferredName, email, isAdmin } = loaderData;
   const navigation = useNavigation();
   const busy = navigation.state !== "idle";
 

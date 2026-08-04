@@ -1,4 +1,4 @@
-import { Form, useActionData, useLoaderData } from "react-router";
+import { Form } from "react-router";
 import { DeleteForm } from "~/components/delete-form";
 import { Link } from "~/components/link";
 import { Button } from "~/components/ui/button";
@@ -15,10 +15,8 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Household settings · Garden" }];
 }
 
-export default function HouseholdSettings() {
-  const { household, members, householdId } =
-    useLoaderData<typeof import("./household.settings.server").loader>();
-  const actionData = useActionData<typeof import("./household.settings.server").action>();
+export default function HouseholdSettings({ loaderData, actionData }: Route.ComponentProps) {
+  const { household, members, householdId } = loaderData;
 
   return (
     <div className="flex flex-col gap-6">

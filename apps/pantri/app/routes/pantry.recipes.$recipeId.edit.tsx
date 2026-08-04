@@ -1,5 +1,3 @@
-import { useActionData, useLoaderData } from "react-router";
-
 import { DeleteForm } from "~/components/delete-form";
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
@@ -14,11 +12,8 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Edit recipe · Pantri" }];
 }
 
-export default function EditRecipePage() {
-  const { recipe, pantryId } =
-    useLoaderData<typeof import("./pantry.recipes.$recipeId.edit.server").loader>();
-  const actionData =
-    useActionData<typeof import("./pantry.recipes.$recipeId.edit.server").action>();
+export default function EditRecipePage({ loaderData, actionData }: Route.ComponentProps) {
+  const { recipe, pantryId } = loaderData;
 
   return (
     <div className="flex flex-col gap-6">

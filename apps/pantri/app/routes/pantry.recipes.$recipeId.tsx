@@ -1,5 +1,5 @@
 import { ShoppingCart } from "lucide-react";
-import { useFetcher, useLoaderData } from "react-router";
+import { useFetcher } from "react-router";
 
 import { DeleteForm } from "~/components/delete-form";
 import { Link } from "~/components/link";
@@ -24,9 +24,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-export default function RecipeDetailPage() {
-  const { recipe, pantryId } =
-    useLoaderData<typeof import("./pantry.recipes.$recipeId.server").loader>();
+export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
+  const { recipe, pantryId } = loaderData;
   const { toast } = useToast();
   const shopFetcher = useFetcher<ShopActionData>({ key: `recipe-cook-shop:${recipe.id}` });
   const shopping = shopFetcher.state !== "idle";

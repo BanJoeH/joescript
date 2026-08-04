@@ -1,4 +1,4 @@
-import { useLoaderData, useSearchParams } from "react-router";
+import { useSearchParams } from "react-router";
 
 import { InsightCard } from "~/components/insight-card";
 import { requireMomentumService } from "~/services";
@@ -22,8 +22,8 @@ const filters = [
   { key: "habits", label: "Habits" },
 ] as const;
 
-export default function InsightsPage() {
-  const { insights } = useLoaderData<typeof loader>();
+export default function InsightsPage({ loaderData }: Route.ComponentProps) {
+  const { insights } = loaderData;
   const [searchParams, setSearchParams] = useSearchParams();
   const filter = (searchParams.get("filter") ?? "all") as Insight["category"] | "all";
 

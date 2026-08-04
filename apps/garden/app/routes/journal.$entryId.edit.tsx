@@ -1,5 +1,5 @@
 import { useId } from "react";
-import { redirect, useActionData } from "react-router";
+import { redirect } from "react-router";
 import { DeleteForm } from "~/components/delete-form";
 import { JournalEntryForm } from "~/components/journal/journal-entry-form";
 import { JournalEntryPhotos } from "~/components/journal/journal-entry-photos";
@@ -113,9 +113,8 @@ export async function action({ request, params }: Route.ActionArgs) {
   throw redirect(householdPath(params.householdId, `journal/${params.entryId}/edit`));
 }
 
-export default function EditJournalEntry({ loaderData }: Route.ComponentProps) {
+export default function EditJournalEntry({ loaderData, actionData }: Route.ComponentProps) {
   const { householdId, entry, plants, areas, photos } = loaderData;
-  const actionData = useActionData<typeof action>();
   const formId = useId();
 
   return (

@@ -1,6 +1,6 @@
 import { ArrowLeft, MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useFetcher, useFetchers, useLoaderData } from "react-router";
+import { useFetcher, useFetchers } from "react-router";
 
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
@@ -168,8 +168,8 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
   );
 }
 
-export default function SortedPage() {
-  const { sections, pantryId } = useLoaderData<typeof import("./pantry.sorted.server").loader>();
+export default function SortedPage({ loaderData }: Route.ComponentProps) {
+  const { sections, pantryId } = loaderData;
   const fetchers = useFetchers();
   const clearFetcher = useFetcher({ key: "sorted-clear-all-purchased" });
   const optimisticSections = useMemo(

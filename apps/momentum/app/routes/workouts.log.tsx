@@ -1,5 +1,5 @@
 import type { ShouldRevalidateFunctionArgs } from "react-router";
-import { redirect, useActionData, useLoaderData } from "react-router";
+import { redirect } from "react-router";
 
 import { WorkoutLogForm } from "~/components/workout-log-form";
 import { getString } from "~/lib/forms.server";
@@ -160,10 +160,8 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Log workout · Momentum" }];
 }
 
-export default function LogWorkoutPage() {
-  const { exercises, recentExercises, draft, workoutId, seedEnergyBefore, timeZone } =
-    useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof action>();
+export default function LogWorkoutPage({ loaderData, actionData }: Route.ComponentProps) {
+  const { exercises, recentExercises, draft, workoutId, seedEnergyBefore, timeZone } = loaderData;
 
   return (
     <WorkoutLogForm

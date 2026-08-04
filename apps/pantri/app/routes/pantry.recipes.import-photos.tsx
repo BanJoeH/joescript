@@ -1,6 +1,6 @@
 import { ImagePlus, Loader2, Sparkles, Trash2, Upload } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
-import { Form, useActionData, useLoaderData, useNavigation, useSubmit } from "react-router";
+import { Form, useNavigation, useSubmit } from "react-router";
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
 import { Button, buttonVariants } from "~/components/ui/button";
@@ -47,10 +47,8 @@ function StatusBanner({
   );
 }
 
-export default function ImportPhotosPage() {
-  const { pendingPhotos, pantryId } =
-    useLoaderData<typeof import("./pantry.recipes.import-photos.server").loader>();
-  const actionData = useActionData<typeof import("./pantry.recipes.import-photos.server").action>();
+export default function ImportPhotosPage({ loaderData, actionData }: Route.ComponentProps) {
+  const { pendingPhotos, pantryId } = loaderData;
   const navigation = useNavigation();
   const submit = useSubmit();
   const inputId = useId();

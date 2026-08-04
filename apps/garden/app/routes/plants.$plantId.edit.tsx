@@ -1,4 +1,4 @@
-import { redirect, useActionData } from "react-router";
+import { redirect } from "react-router";
 import { DeleteForm } from "~/components/delete-form";
 import { Link } from "~/components/link";
 import { PlantForm, toPlantFormValues } from "~/components/plants/plant-form";
@@ -72,10 +72,9 @@ export async function action({ request, params }: Route.ActionArgs) {
   throw redirect(householdPath(params.householdId, `plants/${params.plantId}`));
 }
 
-export default function EditPlant({ loaderData }: Route.ComponentProps) {
+export default function EditPlant({ loaderData, actionData }: Route.ComponentProps) {
   const { householdId, plant, plantPhoto, areas, plantLookupEnabled, speciesSearchUrl } =
     loaderData;
-  const actionData = useActionData<typeof action>();
 
   return (
     <div className="flex flex-col gap-6">

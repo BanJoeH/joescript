@@ -1,6 +1,6 @@
 import { Copy } from "lucide-react";
 import { useState } from "react";
-import { Form, useActionData, useLoaderData } from "react-router";
+import { Form } from "react-router";
 
 import { DeletePantrySheet } from "~/components/delete-pantry-sheet";
 import { Link } from "~/components/link";
@@ -12,7 +12,6 @@ import { Label } from "~/components/ui/label";
 import { pantryPath } from "~/lib/pantry-path";
 
 import type { Route } from "./+types/pantry.settings";
-import type { loader } from "./pantry.settings.server";
 
 export { action, loader } from "./pantry.settings.server";
 
@@ -24,9 +23,8 @@ function inviteInstructions(email: string, pantryName: string) {
   return `You're invited to join “${pantryName}” on Pantri.\n\nSign in with Google as ${email}, then open the app.`;
 }
 
-export default function PantrySettings() {
-  const { pantry, members, pantryId, currentUserId } = useLoaderData<typeof loader>();
-  const actionData = useActionData<typeof import("./pantry.settings.server").action>();
+export default function PantrySettings({ loaderData, actionData }: Route.ComponentProps) {
+  const { pantry, members, pantryId, currentUserId } = loaderData;
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
 

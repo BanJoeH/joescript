@@ -1,5 +1,5 @@
 import { Star } from "lucide-react";
-import { Form, useActionData, useLoaderData } from "react-router";
+import { Form } from "react-router";
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
 
@@ -18,9 +18,8 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Pantries · Pantri" }];
 }
 
-export default function PantriesPage() {
-  const { pantries, favoritePantryId } = useLoaderData<typeof import("./pantries.server").loader>();
-  const actionData = useActionData<typeof import("./pantries.server").action>();
+export default function PantriesPage({ loaderData, actionData }: Route.ComponentProps) {
+  const { pantries, favoritePantryId } = loaderData;
 
   return (
     <div className="flex flex-col gap-6">
