@@ -43,6 +43,45 @@ describe("parseQuantityString", () => {
       unitPrefix: "cup",
       complete: true,
     });
+    expect(parseQuantityString("1 / 2 tsp")).toEqual({
+      amount: 0.5,
+      unit: "tsp",
+      unitPrefix: "tsp",
+      complete: true,
+    });
+    expect(parseQuantityString("1 1 / 2 cup")).toEqual({
+      amount: 1.5,
+      unit: "cup",
+      unitPrefix: "cup",
+      complete: true,
+    });
+  });
+
+  it("parses kilograms and aliases", () => {
+    expect(parseQuantityString("2 kilograms")).toEqual({
+      amount: 2,
+      unit: "kg",
+      unitPrefix: "kilograms",
+      complete: true,
+    });
+    expect(parseQuantityString("1.5 kg")).toEqual({
+      amount: 1.5,
+      unit: "kg",
+      unitPrefix: "kg",
+      complete: true,
+    });
+    expect(parseQuantityString("500g")).toEqual({
+      amount: 500,
+      unit: "g",
+      unitPrefix: "g",
+      complete: true,
+    });
+    expect(parseQuantityString("2 kilo")).toEqual({
+      amount: 2,
+      unit: "kg",
+      unitPrefix: "kilo",
+      complete: true,
+    });
   });
 
   it("marks partial unit prefixes incomplete", () => {
@@ -68,6 +107,33 @@ describe("parseQuantityString", () => {
       complete: true,
     });
   });
+
+  it("parses decimal shorthand", () => {
+    expect(parseQuantityString(".5")).toEqual({
+      amount: 0.5,
+      unit: null,
+      unitPrefix: "",
+      complete: true,
+    });
+    expect(parseQuantityString(".5 tsp")).toEqual({
+      amount: 0.5,
+      unit: "tsp",
+      unitPrefix: "tsp",
+      complete: true,
+    });
+    expect(parseQuantityString("1.")).toEqual({
+      amount: 1,
+      unit: null,
+      unitPrefix: "",
+      complete: true,
+    });
+    expect(parseQuantityString("1. cup")).toEqual({
+      amount: 1,
+      unit: "cup",
+      unitPrefix: "cup",
+      complete: true,
+    });
+  });
 });
 
 describe("completeUnitPrefix", () => {
@@ -82,6 +148,8 @@ describe("getQuantityCompletion", () => {
   it("returns ghost suffix for unique prefixes", () => {
     expect(getQuantityCompletion("1 cl")).toEqual({
       suggestions: ["clove"],
+      amount: 1,
+      suggestionLabels: ["1 clove"],
       completionSuffix: "ove",
       completedValue: "1 clove",
     });
@@ -91,6 +159,23 @@ describe("getQuantityCompletion", () => {
     const completion = getQuantityCompletion("1 c");
     expect(completion?.suggestions).toEqual(expect.arrayContaining(["cup", "clove", "can"]));
     expect(completion?.completionSuffix).toBe("up");
+  });
+
+  it("completes kilogram prefixes via aliases", () => {
+    expect(getQuantityCompletion("1 kil")).toEqual({
+      suggestions: ["kg"],
+      amount: 1,
+      suggestionLabels: ["1kg"],
+      completionSuffix: "ogram",
+      completedValue: "1kg",
+    });
+    expect(getQuantityCompletion("1 k")).toEqual({
+      suggestions: ["kg"],
+      amount: 1,
+      suggestionLabels: ["1kg"],
+      completionSuffix: "g",
+      completedValue: "1kg",
+    });
   });
 });
 

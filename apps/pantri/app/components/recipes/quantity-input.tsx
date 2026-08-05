@@ -2,6 +2,7 @@ import { ArrowRight } from "lucide-react";
 import {
   type KeyboardEvent,
   type TouchEvent,
+  useDeferredValue,
   useEffect,
   useId,
   useMemo,
@@ -16,6 +17,7 @@ import {
   formatQuantityString,
   getQuantityCompletion,
   parseQuantityString,
+  type QuantityCompletion,
 } from "~/lib/quantity-input";
 import { cn } from "~/lib/utils";
 
@@ -25,11 +27,96 @@ type QuantityInputProps = {
   onChange: (value: { amount: number | null; unit: string | null }) => void;
   onKeyDown?: (event: KeyboardEvent<HTMLInputElement>) => void;
   "aria-label"?: string;
+  id?: string;
   placeholder?: string;
   className?: string;
 };
 
 const SWIPE_ACCEPT_PX = 48;
+
+/** Floated below the input; at least input width, grows with label text. */
+const SUGGESTION_FLOATING =
+  "absolute top-full left-0 z-20 mt-1 inline-block min-w-full max-w-[min(100vw-2rem,20rem)]";
+
+function CompletionGhost({ text, completionSuffix }: { text: string; completionSuffix: string }) {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-pre px-3 py-2 text-sm"
+    >
+      <span className="invisible">{text}</span>
+      <span className="text-muted-foreground/50">{completionSuffix}</span>
+    </div>
+  );
+}
+
+function SuggestionChip({
+  completedValue,
+  onAccept,
+}: {
+  completedValue: string;
+  onAccept: () => void;
+}) {
+  return (
+    <div className={SUGGESTION_FLOATING}>
+      <button
+        aria-label={`Accept suggestion: ${completedValue}`}
+        className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-left text-sm text-foreground shadow-lg transition-colors hover:bg-accent/60"
+        onMouseDown={(event) => {
+          event.preventDefault();
+          onAccept();
+        }}
+        type="button"
+      >
+        <ArrowRight aria-hidden className="size-3.5 shrink-0 opacity-60" />
+        <span className="whitespace-nowrap">{completedValue}</span>
+        <span className="shrink-0 pl-2 text-[10px] uppercase tracking-wide opacity-50">Tab</span>
+      </button>
+    </div>
+  );
+}
+
+function SuggestionDropdown({
+  completion,
+  highlightIndex,
+  listboxId,
+  onHighlight,
+  onSelect,
+}: {
+  completion: QuantityCompletion;
+  highlightIndex: number;
+  listboxId: string;
+  onHighlight: (index: number) => void;
+  onSelect: (unit: string) => void;
+}) {
+  return (
+    <div
+      className={cn(
+        SUGGESTION_FLOATING,
+        "max-h-48 overflow-auto rounded-md border border-border bg-card py-1 shadow-lg",
+      )}
+      id={listboxId}
+    >
+      {completion.suggestions.map((suggestion, index) => (
+        <button
+          className={cn(
+            "block whitespace-nowrap px-3 py-1.5 text-left text-sm",
+            index === highlightIndex ? "bg-accent text-accent-foreground" : "hover:bg-accent/60",
+          )}
+          key={suggestion}
+          onMouseDown={(event) => {
+            event.preventDefault();
+            onSelect(suggestion);
+          }}
+          onMouseEnter={() => onHighlight(index)}
+          type="button"
+        >
+          {completion.suggestionLabels[index]}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function QuantityInput({
   amount,
@@ -37,22 +124,41 @@ export function QuantityInput({
   onChange,
   onKeyDown,
   "aria-label": ariaLabel = "Quantity",
+  id,
   placeholder = "Qty",
   className,
 }: QuantityInputProps) {
   const listboxId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const swipeWrapperRef = useRef<HTMLDivElement>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const completionRef = useRef<QuantityCompletion | null>(null);
   const [focused, setFocused] = useState(false);
   const [text, setText] = useState("");
   const [highlightIndex, setHighlightIndex] = useState(0);
-  const [swipeOffset, setSwipeOffset] = useState(0);
+
+  const deferredText = useDeferredValue(text);
+  const completionForUi = useMemo(
+    () => (focused ? getQuantityCompletion(deferredText) : null),
+    [focused, deferredText],
+  );
+  const completionImmediate = useMemo(
+    () => (focused ? getQuantityCompletion(text) : null),
+    [focused, text],
+  );
+
+  completionRef.current = completionImmediate;
 
   const displayValue = focused ? text : formatQuantityString(amount, unit);
-  const completion = useMemo(() => (focused ? getQuantityCompletion(text) : null), [focused, text]);
-  const showDropdown = focused && (completion?.suggestions.length ?? 0) > 1;
+  const completionReady = !focused || deferredText === text;
+  const showGhost =
+    completionReady && Boolean(completionForUi?.completionSuffix) && completionForUi !== null;
+  const showDropdown = completionReady && focused && (completionForUi?.suggestions.length ?? 0) > 1;
   const showInlineSuggestion =
-    focused && Boolean(completion?.completionSuffix) && completion?.suggestions.length === 1;
+    completionReady &&
+    focused &&
+    Boolean(completionForUi?.completionSuffix) &&
+    completionForUi?.suggestions.length === 1;
 
   useEffect(() => {
     if (!showDropdown) return;
@@ -67,54 +173,73 @@ export function QuantityInput({
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [showDropdown]);
 
+  function resetSwipeTransform() {
+    const wrapper = swipeWrapperRef.current;
+    if (!wrapper) return;
+    wrapper.style.transform = "";
+    wrapper.style.willChange = "";
+  }
+
+  function setSwipeTransform(offset: number) {
+    const wrapper = swipeWrapperRef.current;
+    if (!wrapper) return;
+    wrapper.style.willChange = "transform";
+    wrapper.style.transform = offset > 0 ? `translateX(${offset}px)` : "";
+  }
+
   function commitRaw(nextRaw: string) {
     const committed = commitQuantityString(nextRaw);
     onChange(committed);
     setText(formatQuantityString(committed.amount, committed.unit));
   }
 
-  function acceptSuggestion(suggestedUnit: string) {
-    const parsed = parseQuantityString(text);
+  function acceptSuggestion(suggestedUnit: string, sourceText = text) {
+    const parsed = parseQuantityString(sourceText);
     if (parsed.amount === null) return;
     const next = buildQuantityString(parsed.amount, suggestedUnit);
     setText(next);
     commitRaw(next);
-    setSwipeOffset(0);
+    resetSwipeTransform();
   }
 
   function acceptGhostCompletion() {
+    const completion = completionRef.current;
     const suggestion = completion?.suggestions[0];
     if (!completion?.completionSuffix || !suggestion) return;
     acceptSuggestion(suggestion);
   }
 
+  function canSwipeGhost() {
+    return Boolean(completionRef.current?.completionSuffix);
+  }
+
   function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
-    if (!showInlineSuggestion) return;
+    if (!canSwipeGhost()) return;
     const touch = event.changedTouches[0] ?? event.touches[0];
     if (!touch) return;
     swipeStartRef.current = { x: touch.clientX, y: touch.clientY };
-    setSwipeOffset(0);
+    resetSwipeTransform();
   }
 
   function handleTouchMove(event: TouchEvent<HTMLDivElement>) {
-    if (!swipeStartRef.current || !showInlineSuggestion) return;
+    if (!swipeStartRef.current || !canSwipeGhost()) return;
     const touch = event.changedTouches[0] ?? event.touches[0];
     if (!touch) return;
     const deltaX = Math.max(0, touch.clientX - swipeStartRef.current.x);
     const deltaY = Math.abs(touch.clientY - swipeStartRef.current.y);
     if (deltaY > 24) return;
-    setSwipeOffset(Math.min(deltaX, 72));
+    setSwipeTransform(Math.min(deltaX, 72));
   }
 
   function handleTouchEnd(event: TouchEvent<HTMLDivElement>) {
-    if (!swipeStartRef.current || !showInlineSuggestion) return;
+    if (!swipeStartRef.current || !canSwipeGhost()) return;
     const touch = event.changedTouches[0];
     if (!touch) return;
 
     const deltaX = touch.clientX - swipeStartRef.current.x;
     const deltaY = Math.abs(touch.clientY - swipeStartRef.current.y);
     swipeStartRef.current = null;
-    setSwipeOffset(0);
+    resetSwipeTransform();
 
     if (deltaX >= SWIPE_ACCEPT_PX && deltaY < 32) {
       acceptGhostCompletion();
@@ -122,8 +247,10 @@ export function QuantityInput({
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    const completion = completionRef.current;
+
     if (event.key === "Tab" || event.key === "ArrowRight") {
-      if (completion?.completionSuffix && completion.suggestions.length === 1) {
+      if (completion?.completionSuffix) {
         event.preventDefault();
         acceptGhostCompletion();
         return;
@@ -166,22 +293,19 @@ export function QuantityInput({
   }
 
   return (
-    <div className={cn("relative min-w-0", className)} ref={rootRef}>
+    <div className={cn("relative min-w-0 overflow-visible", className)} ref={rootRef}>
       <div
-        className="relative transition-transform duration-75"
+        className="relative"
         onTouchEnd={handleTouchEnd}
         onTouchMove={handleTouchMove}
         onTouchStart={handleTouchStart}
-        style={swipeOffset > 0 ? { transform: `translateX(${swipeOffset}px)` } : undefined}
+        ref={swipeWrapperRef}
       >
-        {focused && completion?.completionSuffix ? (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 flex items-center overflow-hidden whitespace-pre px-3 py-2 text-sm"
-          >
-            <span className="invisible">{text}</span>
-            <span className="text-muted-foreground/50">{completion.completionSuffix}</span>
-          </div>
+        {showGhost && completionForUi ? (
+          <CompletionGhost
+            completionSuffix={completionForUi.completionSuffix}
+            text={deferredText}
+          />
         ) : null}
         <Input
           aria-autocomplete="list"
@@ -190,19 +314,25 @@ export function QuantityInput({
           aria-label={ariaLabel}
           autoComplete="off"
           className="relative bg-transparent"
+          id={id}
           onBlur={() => {
             commitRaw(text);
             setFocused(false);
-            setSwipeOffset(0);
+            resetSwipeTransform();
           }}
           onChange={(event) => {
-            setText(event.target.value);
+            const next = event.target.value;
+            setText(next);
             setHighlightIndex(0);
+            onChange(commitQuantityString(next));
           }}
-          onFocus={() => {
+          onFocus={(event) => {
             setFocused(true);
             setText(formatQuantityString(amount, unit));
             setHighlightIndex(0);
+            requestAnimationFrame(() => {
+              event.target.select();
+            });
           }}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
@@ -211,55 +341,21 @@ export function QuantityInput({
         />
       </div>
 
-      {showInlineSuggestion && completion ? (
-        <button
-          aria-label={`Accept suggestion: ${completion.completedValue}`}
-          className="mt-1.5 flex w-full items-center gap-2 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5 text-left text-sm text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
-          onMouseDown={(event) => {
-            event.preventDefault();
-            acceptGhostCompletion();
-          }}
-          type="button"
-        >
-          <ArrowRight aria-hidden className="size-3.5 shrink-0 opacity-60" />
-          <span className="min-w-0 truncate">{completion.completedValue}</span>
-          <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide opacity-50">
-            Tab
-          </span>
-        </button>
+      {showInlineSuggestion && completionForUi ? (
+        <SuggestionChip
+          completedValue={completionForUi.completedValue}
+          onAccept={acceptGhostCompletion}
+        />
       ) : null}
 
-      {showDropdown && completion ? (
-        <div
-          className="absolute top-full left-0 z-20 mt-1 max-h-48 min-w-full overflow-auto rounded-md border border-border bg-card py-1 shadow-lg"
-          id={listboxId}
-        >
-          {completion.suggestions.map((suggestion, index) => {
-            const parsed = parseQuantityString(text);
-            const label =
-              parsed.amount === null ? suggestion : buildQuantityString(parsed.amount, suggestion);
-
-            return (
-              <button
-                className={cn(
-                  "flex w-full px-3 py-1.5 text-left text-sm",
-                  index === highlightIndex
-                    ? "bg-accent text-accent-foreground"
-                    : "hover:bg-accent/60",
-                )}
-                key={suggestion}
-                onMouseDown={(event) => {
-                  event.preventDefault();
-                  acceptSuggestion(suggestion);
-                }}
-                onMouseEnter={() => setHighlightIndex(index)}
-                type="button"
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
+      {showDropdown && completionForUi ? (
+        <SuggestionDropdown
+          completion={completionForUi}
+          highlightIndex={highlightIndex}
+          listboxId={listboxId}
+          onHighlight={setHighlightIndex}
+          onSelect={(suggestion) => acceptSuggestion(suggestion)}
+        />
       ) : null}
     </div>
   );

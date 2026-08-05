@@ -9,6 +9,9 @@ export type ParsedQuantity = {
 
 export type QuantityCompletion = {
   suggestions: string[];
+  amount: number;
+  /** Badge labels aligned with `suggestions`. */
+  suggestionLabels: string[];
   /** Text appended after the user's input for inline ghost completion. */
   completionSuffix: string;
   /** Fully resolved string if the top suggestion were accepted. */
@@ -20,6 +23,7 @@ const UNIT_ALIASES: Record<string, string> = {
   gram: "g",
   grams: "g",
   kg: "kg",
+  kilo: "kg",
   kilogram: "kg",
   kilograms: "kg",
   ml: "ml",
@@ -86,20 +90,42 @@ const PREFIX_TERMS: Array<{ term: string; canonical: string }> = (() => {
   return entries;
 })();
 
-const AMOUNT_RE = /^(\d+\s+\d+\/\d+|\d+\/\d+|\d+(?:\.\d+)?)\s*(.*)$/;
+/** Narrow prefix scans to terms sharing the first typed character. */
+const PREFIX_BY_LEADING_CHAR: Map<string, Array<{ term: string; canonical: string }>> = (() => {
+  const index = new Map<string, Array<{ term: string; canonical: string }>>();
+  for (const entry of PREFIX_TERMS) {
+    const lead = entry.term[0]?.toLowerCase();
+    if (!lead) continue;
+    const bucket = index.get(lead);
+    if (bucket) {
+      bucket.push(entry);
+    } else {
+      index.set(lead, [entry]);
+    }
+  }
+  return index;
+})();
+
+const prefixTermsCache = new Map<string, Array<{ term: string; canonical: string }>>();
+const unitPrefixCache = new Map<string, string[]>();
+const completionCache = new Map<string, QuantityCompletion | null>();
+
+const AMOUNT_RE = /^(\d+\s+\d+\s*\/\s*\d+|\d+\s*\/\s*\d+|\d*\.\d+|\d+\.|\d+)\s*(.*)$/;
 
 function parseNumericAmount(token: string): number | null {
-  const mixed = token.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+  const normalized = token.trim().replace(/\s+/g, " ");
+
+  const mixed = normalized.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
   if (mixed) {
     return Number(mixed[1]) + Number(mixed[2]) / Number(mixed[3]);
   }
 
-  const fraction = token.match(/^(\d+)\/(\d+)$/);
+  const fraction = normalized.match(/^(\d+)\s*\/\s*(\d+)$/);
   if (fraction) {
     return Number(fraction[1]) / Number(fraction[2]);
   }
 
-  const value = Number(token);
+  const value = Number(normalized);
   return Number.isFinite(value) ? value : null;
 }
 
@@ -166,6 +192,53 @@ function suggestedUnitRank(unit: string): number {
   return index === -1 ? 999 : index;
 }
 
+function pickCompletionTerm(prefix: string, canonical: string): string | null {
+  const matches = matchUnitPrefixTerms(prefix).filter((match) => match.canonical === canonical);
+  if (matches.length === 0) {
+    return null;
+  }
+
+  const singular = matches.filter(
+    (match) => !match.term.endsWith("s") || match.term.endsWith("ss"),
+  );
+  const pool = singular.length > 0 ? singular : matches;
+
+  if (prefix.trim().length >= 3) {
+    return pool.reduce((best, current) => (current.term.length > best.term.length ? current : best))
+      .term;
+  }
+
+  return pool.reduce((best, current) => (current.term.length < best.term.length ? current : best))
+    .term;
+}
+
+function matchUnitPrefixTerms(prefix: string): Array<{ term: string; canonical: string }> {
+  const query = prefix.trim().toLowerCase();
+  if (!query) {
+    return [];
+  }
+
+  const cached = prefixTermsCache.get(query);
+  if (cached) {
+    return cached;
+  }
+
+  const lead = query[0] ?? "";
+  const candidates = PREFIX_BY_LEADING_CHAR.get(lead) ?? PREFIX_TERMS;
+  const results = candidates
+    .filter(({ term }) => term.startsWith(query))
+    .sort((left, right) => {
+      const rankDiff = suggestedUnitRank(left.canonical) - suggestedUnitRank(right.canonical);
+      if (rankDiff !== 0) {
+        return rankDiff;
+      }
+      return left.term.length - right.term.length;
+    });
+
+  prefixTermsCache.set(query, results);
+  return results;
+}
+
 /** Unit suggestions for a partial unit prefix such as `c` or `cl`. */
 export function completeUnitPrefix(prefix: string): string[] {
   const query = prefix.trim().toLowerCase();
@@ -173,18 +246,24 @@ export function completeUnitPrefix(prefix: string): string[] {
     return [...SUGGESTED_UNITS];
   }
 
+  const cached = unitPrefixCache.get(query);
+  if (cached) {
+    return cached;
+  }
+
   const seen = new Set<string>();
   const results: string[] = [];
 
-  for (const { term, canonical } of PREFIX_TERMS) {
-    if (!term.startsWith(query) || seen.has(canonical)) {
+  for (const { canonical } of matchUnitPrefixTerms(prefix)) {
+    if (seen.has(canonical)) {
       continue;
     }
     seen.add(canonical);
     results.push(canonical);
   }
 
-  return results.sort((left, right) => suggestedUnitRank(left) - suggestedUnitRank(right));
+  unitPrefixCache.set(query, results);
+  return results;
 }
 
 /** Format `{ amount, unit }` for display inside the combined input. */
@@ -207,29 +286,41 @@ export function buildQuantityString(amount: number, unit: string): string {
 
 /** Inline completion state for the quantity input, if any. */
 export function getQuantityCompletion(raw: string): QuantityCompletion | null {
+  if (completionCache.has(raw)) {
+    return completionCache.get(raw) ?? null;
+  }
+
   const parsed = parseQuantityString(raw);
   if (parsed.complete || parsed.amount === null || !parsed.unitPrefix) {
+    completionCache.set(raw, null);
     return null;
   }
 
   const suggestions = completeUnitPrefix(parsed.unitPrefix);
   if (suggestions.length === 0) {
+    completionCache.set(raw, null);
     return null;
   }
 
-  const best = suggestions[0];
-  const prefixLower = parsed.unitPrefix.toLowerCase();
-  if (!best.toLowerCase().startsWith(prefixLower)) {
+  const completionTerm = pickCompletionTerm(parsed.unitPrefix, suggestions[0]);
+  if (!completionTerm) {
+    completionCache.set(raw, null);
     return null;
   }
 
-  const completionSuffix = best.slice(parsed.unitPrefix.length);
-
-  return {
+  const completionSuffix = completionTerm.slice(parsed.unitPrefix.length);
+  const result: QuantityCompletion = {
     suggestions,
+    amount: parsed.amount,
+    suggestionLabels: suggestions.map((suggestion) =>
+      buildQuantityString(parsed.amount as number, suggestion),
+    ),
     completionSuffix,
-    completedValue: buildQuantityString(parsed.amount, best),
+    completedValue: buildQuantityString(parsed.amount, suggestions[0]),
   };
+
+  completionCache.set(raw, result);
+  return result;
 }
 
 /** Commit a raw string to structured `{ amount, unit }`. */

@@ -3,7 +3,7 @@ import { type KeyboardEvent, useId, useState } from "react";
 import { flushSync } from "react-dom";
 import { Form } from "react-router";
 
-import { UnitCombobox } from "~/components/recipes/unit-combobox";
+import { QuantityInput } from "~/components/recipes/quantity-input";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -75,7 +75,7 @@ export function RecipeForm({
         return next;
       });
     });
-    const input = document.getElementById(`${formId}-ingredient-${key}-name`);
+    const input = document.getElementById(`${formId}-ingredient-${key}-quantity`);
     if (input instanceof HTMLInputElement) {
       input.focus();
       input.select();
@@ -186,25 +186,16 @@ export function RecipeForm({
           <div className="space-y-2">
             {ingredients.map((row) => (
               <div
-                className="grid grid-cols-[4.5rem_4.5rem_1fr_auto] gap-2 sm:grid-cols-[5rem_5rem_1fr_1fr_auto]"
+                className="grid grid-cols-[6.5rem_1fr_auto] gap-2 overflow-visible sm:grid-cols-[7rem_1fr_1fr_auto]"
                 key={row.key}
               >
-                <Input
-                  aria-label="Amount"
-                  inputMode="decimal"
-                  onChange={(event) =>
-                    updateIngredient(row.key, {
-                      amount: event.target.value === "" ? null : Number(event.target.value),
-                    })
-                  }
+                <QuantityInput
+                  amount={row.amount}
+                  id={`${formId}-ingredient-${row.key}-quantity`}
+                  onChange={({ amount, unit }) => updateIngredient(row.key, { amount, unit })}
                   onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
-                  placeholder="Amt"
-                  value={row.amount ?? ""}
-                />
-                <UnitCombobox
-                  onChange={(next) => updateIngredient(row.key, { unit: next || null })}
-                  onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
-                  value={row.unit ?? ""}
+                  placeholder="Qty"
+                  unit={row.unit}
                 />
                 <Input
                   aria-label="Ingredient name"

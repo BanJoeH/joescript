@@ -14,6 +14,7 @@ const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
   gram: { canonical: "g", dimension: "mass", toBase: 1 },
   grams: { canonical: "g", dimension: "mass", toBase: 1 },
   kg: { canonical: "kg", dimension: "mass", toBase: 1000 },
+  kilo: { canonical: "kg", dimension: "mass", toBase: 1000 },
   kilogram: { canonical: "kg", dimension: "mass", toBase: 1000 },
   kilograms: { canonical: "kg", dimension: "mass", toBase: 1000 },
   oz: { canonical: "oz", dimension: "mass", toBase: 28.3495 },

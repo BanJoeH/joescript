@@ -132,9 +132,13 @@ export default function QuantityInputTestPage({ loaderData }: Route.ComponentPro
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-muted-foreground">
           <p>
-            Tap the suggestion chip, swipe the field right, or press Tab to accept (try `1 cl`).
+            Tap the suggestion chip, swipe the field right, or press Tab to accept the ghost hint
+            (try `1 cl`).
           </p>
-          <p>Ambiguous prefixes like `1 c` open a picker for cup / clove / can.</p>
+          <p>
+            Ambiguous prefixes like `1 c` show ghost text plus a picker — swipe/Tab accepts the top
+            hint; tap the dropdown for other units.
+          </p>
           <p>
             Blur commits the value and normalises display (`300 g` → `300g`, `3 cloves` stays
             spaced).
