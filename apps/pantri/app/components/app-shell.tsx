@@ -238,7 +238,7 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
           onOpenChange={setSettingsOpen}
           open={settingsOpen}
           pantryId={pantryId}
-          pantryName={pantryData?.pantryName}
+          pantryName={pantryData?.pantryName ?? undefined}
         />
       ) : null}
     </div>

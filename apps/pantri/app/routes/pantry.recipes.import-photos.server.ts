@@ -5,7 +5,7 @@ import { getString } from "~/lib/forms.server";
 import { pantryPath } from "~/lib/pantry-path";
 import { requirePantriService } from "~/services";
 import { extractRecipeFromPhotos } from "~/services/extract.server";
-import { notifyPantryChange } from "~/services/realtime.server";
+import { notifyPantryMutation } from "~/services/realtime.server";
 
 import type { Route } from "./+types/pantry.recipes.import-photos";
 
@@ -94,7 +94,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         recipeId: recipe.id,
         photoCount: pending.length,
       });
-      await notifyPantryChange({ db: context.db, env, pantryId: context.pantryId });
+      await notifyPantryMutation(context, env);
       console.info("[pantri:extract]", "action:redirecting", { recipeId: recipe.id });
       throw redirect(pantryPath(context.pantryId, `recipes/${recipe.id}`));
     } catch (error) {

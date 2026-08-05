@@ -8,13 +8,23 @@ import { pantryPath } from "~/lib/pantry-path";
  * revalidates the current route's loaders whenever another member's
  * mutation bumps the pantry's revision. Mount once per pantry layout.
  */
-export function PantryLiveRevalidator({ pantryId }: { pantryId: string }) {
+export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; userId: string }) {
   const revalidator = useRevalidator();
 
   useEffect(() => {
     const source = new EventSource(pantryPath(pantryId, "api/events"));
 
-    const handleInvalidate = () => {
+    const handleInvalidate = (event: Event) => {
+      try {
+        const message = event as MessageEvent<string>;
+        const data = JSON.parse(message.data) as { actorId?: string | null };
+        if (data.actorId && data.actorId === userId) {
+          return;
+        }
+      } catch {
+        // Ignore malformed payloads; still revalidate other clients.
+      }
+
       revalidator.revalidate();
     };
 
@@ -24,7 +34,7 @@ export function PantryLiveRevalidator({ pantryId }: { pantryId: string }) {
       source.removeEventListener("pantry:invalidate", handleInvalidate);
       source.close();
     };
-  }, [pantryId, revalidator]);
+  }, [pantryId, revalidator, userId]);
 
   return null;
 }
