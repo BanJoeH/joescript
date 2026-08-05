@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { applyShoppingListOptimistic, applySortedOptimistic } from "~/lib/shopping-optimistic";
+import { setIngredientPurchasedOverride } from "~/lib/shopping-purchased-overrides";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
 
 function formData(entries: Record<string, string>) {
@@ -45,6 +46,14 @@ describe("applyShoppingListOptimistic", () => {
     expect(result.recipes[0]?.ingredients[0]?.purchased).toBe(true);
     expect(result.recipes[0]?.ingredients[1]?.purchased).toBe(false);
     expect(result.oddBits[0]?.purchased).toBe(true);
+  });
+
+  it("persists purchased overrides after fetchers complete", () => {
+    setIngredientPurchasedOverride("r1", 0, true);
+
+    const result = applyShoppingListOptimistic([recipe], [], []);
+
+    expect(result.recipes[0]?.ingredients[0]?.purchased).toBe(true);
   });
 
   it("adds and removes odd bits", () => {

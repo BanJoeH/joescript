@@ -1,6 +1,7 @@
 import type { ShoppingSection } from "~/lib/ingredient-sections";
 import type { ShoppingIngredient } from "~/lib/recipe-schema";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
+import { applyShoppingPurchasedOverrides } from "~/lib/shopping-purchased-overrides";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
 
 type FetcherLike = {
@@ -24,8 +25,9 @@ export function applyShoppingListOptimistic(
   oddBits: ShoppingIngredient[],
   fetchers: FetcherLike[],
 ): { recipes: ShoppingRecipeRecord[]; oddBits: OptimisticOddBit[] } {
-  let nextRecipes = recipes;
-  let nextOddBits: OptimisticOddBit[] = oddBits.map((bit, sourceIndex) => ({
+  const withOverrides = applyShoppingPurchasedOverrides(recipes, oddBits);
+  let nextRecipes = withOverrides.recipes;
+  let nextOddBits: OptimisticOddBit[] = withOverrides.oddBits.map((bit, sourceIndex) => ({
     ...bit,
     sourceIndex,
   }));

@@ -1,6 +1,6 @@
 import type { ShouldRevalidateFunctionArgs } from "react-router";
 import { Outlet } from "react-router";
-
+import { OptimisticRevalidationFlush } from "~/components/optimistic-revalidation-flush";
 import { PantryLiveRevalidator } from "~/components/pantry-live-revalidator";
 import { getPantriEnv } from "~/lib/context.server";
 import { shouldRevalidatePantryRoutes } from "~/lib/pantry-revalidate";
@@ -31,6 +31,7 @@ export default function PantryLayout({ loaderData }: Route.ComponentProps) {
   return (
     <>
       <PantryLiveRevalidator pantryId={loaderData.pantryId} userId={loaderData.user.id} />
+      <OptimisticRevalidationFlush />
       <Outlet />
     </>
   );

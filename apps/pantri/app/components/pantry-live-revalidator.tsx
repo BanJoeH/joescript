@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useRevalidator } from "react-router";
 
 import { pantryPath } from "~/lib/pantry-path";
+import { resetOptimisticRevalidationPending } from "~/lib/pantry-revalidate";
 
 /**
  * Opens an SSE connection to this pantry's `PantryHub` Durable Object and
@@ -25,6 +26,7 @@ export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; 
         // Ignore malformed payloads; still revalidate other clients.
       }
 
+      resetOptimisticRevalidationPending();
       revalidator.revalidate();
     };
 
