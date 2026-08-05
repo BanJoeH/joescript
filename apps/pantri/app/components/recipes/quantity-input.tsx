@@ -1,14 +1,18 @@
 import { ArrowRight } from "lucide-react";
 import {
   type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
   type TouchEvent,
   useDeferredValue,
   useEffect,
   useId,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 
 import { Input } from "~/components/ui/input";
 import {
@@ -34,9 +38,71 @@ type QuantityInputProps = {
 
 const SWIPE_ACCEPT_PX = 48;
 
-/** Floated below the input; at least input width, grows with label text. */
-const SUGGESTION_FLOATING =
-  "absolute top-full left-0 z-20 mt-1 inline-block min-w-full max-w-[min(100vw-2rem,20rem)]";
+/** Portaled layer: at least input width, grows with label text. */
+const SUGGESTION_LAYER = "inline-block min-w-full max-w-[min(100vw-2rem,20rem)]";
+
+function SuggestionPortal({
+  anchorRef,
+  open,
+  portalRef,
+  repositionKey,
+  children,
+}: {
+  anchorRef: RefObject<HTMLElement | null>;
+  open: boolean;
+  portalRef: RefObject<HTMLDivElement | null>;
+  repositionKey: string;
+  children: ReactNode;
+}) {
+  const [position, setPosition] = useState<{ top: number; left: number; minWidth: number } | null>(
+    null,
+  );
+
+  useLayoutEffect(() => {
+    if (!open) {
+      setPosition(null);
+      return;
+    }
+
+    function update() {
+      void repositionKey;
+      const anchor = anchorRef.current;
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + 4,
+        left: rect.left,
+        minWidth: rect.width,
+      });
+    }
+
+    update();
+    window.addEventListener("scroll", update, true);
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update, true);
+      window.removeEventListener("resize", update);
+    };
+  }, [anchorRef, open, repositionKey]);
+
+  if (!open || !position || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className={cn(SUGGESTION_LAYER, "z-50")}
+      ref={portalRef}
+      style={{
+        position: "fixed",
+        top: position.top,
+        left: position.left,
+        minWidth: position.minWidth,
+      }}
+    >
+      {children}
+    </div>,
+    document.body,
+  );
+}
 
 function CompletionGhost({ text, completionSuffix }: { text: string; completionSuffix: string }) {
   return (
@@ -58,21 +124,19 @@ function SuggestionChip({
   onAccept: () => void;
 }) {
   return (
-    <div className={SUGGESTION_FLOATING}>
-      <button
-        aria-label={`Accept suggestion: ${completedValue}`}
-        className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-left text-sm text-foreground shadow-lg transition-colors hover:bg-accent/60"
-        onMouseDown={(event) => {
-          event.preventDefault();
-          onAccept();
-        }}
-        type="button"
-      >
-        <ArrowRight aria-hidden className="size-3.5 shrink-0 opacity-60" />
-        <span className="whitespace-nowrap">{completedValue}</span>
-        <span className="shrink-0 pl-2 text-[10px] uppercase tracking-wide opacity-50">Tab</span>
-      </button>
-    </div>
+    <button
+      aria-label={`Accept suggestion: ${completedValue}`}
+      className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1.5 text-left text-sm text-foreground shadow-lg transition-colors hover:bg-accent/60"
+      onMouseDown={(event) => {
+        event.preventDefault();
+        onAccept();
+      }}
+      type="button"
+    >
+      <ArrowRight aria-hidden className="size-3.5 shrink-0 opacity-60" />
+      <span className="whitespace-nowrap">{completedValue}</span>
+      <span className="shrink-0 pl-2 text-[10px] uppercase tracking-wide opacity-50">Tab</span>
+    </button>
   );
 }
 
@@ -91,10 +155,7 @@ function SuggestionDropdown({
 }) {
   return (
     <div
-      className={cn(
-        SUGGESTION_FLOATING,
-        "max-h-48 overflow-auto rounded-md border border-border bg-card py-1 shadow-lg",
-      )}
+      className="max-h-48 overflow-auto rounded-md border border-border bg-card py-1 shadow-lg"
       id={listboxId}
     >
       {completion.suggestions.map((suggestion, index) => (
@@ -130,6 +191,7 @@ export function QuantityInput({
 }: QuantityInputProps) {
   const listboxId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const portalRef = useRef<HTMLDivElement>(null);
   const swipeWrapperRef = useRef<HTMLDivElement>(null);
   const swipeStartRef = useRef<{ x: number; y: number } | null>(null);
   const completionRef = useRef<QuantityCompletion | null>(null);
@@ -160,13 +222,16 @@ export function QuantityInput({
     Boolean(completionForUi?.completionSuffix) &&
     completionForUi?.suggestions.length === 1;
 
+  const showSuggestionPortal = showInlineSuggestion || showDropdown;
+
   useEffect(() => {
     if (!showDropdown) return;
 
     function onPointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setFocused(false);
-      }
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target)) return;
+      if (portalRef.current?.contains(target)) return;
+      setFocused(false);
     }
 
     document.addEventListener("pointerdown", onPointerDown);
@@ -341,22 +406,29 @@ export function QuantityInput({
         />
       </div>
 
-      {showInlineSuggestion && completionForUi ? (
-        <SuggestionChip
-          completedValue={completionForUi.completedValue}
-          onAccept={acceptGhostCompletion}
-        />
-      ) : null}
+      <SuggestionPortal
+        anchorRef={swipeWrapperRef}
+        open={showSuggestionPortal}
+        portalRef={portalRef}
+        repositionKey={deferredText}
+      >
+        {showInlineSuggestion && completionForUi ? (
+          <SuggestionChip
+            completedValue={completionForUi.completedValue}
+            onAccept={acceptGhostCompletion}
+          />
+        ) : null}
 
-      {showDropdown && completionForUi ? (
-        <SuggestionDropdown
-          completion={completionForUi}
-          highlightIndex={highlightIndex}
-          listboxId={listboxId}
-          onHighlight={setHighlightIndex}
-          onSelect={(suggestion) => acceptSuggestion(suggestion)}
-        />
-      ) : null}
+        {showDropdown && completionForUi ? (
+          <SuggestionDropdown
+            completion={completionForUi}
+            highlightIndex={highlightIndex}
+            listboxId={listboxId}
+            onHighlight={setHighlightIndex}
+            onSelect={(suggestion) => acceptSuggestion(suggestion)}
+          />
+        ) : null}
+      </SuggestionPortal>
     </div>
   );
 }
