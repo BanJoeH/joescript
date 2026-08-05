@@ -16,8 +16,15 @@ import { Button } from "~/components/ui/button";
 import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
 import { pantryPath } from "~/lib/pantry-path";
+import { markOptimisticShoppingActionSubmitted } from "~/lib/pantry-revalidate";
 import type { ShoppingIngredient } from "~/lib/recipe-schema";
 import { applyShoppingListOptimistic, type OptimisticOddBit } from "~/lib/shopping-optimistic";
+import {
+  resetOddBitPurchasedOverrides,
+  resetRecipePurchasedOverrides,
+  setIngredientPurchasedOverride,
+  setOddBitPurchasedOverride,
+} from "~/lib/shopping-purchased-overrides";
 import { splitIndexedByPurchased } from "~/lib/split-purchased";
 import { cn } from "~/lib/utils";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
@@ -82,6 +89,8 @@ function RecipeIngredientRow({
       checked={checked}
       label={formatIngredientLabel(ingredient)}
       onToggle={(next) => {
+        setIngredientPurchasedOverride(recipeId, index, next);
+        markOptimisticShoppingActionSubmitted();
         fetcher.submit(
           {
             intent: "toggle-ingredient",
@@ -121,6 +130,8 @@ function OddBitRow({ action, bit }: { action: string; bit: OptimisticOddBit }) {
           label={formatIngredientLabel(bit)}
           onToggle={(next) => {
             if (bit.pendingAdd) return;
+            setOddBitPurchasedOverride(index, next);
+            markOptimisticShoppingActionSubmitted();
             toggleFetcher.submit(
               {
                 intent: "toggle-odd-bit",
@@ -224,6 +235,8 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                   <ShoppingGotItSection
                     count={oddBitsGotIt.length}
                     onResetAll={() => {
+                      resetOddBitPurchasedOverrides(optimisticOddBits);
+                      markOptimisticShoppingActionSubmitted();
                       clearOddBitsFetcher.submit(
                         { intent: "clear-odd-bits-purchased" },
                         { method: "post", action },
@@ -391,6 +404,8 @@ function RecipeRow({
                 <ShoppingGotItSection
                   count={gotIt.length}
                   onResetAll={() => {
+                    resetRecipePurchasedOverrides(recipe);
+                    markOptimisticShoppingActionSubmitted();
                     clearFetcher.submit(
                       { intent: "clear-recipe-purchased", shoppingRecipeId: recipe.id },
                       { method: "post", action },

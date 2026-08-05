@@ -3,7 +3,7 @@ import { getString } from "~/lib/forms.server";
 import { groupBySection, type ShoppingSection } from "~/lib/ingredient-sections";
 import { aggregateIngredients, type ShoppingLine } from "~/lib/shopping-aggregation";
 import { requirePantriService } from "~/services";
-import { notifyPantryChange } from "~/services/realtime.server";
+import { notifyPantryMutation } from "~/services/realtime.server";
 
 import type { Route } from "./+types/pantry.sorted";
 
@@ -68,7 +68,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         pantri.shopping.setPurchasedByName(name, purchased),
         pantri.oddBits.setPurchasedByName(name, purchased),
       ]);
-      await notifyPantryChange({ db: context.db, env: getWorkerEnv(), pantryId: context.pantryId });
+      await notifyPantryMutation(context, getWorkerEnv());
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Could not update ingredient." };
     }
@@ -78,7 +78,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "clear-all-purchased") {
     try {
       await Promise.all([pantri.shopping.clearAllPurchased(), pantri.oddBits.clearAllPurchased()]);
-      await notifyPantryChange({ db: context.db, env: getWorkerEnv(), pantryId: context.pantryId });
+      await notifyPantryMutation(context, getWorkerEnv());
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Could not clear checked items." };
     }

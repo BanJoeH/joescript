@@ -2,6 +2,7 @@ import { eq, sql } from "drizzle-orm";
 
 import { pantries } from "~/db/schema";
 import type { Database } from "~/lib/db.server";
+import type { PantriContext } from "~/services/types";
 
 export type NotifyPantryChangeOptions = {
   db: Database;
@@ -33,19 +34,30 @@ export async function notifyPantryChange({
   try {
     const id = env.PANTRY_HUB.idFromName(pantryId);
     const stub = env.PANTRY_HUB.get(id);
-    // Cap wait so a stuck DO/SSE path can't leave the mutation POST pending.
-    await Promise.race([
-      stub.fetch("https://pantry-hub/broadcast", {
+    // Fire-and-forget: don't block mutations on DO/SSE fan-out.
+    void stub
+      .fetch("https://pantry-hub/broadcast", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ revision, actorId: actorId ?? null }),
-      }),
-      new Promise<void>((resolve) => setTimeout(resolve, 1500)),
-    ]);
+      })
+      .catch(() => {});
   } catch {
     // Best effort: a broadcast failure (missing binding in local/test envs,
     // transient DO error) should never fail the underlying mutation.
   }
 
   return revision;
+}
+
+export async function notifyPantryMutation(
+  context: Pick<PantriContext, "db" | "userId" | "pantryId">,
+  env: Pick<Env, "PANTRY_HUB">,
+) {
+  return notifyPantryChange({
+    db: context.db,
+    env,
+    pantryId: context.pantryId,
+    actorId: context.userId,
+  });
 }

@@ -14,6 +14,12 @@ export function createAuth(env: PantriEnv) {
     appName: "Pantri",
     baseURL: env.BETTER_AUTH_URL,
     secret: env.BETTER_AUTH_SECRET,
+    session: {
+      cookieCache: {
+        enabled: true,
+        maxAge: 5 * 60,
+      },
+    },
     database: drizzleAdapter(db, {
       provider: "sqlite",
       schema,
