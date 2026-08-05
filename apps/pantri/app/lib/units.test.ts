@@ -4,8 +4,10 @@ import {
   convertWithinDimension,
   formatAmount,
   getUnitDimension,
+  normalizeAggregatedAmount,
   normalizeUnit,
   preferredDisplayUnit,
+  roundAmountForUnit,
 } from "./units";
 
 describe("normalizeUnit", () => {
@@ -31,6 +33,8 @@ describe("getUnitDimension", () => {
   it("classifies mass, volume, and count units", () => {
     expect(getUnitDimension("g")).toBe("mass");
     expect(getUnitDimension("kg")).toBe("mass");
+    expect(getUnitDimension("oz")).toBe("mass");
+    expect(getUnitDimension("lb")).toBe("mass");
     expect(getUnitDimension("ml")).toBe("volume");
     expect(getUnitDimension("l")).toBe("volume");
     expect(getUnitDimension(null)).toBe("count");
@@ -46,6 +50,13 @@ describe("convertWithinDimension", () => {
   it("converts grams to kilograms and back", () => {
     expect(convertWithinDimension(1500, "g", "kg")).toBe(1.5);
     expect(convertWithinDimension(1.5, "kg", "g")).toBe(1500);
+  });
+
+  it("converts grams and imperial mass units", () => {
+    expect(convertWithinDimension(16, "oz", "lb")).toBe(1);
+    expect(convertWithinDimension(1, "lb", "oz")).toBe(16);
+    expect(convertWithinDimension(8, "oz", "g")).toBeCloseTo(226.8, 1);
+    expect(convertWithinDimension(500, "g", "oz")).toBeCloseTo(17.64, 2);
   });
 
   it("converts ml to l", () => {
@@ -78,6 +89,12 @@ describe("preferredDisplayUnit", () => {
     expect(preferredDisplayUnit("mass", ["g", "g"])).toBe("g");
   });
 
+  it("prefers metric when mass units are mixed", () => {
+    expect(preferredDisplayUnit("mass", ["g", "oz"])).toBe("g");
+    expect(preferredDisplayUnit("mass", ["oz"])).toBe("oz");
+    expect(preferredDisplayUnit("mass", ["lb", "oz"])).toBe("lb");
+  });
+
   it("prefers larger volume units when present", () => {
     expect(preferredDisplayUnit("volume", ["ml", "l"])).toBe("l");
     expect(preferredDisplayUnit("volume", ["tsp", "tbsp"])).toBe("tbsp");
@@ -86,6 +103,40 @@ describe("preferredDisplayUnit", () => {
 
   it("returns null for count dimension", () => {
     expect(preferredDisplayUnit("count", [null, "each"])).toBeNull();
+  });
+});
+
+describe("roundAmountForUnit", () => {
+  it("rounds small mass and volume units to whole numbers", () => {
+    expect(roundAmountForUnit(726.8, "g")).toBe(727);
+    expect(roundAmountForUnit(249.2, "ml")).toBe(249);
+    expect(roundAmountForUnit(17.64, "oz")).toBe(18);
+  });
+
+  it("keeps sensible precision for kg, l, and lb", () => {
+    expect(roundAmountForUnit(1.556, "kg")).toBe(1.56);
+    expect(roundAmountForUnit(0.75, "l")).toBe(0.75);
+    expect(roundAmountForUnit(1.625, "lb")).toBe(1.63);
+  });
+
+  it("rounds cooking volumes to quarter steps", () => {
+    expect(roundAmountForUnit(1.3, "cup")).toBe(1.25);
+    expect(roundAmountForUnit(2.4, "tbsp")).toBe(2.5);
+  });
+});
+
+describe("normalizeAggregatedAmount", () => {
+  it("upgrades grams to kilograms at 1kg+", () => {
+    expect(normalizeAggregatedAmount(1500, "g", "mass")).toEqual({ amount: 1.5, unit: "kg" });
+    expect(normalizeAggregatedAmount(726.8, "g", "mass")).toEqual({ amount: 727, unit: "g" });
+  });
+
+  it("upgrades ounces to pounds at 1lb+", () => {
+    expect(normalizeAggregatedAmount(20, "oz", "mass")).toEqual({ amount: 1.25, unit: "lb" });
+  });
+
+  it("upgrades millilitres to litres at 1l+", () => {
+    expect(normalizeAggregatedAmount(2500, "ml", "volume")).toEqual({ amount: 2.5, unit: "l" });
   });
 });
 
