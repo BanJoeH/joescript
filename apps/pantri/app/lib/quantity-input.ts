@@ -53,6 +53,8 @@ const UNIT_ALIASES: Record<string, string> = {
   pounds: "lb",
   clove: "clove",
   cloves: "clove",
+  tin: "tin",
+  tins: "tin",
   can: "can",
   cans: "can",
   pinch: "pinch",

@@ -22,6 +22,12 @@ describe("parseQuantityString", () => {
       unitPrefix: "cloves",
       complete: true,
     });
+    expect(parseQuantityString("2 tins")).toEqual({
+      amount: 2,
+      unit: "tin",
+      unitPrefix: "tins",
+      complete: true,
+    });
     expect(parseQuantityString("1 cup")).toEqual({
       amount: 1,
       unit: "cup",
@@ -141,6 +147,8 @@ describe("completeUnitPrefix", () => {
     expect(completeUnitPrefix("c")).toEqual(expect.arrayContaining(["cup", "clove", "can"]));
     expect(completeUnitPrefix("cl")).toEqual(["clove"]);
     expect(completeUnitPrefix("cu")).toEqual(["cup"]);
+    expect(completeUnitPrefix("ti")).toEqual(["tin"]);
+    expect(completeUnitPrefix("ca")).toEqual(["can"]);
   });
 });
 
@@ -194,5 +202,7 @@ describe("formatQuantityString", () => {
     expect(formatQuantityString(300, "g")).toBe("300g");
     expect(formatQuantityString(3, "clove")).toBe("3 cloves");
     expect(formatQuantityString(1, "cup")).toBe("1 cup");
+    expect(formatQuantityString(1, "tin")).toBe("1 tin");
+    expect(formatQuantityString(2, "tin")).toBe("2 tins");
   });
 });

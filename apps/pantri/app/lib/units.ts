@@ -42,6 +42,10 @@ const UNIT_DEFINITIONS: Record<string, UnitDefinition> = {
   tablespoons: { canonical: "tbsp", dimension: "volume", toBase: 15 },
   cup: { canonical: "cup", dimension: "volume", toBase: 240 },
   cups: { canonical: "cup", dimension: "volume", toBase: 240 },
+  tin: { canonical: "tin", dimension: "count", toBase: 1 },
+  tins: { canonical: "tin", dimension: "count", toBase: 1 },
+  can: { canonical: "can", dimension: "count", toBase: 1 },
+  cans: { canonical: "can", dimension: "count", toBase: 1 },
   each: { canonical: "each", dimension: "count", toBase: 1 },
 };
 
@@ -61,6 +65,7 @@ export const SUGGESTED_UNITS = [
   "oz",
   "lb",
   "clove",
+  "tin",
   "can",
   "pinch",
   "pack",
