@@ -135,14 +135,13 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
         index === ingredientIndex ? { ...ingredient, purchased } : ingredient,
       );
 
+      const updatedAt = new Date();
       await db
         .update(shoppingRecipes)
-        .set({ ingredients: serializeShoppingIngredients(ingredients), updatedAt: new Date() })
+        .set({ ingredients: serializeShoppingIngredients(ingredients), updatedAt })
         .where(eq(shoppingRecipes.id, shoppingRecipeId));
 
-      const updated = await this.get(shoppingRecipeId);
-      if (!updated) throw new Error("Shopping recipe not found");
-      return updated;
+      return { ...record, ingredients, updatedAt };
     },
 
     /** Fan a purchased toggle out across every shopping recipe ingredient with a matching canonical name. Used by the sorted view. */

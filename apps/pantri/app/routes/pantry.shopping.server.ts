@@ -1,7 +1,7 @@
 import { getPantriEnv, getWorkerEnv } from "~/lib/context.server";
 import { getOptionalString, getString } from "~/lib/forms.server";
 import { requirePantriService } from "~/services";
-import { notifyPantryChange } from "~/services/realtime.server";
+import { notifyPantryMutation } from "~/services/realtime.server";
 
 import type { Route } from "./+types/pantry.shopping";
 
@@ -18,7 +18,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   const intent = getString(formData, "intent");
 
   async function notify() {
-    await notifyPantryChange({ db: context.db, env: getWorkerEnv(), pantryId: context.pantryId });
+    await notifyPantryMutation(context, getWorkerEnv());
   }
 
   try {

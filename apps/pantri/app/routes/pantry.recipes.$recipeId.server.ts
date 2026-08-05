@@ -5,7 +5,7 @@ import { getOptionalString, getString } from "~/lib/forms.server";
 import { pantryPath } from "~/lib/pantry-path";
 import { parseRecipeIngredients, parseRecipeSteps } from "~/lib/recipe-schema";
 import { requirePantriService } from "~/services";
-import { notifyPantryChange } from "~/services/realtime.server";
+import { notifyPantryMutation } from "~/services/realtime.server";
 
 import type { Route } from "./+types/pantry.recipes.$recipeId";
 
@@ -28,7 +28,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "add-to-shopping") {
     try {
       const shoppingRecipe = await pantri.shopping.addFromRecipe(params.recipeId);
-      await notifyPantryChange({ db: context.db, env: getWorkerEnv(), pantryId: context.pantryId });
+      await notifyPantryMutation(context, getWorkerEnv());
       return { added: shoppingRecipe.name };
     } catch (error) {
       return {
@@ -40,7 +40,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "delete") {
     try {
       await pantri.recipes.remove(params.recipeId);
-      await notifyPantryChange({ db: context.db, env: getWorkerEnv(), pantryId: context.pantryId });
+      await notifyPantryMutation(context, getWorkerEnv());
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Could not delete recipe." };
     }
@@ -59,7 +59,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         ),
         steps: parseRecipeSteps(JSON.parse(getString(formData, "stepsJson") || "[]")),
       });
-      await notifyPantryChange({ db: context.db, env: getWorkerEnv(), pantryId: context.pantryId });
+      await notifyPantryMutation(context, getWorkerEnv());
       return { saved: true as const };
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Could not update recipe." };

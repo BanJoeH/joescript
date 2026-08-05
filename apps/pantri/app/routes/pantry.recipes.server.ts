@@ -4,7 +4,7 @@ import { getPantriEnv, getWorkerEnv } from "~/lib/context.server";
 import { getString } from "~/lib/forms.server";
 import { pantryPath } from "~/lib/pantry-path";
 import { requirePantriService } from "~/services";
-import { notifyPantryChange } from "~/services/realtime.server";
+import { notifyPantryMutation } from "~/services/realtime.server";
 
 import type { Route } from "./+types/pantry.recipes";
 
@@ -24,7 +24,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "add-to-shopping") {
     try {
       const shoppingRecipe = await pantri.shopping.addFromRecipe(recipeId);
-      await notifyPantryChange({ db: context.db, env: getWorkerEnv(), pantryId: context.pantryId });
+      await notifyPantryMutation(context, getWorkerEnv());
       return { added: shoppingRecipe.name };
     } catch (error) {
       return {
@@ -36,7 +36,7 @@ export async function action({ request, params }: Route.ActionArgs) {
   if (intent === "delete") {
     try {
       await pantri.recipes.remove(recipeId);
-      await notifyPantryChange({ db: context.db, env: getWorkerEnv(), pantryId: context.pantryId });
+      await notifyPantryMutation(context, getWorkerEnv());
     } catch (error) {
       return {
         error: error instanceof Error ? error.message : "Could not delete recipe.",
