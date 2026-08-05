@@ -206,18 +206,6 @@ export default function PantrySettings({ loaderData, actionData }: Route.Compone
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Developer</CardTitle>
-          <CardDescription>Internal tools for trying work-in-progress UI.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button asChild variant="outline">
-            <Link to={pantryPath(pantryId, "quantity-input-test")}>Quantity input playground</Link>
-          </Button>
-        </CardContent>
-      </Card>
-
       <Card className="border-destructive/30">
         <CardHeader>
           <CardTitle>Delete pantry</CardTitle>

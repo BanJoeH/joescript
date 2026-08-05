@@ -23,7 +23,6 @@ export default [
       route("settings", "routes/settings.tsx"),
       route("settings/personal", "routes/settings.personal.tsx"),
       route("settings/pantry", "routes/pantry.settings.tsx"),
-      route("quantity-input-test", "routes/pantry.quantity-input-test.tsx"),
       route("api/events", "routes/pantry.api.events.tsx"),
     ]),
   ]),
