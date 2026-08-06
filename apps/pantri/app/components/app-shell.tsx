@@ -48,6 +48,10 @@ function isNavItemActive(pathname: string, href: string, exact: boolean) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function isOnNavBaseRoute(pathname: string, href: string) {
+  return pathname === href;
+}
+
 function topNavClassName(isActive: boolean) {
   return cn(
     "inline-flex items-center gap-2 rounded-md px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em]",
@@ -78,13 +82,14 @@ function TopNavLink({ href, label, exact, icon, tab }: PantryNavItem) {
   const location = useLocation();
   const homeTabScroll = useHomeTabScroll();
   const isActive = isNavItemActive(location.pathname, href, exact);
+  const isOnBaseRoute = isOnNavBaseRoute(location.pathname, href);
 
   return (
     <Link
       aria-current={isActive ? "page" : undefined}
       className={topNavClassName(isActive)}
       onClick={(event) => {
-        if (isActive) {
+        if (isOnBaseRoute) {
           event.preventDefault();
           homeTabScroll?.scrollToTop(tab);
         }
@@ -132,13 +137,14 @@ function BottomNavLink({ href, label, exact, icon, tab }: PantryNavItem) {
   const location = useLocation();
   const homeTabScroll = useHomeTabScroll();
   const isActive = isNavItemActive(location.pathname, href, exact);
+  const isOnBaseRoute = isOnNavBaseRoute(location.pathname, href);
 
   return (
     <Link
       aria-current={isActive ? "page" : undefined}
       className={bottomNavClassName(isActive)}
       onClick={(event) => {
-        if (isActive) {
+        if (isOnBaseRoute) {
           event.preventDefault();
           homeTabScroll?.scrollToTop(tab);
         }

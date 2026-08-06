@@ -242,3 +242,18 @@ export function formatAmountWithUnit(amount: number, unit: string | null | undef
 
   return `${formatAmount(amount)} ${normalized}`;
 }
+
+/** Full ingredient line for lists, e.g. "3 cloves garlic" or "500g flour (sifted)". */
+export function formatIngredientLabel(ingredient: {
+  name: string;
+  amount: number | null;
+  unit: string | null;
+  notes?: string | null;
+}): string {
+  const quantity =
+    ingredient.amount !== null ? formatAmountWithUnit(ingredient.amount, ingredient.unit) : "";
+  const parts = [quantity, ingredient.name].filter(Boolean);
+  const label = parts.join(" ");
+  const notes = ingredient.notes?.trim();
+  return notes ? `${label} (${notes})` : label;
+}
