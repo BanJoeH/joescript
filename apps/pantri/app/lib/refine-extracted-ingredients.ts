@@ -38,6 +38,8 @@ const KNOWN_UNITS = new Set([
   "litre",
   "clove",
   "cloves",
+  "tin",
+  "tins",
   "can",
   "cans",
   "pinch",
@@ -70,6 +72,7 @@ export function cleanExtractedUnit(unit: string | null | undefined): string | nu
     if (trimmed === "ounce" || trimmed === "ounces") return "oz";
     if (trimmed === "cups") return "cup";
     if (trimmed === "cloves") return "clove";
+    if (trimmed === "tins") return "tin";
     if (trimmed === "cans") return "can";
     if (trimmed === "grams" || trimmed === "gram") return "g";
     return trimmed;
@@ -80,7 +83,7 @@ export function cleanExtractedUnit(unit: string | null | undefined): string | nu
 }
 
 const LEADING_UNIT_RE =
-  /^(tablespoons?|teaspoons?|tbsp\.?|tsp\.?|cups?|pounds?|lbs?\.?|ounces?|oz\.?|grams?|kg|ml|l|liters?|litres?|cloves?|cans?)\b\s*/i;
+  /^(tablespoons?|teaspoons?|tbsp\.?|tsp\.?|cups?|pounds?|lbs?\.?|ounces?|oz\.?|grams?|kg|ml|l|liters?|litres?|cloves?|tins?|cans?)\b\s*/i;
 
 function parseNumericAmount(token: string): number | null {
   const mixed = token.match(/^(\d+)\s+(\d+)\/(\d+)$/);

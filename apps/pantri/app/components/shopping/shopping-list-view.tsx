@@ -11,6 +11,7 @@ import { useFetcher, useFetchers } from "react-router";
 
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
+import { QuantityInput } from "~/components/recipes/quantity-input";
 import { ShoppingGotItSection } from "~/components/shopping/shopping-got-it-section";
 import { Button } from "~/components/ui/button";
 import { CardList, CardListItem } from "~/components/ui/card-list";
@@ -105,6 +106,51 @@ function RecipeIngredientRow({
   );
 }
 
+function AddOddBitForm({ action }: { action: string }) {
+  const fetcher = useFetcher({ key: "shopping-add-odd-bit" });
+  const formRef = useRef<HTMLFormElement>(null);
+  const [quantity, setQuantity] = useState<{ amount: number | null; unit: string | null }>({
+    amount: null,
+    unit: null,
+  });
+
+  return (
+    <fetcher.Form
+      action={action}
+      className="flex flex-wrap items-end gap-2"
+      method="post"
+      onSubmit={() => {
+        requestAnimationFrame(() => {
+          formRef.current?.reset();
+          setQuantity({ amount: null, unit: null });
+        });
+      }}
+      ref={formRef}
+    >
+      <input name="intent" type="hidden" value="add-odd-bit" />
+      <QuantityInput
+        amount={quantity.amount}
+        className="w-28"
+        onChange={setQuantity}
+        placeholder="Qty"
+        unit={quantity.unit}
+      />
+      <input name="amount" type="hidden" value={quantity.amount ?? ""} />
+      <input name="unit" type="hidden" value={quantity.unit ?? ""} />
+      <Input
+        aria-label="Name"
+        className="min-w-32 flex-1"
+        name="name"
+        placeholder="e.g. paper towels"
+        required
+      />
+      <Button size="sm" type="submit">
+        <Plus className="size-4" /> Add
+      </Button>
+    </fetcher.Form>
+  );
+}
+
 function OddBitRow({ action, bit }: { action: string; bit: OptimisticOddBit }) {
   const index = bit.sourceIndex;
   const toggleFetcher = useFetcher({
@@ -165,9 +211,7 @@ export type ShoppingListViewProps = {
 export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListViewProps) {
   const action = pantryPath(pantryId, "shopping");
   const fetchers = useFetchers();
-  const addOddBitFetcher = useFetcher({ key: "shopping-add-odd-bit" });
   const clearOddBitsFetcher = useFetcher({ key: "shopping-clear-odd-bits" });
-  const addOddBitFormRef = useRef<HTMLFormElement>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
 
   const { recipes: optimisticRecipes, oddBits: optimisticOddBits } = useMemo(
@@ -255,35 +299,7 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
               </>
             )}
 
-            <addOddBitFetcher.Form
-              action={action}
-              className="flex flex-wrap items-end gap-2"
-              method="post"
-              onSubmit={() => {
-                requestAnimationFrame(() => addOddBitFormRef.current?.reset());
-              }}
-              ref={addOddBitFormRef}
-            >
-              <input name="intent" type="hidden" value="add-odd-bit" />
-              <Input
-                aria-label="Amount"
-                className="w-20"
-                inputMode="decimal"
-                name="amount"
-                placeholder="Amt"
-              />
-              <Input aria-label="Unit" className="w-20" name="unit" placeholder="Unit" />
-              <Input
-                aria-label="Name"
-                className="min-w-32 flex-1"
-                name="name"
-                placeholder="e.g. paper towels"
-                required
-              />
-              <Button size="sm" type="submit">
-                <Plus className="size-4" /> Add
-              </Button>
-            </addOddBitFetcher.Form>
+            <AddOddBitForm action={action} />
           </div>
         </CardListItem>
 

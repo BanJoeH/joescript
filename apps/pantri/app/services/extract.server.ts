@@ -89,7 +89,7 @@ Rules:
 - ONE ingredient per array item. Never combine foods (bad: "beef, onion, chili powder").
 - "name" is the food only, lowercase. Put prep like "finely diced" / "minced" in "notes".
 - Copy amounts/units from the transcription. If missing or unclear, use null — do not invent cups/tbsp.
-- Valid units examples: tsp, tbsp, cup, lb, oz, g, ml, clove, can.
+- Valid units examples: tsp, tbsp, cup, lb, oz, g, ml, clove, tin, can.
 - Steps may be strings or { "order", "text" } objects.
 - Ignore marketing blurbs that are not part of the recipe.
 

@@ -2,7 +2,7 @@ import { ChevronLeft, ChevronRight, List, Pencil, Plus, Trash2, X } from "lucide
 import { type AnimationEvent, useEffect, useRef, useState } from "react";
 import { useFetcher } from "react-router";
 
-import { UnitCombobox } from "~/components/recipes/unit-combobox";
+import { QuantityInput } from "~/components/recipes/quantity-input";
 import { useFetcherSuccessToast, useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -156,23 +156,14 @@ function IngredientEditor({
     <div className="space-y-2">
       {ingredients.map((row) => (
         <div
-          className="grid grid-cols-[4.5rem_4.5rem_1fr_auto] gap-2 sm:grid-cols-[5rem_5rem_1fr_1fr_auto]"
+          className="grid grid-cols-[6.5rem_1fr_auto] gap-2 overflow-visible sm:grid-cols-[7rem_1fr_1fr_auto]"
           key={row.key}
         >
-          <Input
-            aria-label="Amount"
-            inputMode="decimal"
-            onChange={(event) =>
-              onChange(row.key, {
-                amount: event.target.value === "" ? null : Number(event.target.value),
-              })
-            }
-            placeholder="Amt"
-            value={row.amount ?? ""}
-          />
-          <UnitCombobox
-            onChange={(next) => onChange(row.key, { unit: next || null })}
-            value={row.unit ?? ""}
+          <QuantityInput
+            amount={row.amount}
+            onChange={({ amount, unit }) => onChange(row.key, { amount, unit })}
+            placeholder="Qty"
+            unit={row.unit}
           />
           <Input
             aria-label="Ingredient name"

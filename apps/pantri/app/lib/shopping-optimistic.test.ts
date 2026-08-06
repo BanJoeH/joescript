@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
 import { applyShoppingListOptimistic, applySortedOptimistic } from "~/lib/shopping-optimistic";
 import { setIngredientPurchasedOverride } from "~/lib/shopping-purchased-overrides";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
@@ -8,6 +9,33 @@ function formData(entries: Record<string, string>) {
   const data = new FormData();
   for (const [key, value] of Object.entries(entries)) data.set(key, value);
   return data;
+}
+
+function aggregatedItem(
+  overrides: Partial<AggregatedIngredient> & Pick<AggregatedIngredient, "canonicalName" | "name">,
+): AggregatedIngredient {
+  const sources = overrides.sources ?? ["Chili"];
+  const instances =
+    overrides.instances ??
+    sources.map((source, index) => ({
+      key: `${source}:1:null:false:${index}`,
+      source,
+      amount: 1,
+      unit: null,
+      purchased: overrides.purchased ?? false,
+      quantityText: "1×",
+    }));
+
+  return {
+    sources,
+    purchased: false,
+    purchasedCount: 0,
+    instanceCount: instances.length,
+    instances,
+    amounts: [{ amount: 1, unit: null }],
+    quantityLabel: "1×",
+    ...overrides,
+  };
 }
 
 const recipe = {
@@ -93,19 +121,11 @@ describe("applyShoppingListOptimistic", () => {
 
 describe("applySortedOptimistic", () => {
   it("toggles purchased and moves aisle", () => {
+    const onion = aggregatedItem({ canonicalName: "onion", name: "onion" });
     const sections = [
       {
         section: "Produce",
-        items: [
-          {
-            canonicalName: "onion",
-            name: "onion",
-            sources: ["Chili"],
-            purchased: false,
-            amounts: [],
-            quantityLabel: "1",
-          },
-        ],
+        items: [onion],
       },
     ];
 
@@ -120,16 +140,7 @@ describe("applySortedOptimistic", () => {
     expect(moved).toEqual([
       {
         section: "Pantry",
-        items: [
-          {
-            canonicalName: "onion",
-            name: "onion",
-            sources: ["Chili"],
-            purchased: false,
-            amounts: [],
-            quantityLabel: "1",
-          },
-        ],
+        items: [onion],
       },
     ]);
   });

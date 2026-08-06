@@ -1,8 +1,10 @@
 import { getCanonicalIngredientName } from "./ingredient-name";
 import {
   convertWithinDimension,
-  formatAmount,
+  formatAmountWithUnit,
   getUnitDimension,
+  normalizeAggregatedAmount,
+  normalizeUnit,
   preferredDisplayUnit,
   type UnitDimension,
 } from "./units";
@@ -21,6 +23,17 @@ export type AggregatedAmount = {
   unit: string | null;
 };
 
+/** One shopping-list line rolled into an aggregated row. */
+export type AggregatedInstance = {
+  key: string;
+  source: string;
+  amount: number | null;
+  unit: string | null;
+  purchased: boolean;
+  /** Human-readable quantity for this line, e.g. "2 cloves", "500g", or "—". */
+  quantityText: string;
+};
+
 /**
  * One row in the sorted-shopping view: every instance of an ingredient name
  * across recipes and odd bits, aggregated into as few quantity lines as
@@ -35,19 +48,88 @@ export type AggregatedIngredient = {
   sources: string[];
   /** True only when every underlying instance has been marked purchased. */
   purchased: boolean;
+  purchasedCount: number;
+  instanceCount: number;
+  instances: AggregatedInstance[];
   amounts: AggregatedAmount[];
   quantityLabel: string;
 };
 
 const DIMENSION_ORDER: UnitDimension[] = ["mass", "volume", "count"];
 
+function formatInstanceQuantity(line: Pick<ShoppingLine, "amount" | "unit">): string {
+  if (line.amount === null) {
+    return "—";
+  }
+
+  return formatAmountWithUnit(line.amount, line.unit);
+}
+
+function hasUnspecifiedInstances(item: AggregatedIngredient): boolean {
+  return item.instances.some((instance) => instance.amount === null);
+}
+
+/** Every instance has an amount and aggregation produced a single total. */
+function hasCleanAggregation(item: AggregatedIngredient): boolean {
+  if (hasUnspecifiedInstances(item) || item.amounts.length !== 1) {
+    return false;
+  }
+
+  return item.instances.every((instance) => instance.amount !== null);
+}
+
+function instanceProgressBadge(item: AggregatedIngredient): string {
+  return `${item.purchasedCount}/${item.instanceCount}`;
+}
+
+/**
+ * Badge text for the sorted list row.
+ * - Multiple instances → progress only (e.g. "0/2", "1/2", "2/2"); expand for quantities
+ * - Single instance with amount → that amount (e.g. "2 cloves", "500g")
+ * - Single instance, no amount → nothing
+ */
+export function getSortedQuantityBadge(item: AggregatedIngredient): string | null {
+  if (item.instanceCount > 1) {
+    return instanceProgressBadge(item);
+  }
+
+  if (item.instances.every((instance) => instance.amount === null)) {
+    return null;
+  }
+
+  if (hasCleanAggregation(item)) {
+    const [amount] = item.amounts;
+    return formatAmountWithUnit(amount.amount, amount.unit);
+  }
+
+  return formatQuantityLabel(item.amounts) || null;
+}
+
 function formatQuantityLabel(amounts: AggregatedAmount[]): string {
   if (amounts.length === 0) return "";
-  return amounts
-    .map(({ amount, unit }) =>
-      unit ? `${formatAmount(amount)}${unit}` : `${formatAmount(amount)}\u00d7`,
-    )
-    .join(" + ");
+  return amounts.map(({ amount, unit }) => formatAmountWithUnit(amount, unit)).join(" + ");
+}
+
+function sharedCountDisplayUnit(lines: ShoppingLine[]): string | null {
+  const numericLines = lines.filter(
+    (line): line is ShoppingLine & { amount: number } => line.amount !== null,
+  );
+  if (numericLines.length === 0) {
+    return null;
+  }
+
+  const normalized = numericLines.map((line) => normalizeUnit(line.unit));
+  const unique = new Set(normalized.map((unit) => unit ?? "__none__"));
+  if (unique.size !== 1) {
+    return null;
+  }
+
+  const unit = normalized[0];
+  if (!unit || unit === "each") {
+    return null;
+  }
+
+  return unit;
 }
 
 function aggregateDimensionBucket(
@@ -63,16 +145,16 @@ function aggregateDimensionBucket(
   if (numericLines.length > 0) {
     const displayUnit =
       dimension === "count"
-        ? null
+        ? sharedCountDisplayUnit(lines)
         : preferredDisplayUnit(
             dimension,
-            numericLines.map((l) => l.unit),
+            numericLines.map((line) => line.unit),
           );
     const total = numericLines.reduce((sum, line) => {
       const converted = convertWithinDimension(line.amount, line.unit, displayUnit);
       return sum + (converted ?? line.amount);
     }, 0);
-    result.push({ amount: Math.round(total * 100) / 100, unit: displayUnit });
+    result.push(normalizeAggregatedAmount(total, displayUnit, dimension));
   }
 
   if (unspecifiedCount > 0) {
@@ -122,11 +204,23 @@ export function aggregateIngredients(lines: ShoppingLine[]): AggregatedIngredien
       return bucketLines ? aggregateDimensionBucket(dimension, bucketLines) : [];
     });
 
+    const instances = groupLines.map((line, index) => ({
+      key: `${line.source}:${line.amount ?? "null"}:${line.unit ?? "null"}:${line.purchased}:${index}`,
+      source: line.source,
+      amount: line.amount,
+      unit: line.unit,
+      purchased: line.purchased,
+      quantityText: formatInstanceQuantity(line),
+    }));
+
     return {
       canonicalName,
       name: groupLines[0].name.toLowerCase().trim(),
       sources: groupLines.map((line) => line.source),
       purchased: groupLines.every((line) => line.purchased),
+      purchasedCount: groupLines.filter((line) => line.purchased).length,
+      instanceCount: groupLines.length,
+      instances,
       amounts,
       quantityLabel: formatQuantityLabel(amounts),
     } satisfies AggregatedIngredient;

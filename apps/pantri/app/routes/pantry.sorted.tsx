@@ -1,4 +1,4 @@
-import { ArrowLeft, MoreHorizontal } from "lucide-react";
+import { ArrowLeft, ChevronDown, MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
 
@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { getIngredientSection, SHOPPING_SECTIONS } from "~/lib/ingredient-sections";
 import { pantryPath } from "~/lib/pantry-path";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
+import { getSortedQuantityBadge } from "~/lib/shopping-aggregation";
 import { applySortedOptimistic } from "~/lib/shopping-optimistic";
 import { cn } from "~/lib/utils";
 
@@ -38,7 +39,9 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
       ? String(categoryFetcher.formData.get("section") ?? section)
       : section;
 
-  const uniqueSources = useMemo(() => [...new Set(item.sources)], [item.sources]);
+  const quantityBadge = getSortedQuantityBadge(item);
+  const expandable = item.instanceCount > 1;
+  const panelId = `sorted-item-${item.canonicalName}-sources`;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -80,7 +83,12 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
   }
 
   return (
-    <div className="rounded-md px-1 py-0 hover:bg-accent/50">
+    <div
+      className={cn(
+        "rounded-md px-1 py-0 hover:bg-accent/50",
+        showSources && expandable && "bg-muted/40",
+      )}
+    >
       <div className="flex items-start gap-1.5">
         <input
           aria-label={`Mark ${item.name} as ${purchased ? "to buy" : "got it"}`}
@@ -98,22 +106,32 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
           }}
           type="checkbox"
         />
-        <button
-          aria-expanded={showSources}
-          className="min-w-0 flex-1 py-0.5 text-left text-sm capitalize leading-snug"
-          onClick={() => setShowSources((open) => !open)}
-          type="button"
+        <span
+          className={cn(
+            "min-w-0 flex-1 py-0.5 text-sm capitalize leading-snug",
+            purchased && "text-muted-foreground line-through",
+          )}
         >
-          <span className={cn(purchased && "text-muted-foreground line-through")}>{item.name}</span>
-        </button>
-        {item.quantityLabel ? (
+          {item.name}
+        </span>
+        {expandable ? (
+          <button
+            aria-controls={panelId}
+            aria-expanded={showSources}
+            aria-label={`${showSources ? "Hide" : "Show"} recipes for ${item.name}`}
+            className="mt-0.5 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent"
+            onClick={() => setShowSources((open) => !open)}
+            type="button"
+          >
+            {quantityBadge}
+            <ChevronDown
+              aria-hidden
+              className={cn("size-3 shrink-0 transition-transform", !showSources && "-rotate-90")}
+            />
+          </button>
+        ) : quantityBadge ? (
           <span className="mt-0.5 shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            {item.quantityLabel}
-          </span>
-        ) : null}
-        {item.sources.length > 1 ? (
-          <span className="mt-0.5 shrink-0 text-xs text-muted-foreground">
-            ×{item.sources.length}
+            {quantityBadge}
           </span>
         ) : null}
         <div className="relative shrink-0" ref={menuRef}>
@@ -156,10 +174,21 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
         </div>
       </div>
       {showSources ? (
-        <ul className="mt-1.5 ml-7 space-y-0.5 text-xs text-muted-foreground">
-          {uniqueSources.map((source) => (
-            <li className="capitalize" key={source}>
-              {source}
+        <ul className="mt-1.5 ml-7 space-y-1 text-xs text-muted-foreground" id={panelId}>
+          {item.instances.map((instance) => (
+            <li
+              className={cn(
+                "flex items-baseline justify-between gap-3",
+                instance.purchased && "opacity-70",
+              )}
+              key={instance.key}
+            >
+              <span className={cn("min-w-0 capitalize", instance.purchased && "line-through")}>
+                {instance.source}
+              </span>
+              <span className={cn("shrink-0 tabular-nums", instance.purchased && "line-through")}>
+                {instance.quantityText}
+              </span>
             </li>
           ))}
         </ul>
