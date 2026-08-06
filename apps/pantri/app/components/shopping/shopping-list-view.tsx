@@ -27,6 +27,7 @@ import {
   setOddBitPurchasedOverride,
 } from "~/lib/shopping-purchased-overrides";
 import { splitIndexedByPurchased } from "~/lib/split-purchased";
+import { formatIngredientLabel } from "~/lib/units";
 import { cn } from "~/lib/utils";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
 
@@ -52,20 +53,6 @@ function IngredientCheckbox({
       </span>
     </label>
   );
-}
-
-function formatIngredientLabel(ingredient: {
-  name: string;
-  amount: number | null;
-  unit: string | null;
-  notes?: string;
-}) {
-  const quantity = [ingredient.amount ?? undefined, ingredient.unit ?? undefined]
-    .filter((part) => part !== undefined && part !== "")
-    .join("");
-  const parts = [quantity, ingredient.name].filter(Boolean);
-  const label = parts.join(" ");
-  return ingredient.notes ? `${label} (${ingredient.notes})` : label;
 }
 
 function RecipeIngredientRow({

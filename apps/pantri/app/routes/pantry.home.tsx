@@ -3,6 +3,7 @@ import { Outlet, type ShouldRevalidateFunctionArgs, useLocation, useNavigate } f
 import type { Swiper as SwiperClass } from "swiper";
 import { Swiper, SwiperSlide } from "swiper/react";
 
+import { PullToRefreshScroll } from "~/components/pull-to-refresh-scroll";
 import { RecipesListView } from "~/components/recipes/recipes-list-view";
 import { ShoppingListView } from "~/components/shopping/shopping-list-view";
 import { resolveHomeRecipes } from "~/lib/home-recipes-cache";
@@ -22,9 +23,9 @@ function HomeTabPane({ tab, children }: { tab: HomeTab; children: React.ReactNod
   const paneRef = useHomeTabPaneRef(tab);
 
   return (
-    <div className="home-slide-scroll px-0.5 pb-2" ref={paneRef}>
+    <PullToRefreshScroll className="home-slide-scroll px-0.5 pb-2" scrollRef={paneRef}>
       {children}
-    </div>
+    </PullToRefreshScroll>
   );
 }
 

@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   convertWithinDimension,
   formatAmount,
+  formatAmountWithUnit,
+  formatIngredientLabel,
   getUnitDimension,
   normalizeAggregatedAmount,
   normalizeUnit,
@@ -150,5 +152,27 @@ describe("formatAmount", () => {
   it("rounds to two decimal places", () => {
     expect(formatAmount(1.005)).toBe("1");
     expect(formatAmount(1.256)).toBe("1.26");
+  });
+});
+
+describe("formatAmountWithUnit", () => {
+  it("formats attached and spaced units", () => {
+    expect(formatAmountWithUnit(300, "g")).toBe("300g");
+    expect(formatAmountWithUnit(3, "clove")).toBe("3 cloves");
+    expect(formatAmountWithUnit(1, "cup")).toBe("1 cup");
+  });
+
+  it("formats unitless counts", () => {
+    expect(formatAmountWithUnit(3, null)).toBe("3×");
+  });
+});
+
+describe("formatIngredientLabel", () => {
+  it("joins formatted quantity with name and notes", () => {
+    expect(
+      formatIngredientLabel({ name: "garlic", amount: 3, unit: "clove", notes: "minced" }),
+    ).toBe("3 cloves garlic (minced)");
+    expect(formatIngredientLabel({ name: "flour", amount: 500, unit: "g" })).toBe("500g flour");
+    expect(formatIngredientLabel({ name: "salt", amount: null, unit: null })).toBe("salt");
   });
 });

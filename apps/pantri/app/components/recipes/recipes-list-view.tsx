@@ -21,7 +21,7 @@ import { Button } from "~/components/ui/button";
 import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
 import { pantryPath } from "~/lib/pantry-path";
-import type { RecipeIngredient } from "~/lib/recipe-schema";
+import { formatIngredientLabel } from "~/lib/units";
 import { cn } from "~/lib/utils";
 import type { RecipeRecord } from "~/services/recipes.service";
 
@@ -31,15 +31,6 @@ export type RecipesListViewProps = {
 };
 
 type AddToShoppingResult = { added?: string; error?: string };
-
-function formatIngredientLabel(ingredient: RecipeIngredient) {
-  const quantity = [ingredient.amount ?? undefined, ingredient.unit ?? undefined]
-    .filter((part) => part !== undefined && part !== "")
-    .join("");
-  const parts = [quantity, ingredient.name].filter(Boolean);
-  const label = parts.join(" ");
-  return ingredient.notes ? `${label} (${ingredient.notes})` : label;
-}
 
 function filterRecipes(recipes: RecipeRecord[], query: string) {
   const trimmed = query.trim();
@@ -153,11 +144,19 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
 
             return (
               <CardListItem className={cn(expanded && "bg-muted/40")} key={recipe.id}>
-                <div className="flex items-center justify-between gap-2 px-4 py-3">
+                <div
+                  className={cn(
+                    "flex justify-between gap-2 px-4 py-3",
+                    expanded ? "items-start" : "items-center",
+                  )}
+                >
                   <button
                     aria-controls={panelId}
                     aria-expanded={expanded}
-                    className="flex min-w-0 flex-1 items-center gap-2 rounded-sm text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className={cn(
+                      "flex min-w-0 flex-1 gap-2 rounded-sm text-left hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      expanded ? "items-start pt-1.5" : "items-center",
+                    )}
                     onClick={() => toggleExpanded(recipe.id)}
                     type="button"
                   >
@@ -169,7 +168,12 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                       )}
                     />
                     <div className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold uppercase tracking-[0.06em]">
+                      <span
+                        className={cn(
+                          "block text-sm font-semibold uppercase tracking-[0.06em]",
+                          !expanded && "truncate",
+                        )}
+                      >
                         {recipe.name}
                       </span>
                     </div>

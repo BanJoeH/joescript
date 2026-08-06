@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
 import type { RecipeIngredient, RecipeStep } from "~/lib/recipe-schema";
+import { formatIngredientLabel } from "~/lib/units";
 import { cn } from "~/lib/utils";
 import type { RecipeRecord } from "~/services/recipes.service";
 
@@ -23,15 +24,6 @@ type CookViewActionData = {
 
 /** -1 = ingredients screen; 0..n-1 = method steps. */
 const INGREDIENTS_SCREEN = -1;
-
-function formatIngredientLabel(ingredient: RecipeIngredient) {
-  const quantity = [ingredient.amount ?? undefined, ingredient.unit ?? undefined]
-    .filter((part) => part !== undefined && part !== "")
-    .join("");
-  const parts = [quantity, ingredient.name].filter(Boolean);
-  const label = parts.join(" ");
-  return ingredient.notes ? `${label} (${ingredient.notes})` : label;
-}
 
 function toIngredientRows(ingredients: RecipeIngredient[]): IngredientRow[] {
   return ingredients.map((ingredient) => ({ ...ingredient, key: crypto.randomUUID() }));

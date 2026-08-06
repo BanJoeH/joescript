@@ -40,7 +40,6 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
       : section;
 
   const quantityBadge = getSortedQuantityBadge(item);
-  const expandable = item.instanceCount > 1;
   const panelId = `sorted-item-${item.canonicalName}-sources`;
 
   useEffect(() => {
@@ -85,15 +84,16 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
   return (
     <div
       className={cn(
-        "rounded-md px-1 py-0 hover:bg-accent/50",
-        showSources && expandable && "bg-muted/40",
+        "border-b border-border/40 px-1 py-1 last:border-b-0 hover:bg-accent/50",
+        showSources && "bg-muted/40",
       )}
     >
-      <div className="flex items-start gap-1.5">
+      <div className="flex items-center gap-1.5">
         <input
           aria-label={`Mark ${item.name} as ${purchased ? "to buy" : "got it"}`}
           checked={purchased}
-          className="mt-1 size-4 shrink-0 accent-foreground"
+          className="size-4 shrink-0 accent-foreground cursor-pointer"
+          id={`sorted-item-${item.canonicalName}-checkbox`}
           onChange={(event) => {
             toggleFetcher.submit(
               {
@@ -106,34 +106,31 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
           }}
           type="checkbox"
         />
-        <span
+        <label
+          htmlFor={`sorted-item-${item.canonicalName}-checkbox`}
           className={cn(
-            "min-w-0 flex-1 py-0.5 text-sm capitalize leading-snug",
+            "min-w-0 flex-1 py-0.5 text-sm capitalize leading-snug cursor-pointer",
             purchased && "text-muted-foreground line-through",
           )}
         >
           {item.name}
-        </span>
-        {expandable ? (
-          <button
-            aria-controls={panelId}
-            aria-expanded={showSources}
-            aria-label={`${showSources ? "Hide" : "Show"} recipes for ${item.name}`}
-            className="mt-0.5 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-accent"
-            onClick={() => setShowSources((open) => !open)}
-            type="button"
-          >
-            {quantityBadge}
-            <ChevronDown
-              aria-hidden
-              className={cn("size-3 shrink-0 transition-transform", !showSources && "-rotate-90")}
-            />
-          </button>
-        ) : quantityBadge ? (
-          <span className="mt-0.5 shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            {quantityBadge}
-          </span>
-        ) : null}
+        </label>
+        <button
+          aria-controls={panelId}
+          aria-expanded={showSources}
+          aria-label={`${showSources ? "Hide" : "Show"} sources for ${item.name}`}
+          className={cn(
+            "inline-flex shrink-0 items-center gap-0.5 rounded-full bg-muted px-3.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent cursor-pointer",
+          )}
+          onClick={() => setShowSources((open) => !open)}
+          type="button"
+        >
+          {quantityBadge ? <span>{quantityBadge}</span> : null}
+          <ChevronDown
+            aria-hidden
+            className={cn("size-3 shrink-0 transition-transform", !showSources && "-rotate-90")}
+          />
+        </button>
         <div className="relative shrink-0" ref={menuRef}>
           <Button
             aria-expanded={menuOpen}
@@ -174,7 +171,7 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
         </div>
       </div>
       {showSources ? (
-        <ul className="mt-1.5 ml-7 space-y-1 text-xs text-muted-foreground" id={panelId}>
+        <ul className="mt-1.5 ml-4 mr-12 space-y-1 text-xs text-muted-foreground" id={panelId}>
           {item.instances.map((instance) => (
             <li
               className={cn(
