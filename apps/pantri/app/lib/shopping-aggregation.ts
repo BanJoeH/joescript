@@ -65,10 +65,6 @@ function formatInstanceQuantity(line: Pick<ShoppingLine, "amount" | "unit">): st
   return formatAmountWithUnit(line.amount, line.unit);
 }
 
-function uniqueSourceCount(item: AggregatedIngredient): number {
-  return new Set(item.sources).size;
-}
-
 function hasUnspecifiedInstances(item: AggregatedIngredient): boolean {
   return item.instances.some((instance) => instance.amount === null);
 }
@@ -82,49 +78,31 @@ function hasCleanAggregation(item: AggregatedIngredient): boolean {
   return item.instances.every((instance) => instance.amount !== null);
 }
 
-function isPartiallyPurchased(item: AggregatedIngredient): boolean {
-  return item.purchasedCount > 0 && item.purchasedCount < item.instanceCount;
-}
-
-function withPartialProgress(item: AggregatedIngredient, label: string | null): string | null {
-  if (!isPartiallyPurchased(item)) {
-    return label;
-  }
-
-  const progress = `${item.purchasedCount}/${item.instanceCount}`;
-  return label ? `${progress} · ${label}` : progress;
+function instanceProgressBadge(item: AggregatedIngredient): string {
+  return `${item.purchasedCount}/${item.instanceCount}`;
 }
 
 /**
  * Badge text for the sorted list row.
- * - Single recipe with amount → that amount (e.g. "2 cloves", "500g")
- * - Single recipe, no amount → nothing
- * - Multiple recipes, clean sum → total (e.g. "1kg", "5 cloves")
- * - Multiple recipes, messy data → recipe count (e.g. "3 recipes")
- * - Partial progress prepends "1/3 ·" when some instances are purchased
+ * - Multiple instances → progress only (e.g. "0/2", "1/2", "2/2"); expand for quantities
+ * - Single instance with amount → that amount (e.g. "2 cloves", "500g")
+ * - Single instance, no amount → nothing
  */
 export function getSortedQuantityBadge(item: AggregatedIngredient): string | null {
-  const recipeCount = uniqueSourceCount(item);
-
-  if (recipeCount === 1) {
-    if (item.instances.every((instance) => instance.amount === null)) {
-      return withPartialProgress(item, null);
-    }
-
-    if (hasCleanAggregation(item)) {
-      const [amount] = item.amounts;
-      return withPartialProgress(item, formatAmountWithUnit(amount.amount, amount.unit));
-    }
-
-    return withPartialProgress(item, formatQuantityLabel(item.amounts) || null);
+  if (item.instanceCount > 1) {
+    return instanceProgressBadge(item);
   }
 
-  if (!hasCleanAggregation(item)) {
-    return withPartialProgress(item, `${recipeCount} recipes`);
+  if (item.instances.every((instance) => instance.amount === null)) {
+    return null;
   }
 
-  const [amount] = item.amounts;
-  return withPartialProgress(item, formatAmountWithUnit(amount.amount, amount.unit));
+  if (hasCleanAggregation(item)) {
+    const [amount] = item.amounts;
+    return formatAmountWithUnit(amount.amount, amount.unit);
+  }
+
+  return formatQuantityLabel(item.amounts) || null;
 }
 
 function formatQuantityLabel(amounts: AggregatedAmount[]): string {

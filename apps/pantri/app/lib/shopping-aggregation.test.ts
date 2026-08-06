@@ -45,7 +45,7 @@ describe("aggregateIngredients", () => {
     ]);
 
     expect(result[0].amounts).toEqual([{ amount: 727, unit: "g" }]);
-    expect(getSortedQuantityBadge(result[0])).toBe("727g");
+    expect(getSortedQuantityBadge(result[0])).toBe("0/2");
   });
 
   it("sums compatible volume units", () => {
@@ -147,23 +147,23 @@ describe("aggregateIngredients", () => {
 });
 
 describe("getSortedQuantityBadge", () => {
-  it("shows recipe count for multiple recipes with unspecified amounts", () => {
+  it("shows instance progress for multiple lines without amounts", () => {
     const [garlic] = aggregateIngredients([
       line({ name: "garlic", source: "Chip chip cassoulet" }),
       line({ name: "garlic", source: "Shepherds pie" }),
     ]);
 
-    expect(getSortedQuantityBadge(garlic)).toBe("2 recipes");
+    expect(getSortedQuantityBadge(garlic)).toBe("0/2");
   });
 
-  it("shows recipe count when some amounts are missing", () => {
+  it("shows instance progress when some amounts are missing", () => {
     const [garlic] = aggregateIngredients([
       line({ name: "garlic", amount: 2, unit: "clove", source: "Stew" }),
       line({ name: "garlic", amount: 3, unit: "clove", source: "Soup" }),
       line({ name: "garlic", source: "Shepherds pie" }),
     ]);
 
-    expect(getSortedQuantityBadge(garlic)).toBe("3 recipes");
+    expect(getSortedQuantityBadge(garlic)).toBe("0/3");
     expect(garlic.instances.map((instance) => instance.quantityText)).toEqual([
       "2 cloves",
       "3 cloves",
@@ -171,24 +171,24 @@ describe("getSortedQuantityBadge", () => {
     ]);
   });
 
-  it("shows summed total when multiple recipes share a unit", () => {
+  it("shows instance progress instead of summed total for multiple lines", () => {
     const [garlic] = aggregateIngredients([
       line({ name: "garlic", amount: 2, unit: "clove", source: "Stew" }),
       line({ name: "garlic", amount: 3, unit: "clove", source: "Soup" }),
     ]);
 
-    expect(getSortedQuantityBadge(garlic)).toBe("5 cloves");
+    expect(getSortedQuantityBadge(garlic)).toBe("0/2");
     expect(garlic.amounts).toEqual([{ amount: 5, unit: "clove" }]);
   });
 
-  it("shows converted total for compatible mass units across recipes", () => {
+  it("shows instance progress for compatible mass units across recipes", () => {
     const [flour] = aggregateIngredients([
       line({ name: "flour", amount: 500, unit: "g", source: "Bread" }),
       line({ name: "flour", amount: 500, unit: "g", source: "Cake" }),
     ]);
 
     expect(flour.amounts).toEqual([{ amount: 1, unit: "kg" }]);
-    expect(getSortedQuantityBadge(flour)).toBe("1kg");
+    expect(getSortedQuantityBadge(flour)).toBe("0/2");
   });
 
   it("hides badge for a single unspecified line", () => {
@@ -205,21 +205,39 @@ describe("getSortedQuantityBadge", () => {
     expect(getSortedQuantityBadge(flour)).toBe("500g");
   });
 
-  it("shows split label for a single recipe with mixed dimensions", () => {
+  it("shows instance progress for multiple lines on one recipe", () => {
     const [chicken] = aggregateIngredients([
       line({ name: "chicken", amount: 500, unit: "g", source: "Curry" }),
       line({ name: "chicken", amount: 2, unit: null, source: "Curry" }),
     ]);
 
-    expect(getSortedQuantityBadge(chicken)).toBe("500g + 2×");
+    expect(getSortedQuantityBadge(chicken)).toBe("0/2");
   });
 
-  it("prepends partial progress to the badge", () => {
+  it("shows only progress when partially purchased", () => {
     const [carrots] = aggregateIngredients([
       line({ name: "carrots", source: "Bean soup", purchased: false }),
       line({ name: "carrots", source: "Shepherds pie", purchased: true }),
     ]);
 
-    expect(getSortedQuantityBadge(carrots)).toBe("1/2 · 2 recipes");
+    expect(getSortedQuantityBadge(carrots)).toBe("1/2");
+  });
+
+  it("shows only progress when partially purchased", () => {
+    const [carrots] = aggregateIngredients([
+      line({ name: "carrots", source: "Bean soup", purchased: false }),
+      line({ name: "carrots", source: "Shepherds pie", purchased: true }),
+    ]);
+
+    expect(getSortedQuantityBadge(carrots)).toBe("1/2");
+  });
+
+  it("shows full progress when every instance is purchased", () => {
+    const [garlic] = aggregateIngredients([
+      line({ name: "garlic", amount: 3, unit: "clove", source: "Stew", purchased: true }),
+      line({ name: "garlic", amount: 3, unit: "clove", source: "Soup", purchased: true }),
+    ]);
+
+    expect(getSortedQuantityBadge(garlic)).toBe("2/2");
   });
 });
