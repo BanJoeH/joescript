@@ -180,4 +180,14 @@
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
   }
+
+  .cook-swiper {
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .cook-swiper .swiper-slide {
+    box-sizing: border-box;
+    height: auto;
+  }
 }
