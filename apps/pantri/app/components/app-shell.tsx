@@ -5,6 +5,7 @@ import { useLocation, useParams, useRouteLoaderData } from "react-router";
 import { Link } from "~/components/link";
 import { PantriBrand } from "~/components/pantri-brand";
 import { SettingsSheet } from "~/components/settings-sheet";
+import { CookFocusProvider, useCookFocus } from "~/lib/cook-focus";
 import {
   type HomeTab,
   HomeTabScrollProvider,
@@ -159,10 +160,15 @@ function BottomNavLink({ href, label, exact, icon, tab }: PantryNavItem) {
 
 function MainScrollPane({ children }: { children: React.ReactNode }) {
   const paneRef = useMainScrollPaneRef();
+  const cookFocus = useCookFocus();
+  const focused = cookFocus?.focused ?? false;
 
   return (
     <div
-      className="pantri-page flex min-h-0 min-w-0 flex-1 flex-col gap-4 overflow-x-hidden overflow-y-auto md:gap-6"
+      className={cn(
+        "pantri-page flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden",
+        focused ? "overflow-hidden" : "gap-4 overflow-y-auto md:gap-6",
+      )}
       ref={paneRef}
     >
       {children}
@@ -174,33 +180,38 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
   const pantryData = useRouteLoaderData<PantryRoute.ComponentProps["loaderData"]>("routes/pantry");
   const params = useParams();
   const location = useLocation();
+  const cookFocus = useCookFocus();
+  const focused = cookFocus?.focused ?? false;
   const pantryId = params.pantryId ?? pantryData?.pantryId;
-  const navItems = pantryId ? getPantryNavItems(pantryId) : null;
+  const navItems = pantryId && !focused ? getPantryNavItems(pantryId) : null;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsActive = settingsOpen || location.pathname.includes("/settings");
 
   return (
     <div
       className={cn(
-        "mx-auto flex h-dvh w-full max-w-180 flex-col gap-4 overflow-hidden px-[2.5%] pt-0 md:gap-6",
-        navItems ? "pb-24 md:pb-6" : "pb-4 md:pb-6",
+        "mx-auto flex h-dvh w-full max-w-180 flex-col overflow-hidden px-[2.5%] pt-0",
+        focused ? "gap-0 pb-[env(safe-area-inset-bottom)]" : "gap-4 md:gap-6",
+        !focused && (navItems ? "pb-24 md:pb-6" : "pb-4 md:pb-6"),
       )}
     >
-      <header className="z-30 mx-[-2.5%] flex shrink-0 items-center justify-between border-b border-border bg-background/95 px-[2.5%] py-3 backdrop-blur-sm">
-        <h1>
-          <Link to={pantryId ? pantryPath(pantryId, "shopping") : "/pantries"}>
-            <PantriBrand titleClassName="text-base" />
-          </Link>
-        </h1>
-        {pantryData?.pantryName ? (
-          <Link
-            className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground hover:text-foreground"
-            to="/pantries"
-          >
-            {pantryData.pantryName}
-          </Link>
-        ) : null}
-      </header>
+      {!focused ? (
+        <header className="z-30 mx-[-2.5%] flex shrink-0 items-center justify-between border-b border-border bg-background/95 px-[2.5%] py-3 backdrop-blur-sm">
+          <h1>
+            <Link to={pantryId ? pantryPath(pantryId, "shopping") : "/pantries"}>
+              <PantriBrand titleClassName="text-base" />
+            </Link>
+          </h1>
+          {pantryData?.pantryName ? (
+            <Link
+              className="text-xs font-medium uppercase tracking-[0.06em] text-muted-foreground hover:text-foreground"
+              to="/pantries"
+            >
+              {pantryData.pantryName}
+            </Link>
+          ) : null}
+        </header>
+      ) : null}
 
       {navItems ? (
         <nav aria-label="Pantry" className="hidden shrink-0 flex-wrap gap-1 md:flex">
@@ -254,7 +265,9 @@ function AppShellContent({ children }: { children: React.ReactNode }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <HomeTabScrollProvider>
-      <AppShellContent>{children}</AppShellContent>
+      <CookFocusProvider>
+        <AppShellContent>{children}</AppShellContent>
+      </CookFocusProvider>
     </HomeTabScrollProvider>
   );
 }
