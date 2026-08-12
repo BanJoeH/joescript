@@ -1,6 +1,15 @@
 import { ChevronLeft, ChevronRight, List, Pencil, Plus, Trash2, X } from "lucide-react";
-import { type AnimationEvent, useEffect, useRef, useState } from "react";
+import {
+  type AnimationEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { useFetcher } from "react-router";
+import type { Swiper as SwiperClass } from "swiper";
+import { Swiper, SwiperSlide } from "swiper/react";
 
 import { QuantityInput } from "~/components/recipes/quantity-input";
 import { useFetcherSuccessToast, useToast } from "~/components/toast";
@@ -105,25 +114,9 @@ function IngredientsPeekSheet({
           </Button>
         </div>
 
-        {ingredients.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">No ingredients.</p>
-        ) : (
-          <ul className="mt-4 space-y-2.5">
-            {ingredients.map((ingredient) => (
-              <li
-                className="text-base capitalize leading-relaxed"
-                key={[
-                  ingredient.name,
-                  ingredient.amount ?? "",
-                  ingredient.unit ?? "",
-                  ingredient.notes ?? "",
-                ].join("|")}
-              >
-                {formatIngredientLabel(ingredient)}
-              </li>
-            ))}
-          </ul>
-        )}
+        <div className="mt-4">
+          <CookIngredientsList ingredients={ingredients} />
+        </div>
 
         <Button className="mt-6 w-full" onClick={requestClose} type="button" variant="outline">
           Done
@@ -192,10 +185,76 @@ function clampCookIndex(index: number, stepCount: number) {
   return Math.min(index, Math.max(INGREDIENTS_SCREEN, stepCount - 1));
 }
 
+function cookIndexToSlide(index: number) {
+  return index + 1;
+}
+
+function slideToCookIndex(slideIndex: number) {
+  return slideIndex - 1;
+}
+
+function useClientReady() {
+  return useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+}
+
+function CookIngredientsList({ ingredients }: { ingredients: RecipeIngredient[] }) {
+  if (ingredients.length === 0) {
+    return <p className="text-sm text-muted-foreground">No ingredients.</p>;
+  }
+
+  return (
+    <ul className="space-y-2.5">
+      {ingredients.map((ingredient) => (
+        <li
+          className="text-base capitalize leading-relaxed"
+          key={[
+            ingredient.name,
+            ingredient.amount ?? "",
+            ingredient.unit ?? "",
+            ingredient.notes ?? "",
+          ].join("|")}
+        >
+          {formatIngredientLabel(ingredient)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CookStepText({ step }: { step: RecipeStep | undefined }) {
+  if (!step) {
+    return <p className="text-sm text-muted-foreground">No steps.</p>;
+  }
+
+  return <p className="text-lg leading-relaxed whitespace-pre-wrap">{step.text}</p>;
+}
+
+function CookScreen({
+  cookIndex,
+  ingredients,
+  steps,
+}: {
+  cookIndex: number;
+  ingredients: RecipeIngredient[];
+  steps: RecipeStep[];
+}) {
+  if (cookIndex === INGREDIENTS_SCREEN) {
+    return <CookIngredientsList ingredients={ingredients} />;
+  }
+
+  return <CookStepText step={steps[cookIndex]} />;
+}
+
 export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
   const { toast } = useToast();
   const saveFetcher = useFetcher<CookViewActionData>({ key: `recipe-cook-save:${recipe.id}` });
   const recipeIdRef = useRef(recipe.id);
+  const swiperRef = useRef<SwiperClass | null>(null);
+  const clientReady = useClientReady();
 
   const [editing, setEditing] = useState(false);
   const [cookIndex, setCookIndex] = useState(INGREDIENTS_SCREEN);
@@ -232,6 +291,14 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
     }
   });
 
+  useLayoutEffect(() => {
+    const swiper = swiperRef.current;
+    const slide = cookIndexToSlide(cookIndex);
+    if (swiper && swiper.activeIndex !== slide) {
+      swiper.slideTo(slide);
+    }
+  }, [cookIndex]);
+
   const saving = saveFetcher.state !== "idle";
   const error = saveFetcher.data?.error;
 
@@ -250,10 +317,10 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
   const canGoBack = cookIndex > INGREDIENTS_SCREEN;
   const canGoNext = cookIndex < lastCookIndex;
   const isIngredientsScreen = cookIndex === INGREDIENTS_SCREEN;
-  const currentStep = !isIngredientsScreen ? recipe.steps[cookIndex] : null;
   const editingStep = !isIngredientsScreen ? steps[cookIndex] : null;
   const totalScreens = 1 + recipe.steps.length;
   const screenNumber = cookIndex + 2; // ingredients = 1
+  const activeSlide = cookIndexToSlide(cookIndex);
 
   function syncDraftFromRecipe() {
     setName(recipe.name);
@@ -316,7 +383,7 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
 
   function goToScreen(index: number) {
     setIngredientsPeekOpen(false);
-    setCookIndex(index);
+    setCookIndex(clampCookIndex(index, recipe.steps.length));
   }
 
   return (
@@ -491,31 +558,42 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
             </div>
           ) : (
             <>
-              <div className="flex-1">
-                {isIngredientsScreen ? (
-                  recipe.ingredients.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No ingredients.</p>
-                  ) : (
-                    <ul className="space-y-2.5">
-                      {recipe.ingredients.map((ingredient) => (
-                        <li
-                          className="text-base capitalize leading-relaxed"
-                          key={[
-                            ingredient.name,
-                            ingredient.amount ?? "",
-                            ingredient.unit ?? "",
-                            ingredient.notes ?? "",
-                          ].join("|")}
-                        >
-                          {formatIngredientLabel(ingredient)}
-                        </li>
-                      ))}
-                    </ul>
-                  )
-                ) : currentStep ? (
-                  <p className="text-lg leading-relaxed whitespace-pre-wrap">{currentStep.text}</p>
+              <div className="min-w-0 flex-1">
+                {!clientReady || totalScreens === 1 ? (
+                  <CookScreen
+                    cookIndex={cookIndex}
+                    ingredients={recipe.ingredients}
+                    steps={recipe.steps}
+                  />
                 ) : (
-                  <p className="text-sm text-muted-foreground">No steps.</p>
+                  <Swiper
+                    allowTouchMove={totalScreens > 1}
+                    autoHeight
+                    className="cook-swiper"
+                    initialSlide={activeSlide}
+                    onSlideChange={(swiper) => {
+                      setIngredientsPeekOpen(false);
+                      setCookIndex(slideToCookIndex(swiper.activeIndex));
+                    }}
+                    onSwiper={(swiper) => {
+                      swiperRef.current = swiper;
+                      if (swiper.activeIndex !== activeSlide) {
+                        swiper.slideTo(activeSlide, 0);
+                      }
+                    }}
+                    slidesPerView={1}
+                    touchEventsTarget="container"
+                    touchStartPreventDefault={false}
+                  >
+                    <SwiperSlide>
+                      <CookIngredientsList ingredients={recipe.ingredients} />
+                    </SwiperSlide>
+                    {recipe.steps.map((step) => (
+                      <SwiperSlide key={`step-${step.order}`}>
+                        <CookStepText step={step} />
+                      </SwiperSlide>
+                    ))}
+                  </Swiper>
                 )}
               </div>
 
