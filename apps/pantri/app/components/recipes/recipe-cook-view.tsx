@@ -1,4 +1,15 @@
-import { ChevronLeft, ChevronRight, List, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  ALargeSmall,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  Maximize2,
+  Minimize2,
+  Pencil,
+  Plus,
+  Trash2,
+  X,
+} from "lucide-react";
 import {
   type AnimationEvent,
   useEffect,
@@ -17,6 +28,13 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
+import { useCookFocus } from "~/lib/cook-focus";
+import {
+  COOK_INGREDIENT_TEXT_CLASS,
+  COOK_STEP_TEXT_CLASS,
+  type CookTextSize,
+  useCookTextSize,
+} from "~/lib/cook-preferences";
 import type { RecipeIngredient, RecipeStep } from "~/lib/recipe-schema";
 import { formatIngredientLabel } from "~/lib/units";
 import { cn } from "~/lib/utils";
@@ -46,10 +64,12 @@ function IngredientsPeekSheet({
   open,
   onOpenChange,
   ingredients,
+  textSize,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   ingredients: RecipeIngredient[];
+  textSize: CookTextSize;
 }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [motion, setMotion] = useState<SheetMotion>("idle");
@@ -115,7 +135,7 @@ function IngredientsPeekSheet({
         </div>
 
         <div className="mt-4">
-          <CookIngredientsList ingredients={ingredients} />
+          <CookIngredientsList ingredients={ingredients} textSize={textSize} />
         </div>
 
         <Button className="mt-6 w-full" onClick={requestClose} type="button" variant="outline">
@@ -201,7 +221,13 @@ function useClientReady() {
   );
 }
 
-function CookIngredientsList({ ingredients }: { ingredients: RecipeIngredient[] }) {
+function CookIngredientsList({
+  ingredients,
+  textSize,
+}: {
+  ingredients: RecipeIngredient[];
+  textSize: CookTextSize;
+}) {
   if (ingredients.length === 0) {
     return <p className="text-sm text-muted-foreground">No ingredients.</p>;
   }
@@ -210,7 +236,7 @@ function CookIngredientsList({ ingredients }: { ingredients: RecipeIngredient[] 
     <ul className="space-y-2.5">
       {ingredients.map((ingredient) => (
         <li
-          className="text-base capitalize leading-relaxed"
+          className={cn("capitalize leading-relaxed", COOK_INGREDIENT_TEXT_CLASS[textSize])}
           key={[
             ingredient.name,
             ingredient.amount ?? "",
@@ -225,32 +251,53 @@ function CookIngredientsList({ ingredients }: { ingredients: RecipeIngredient[] 
   );
 }
 
-function CookStepText({ step }: { step: RecipeStep | undefined }) {
+function CookStepText({
+  step,
+  textSize,
+}: {
+  step: RecipeStep | undefined;
+  textSize: CookTextSize;
+}) {
   if (!step) {
     return <p className="text-sm text-muted-foreground">No steps.</p>;
   }
 
-  return <p className="text-lg leading-relaxed whitespace-pre-wrap">{step.text}</p>;
+  return (
+    <p className={cn("leading-relaxed whitespace-pre-wrap", COOK_STEP_TEXT_CLASS[textSize])}>
+      {step.text}
+    </p>
+  );
 }
 
 function CookScreen({
   cookIndex,
   ingredients,
   steps,
+  textSize,
 }: {
   cookIndex: number;
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
+  textSize: CookTextSize;
 }) {
   if (cookIndex === INGREDIENTS_SCREEN) {
-    return <CookIngredientsList ingredients={ingredients} />;
+    return <CookIngredientsList ingredients={ingredients} textSize={textSize} />;
   }
 
-  return <CookStepText step={steps[cookIndex]} />;
+  return <CookStepText step={steps[cookIndex]} textSize={textSize} />;
 }
 
-export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
+export function RecipeCookView({
+  recipe,
+  className,
+}: {
+  recipe: RecipeRecord;
+  className?: string;
+}) {
   const { toast } = useToast();
+  const cookFocus = useCookFocus();
+  const focused = cookFocus?.focused ?? false;
+  const { textSize, cycleTextSize } = useCookTextSize();
   const saveFetcher = useFetcher<CookViewActionData>({ key: `recipe-cook-save:${recipe.id}` });
   const recipeIdRef = useRef(recipe.id);
   const swiperRef = useRef<SwiperClass | null>(null);
@@ -298,6 +345,16 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
       swiper.slideTo(slide);
     }
   }, [cookIndex]);
+
+  useLayoutEffect(() => {
+    // Recalculate slide height after text size or focus chrome changes.
+    void textSize;
+    void focused;
+    const swiper = swiperRef.current;
+    if (!swiper) return;
+    swiper.update();
+    swiper.updateAutoHeight(0);
+  }, [textSize, focused]);
 
   const saving = saveFetcher.state !== "idle";
   const error = saveFetcher.data?.error;
@@ -362,6 +419,7 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
 
   function startEditing() {
     setIngredientsPeekOpen(false);
+    cookFocus?.setFocused(false);
     syncDraftFromRecipe();
     setEditing(true);
   }
@@ -387,20 +445,27 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={cn("flex flex-col gap-4", focused && "h-full min-h-0 gap-0", className)}>
       {error ? (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       ) : null}
 
-      <Card>
+      <Card className={cn(focused && "flex h-full min-h-0 flex-col border-0 shadow-none")}>
         <CardHeader className="gap-3 space-y-0 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <CardTitle className="text-sm uppercase tracking-[0.06em]">
-                {isIngredientsScreen ? "Ingredients" : `Step ${cookIndex + 1}`}
-                {editing ? " · Edit" : null}
+                {focused && !editing ? (
+                  <span className="block truncate text-muted-foreground normal-case tracking-normal">
+                    {recipe.name}
+                  </span>
+                ) : null}
+                <span className={cn(focused && !editing && "mt-1 block")}>
+                  {isIngredientsScreen ? "Ingredients" : `Step ${cookIndex + 1}`}
+                  {editing ? " · Edit" : null}
+                </span>
               </CardTitle>
               {totalScreens > 1 ? (
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -436,16 +501,42 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
                 </saveFetcher.Form>
               </div>
             ) : (
-              <Button
-                aria-label={isIngredientsScreen ? "Edit ingredients" : `Edit step ${cookIndex + 1}`}
-                className="size-8 shrink-0"
-                onClick={startEditing}
-                size="icon"
-                type="button"
-                variant="ghost"
-              >
-                <Pencil className="size-4" />
-              </Button>
+              <div className="flex shrink-0 items-center gap-0.5">
+                <Button
+                  aria-label={`Text size ${textSize + 1} of 3. Cycle text size`}
+                  className="size-8"
+                  onClick={cycleTextSize}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                >
+                  <ALargeSmall className="size-4" />
+                </Button>
+                {cookFocus ? (
+                  <Button
+                    aria-label={focused ? "Exit focus mode" : "Enter focus mode"}
+                    className="size-8"
+                    onClick={() => cookFocus.toggleFocused()}
+                    size="icon"
+                    type="button"
+                    variant="ghost"
+                  >
+                    {focused ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+                  </Button>
+                ) : null}
+                <Button
+                  aria-label={
+                    isIngredientsScreen ? "Edit ingredients" : `Edit step ${cookIndex + 1}`
+                  }
+                  className="size-8"
+                  onClick={startEditing}
+                  size="icon"
+                  type="button"
+                  variant="ghost"
+                >
+                  <Pencil className="size-4" />
+                </Button>
+              </div>
             )}
           </div>
 
@@ -492,7 +583,9 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
           ) : null}
         </CardHeader>
 
-        <CardContent className="flex min-h-56 flex-col gap-6 p-4 pt-0">
+        <CardContent
+          className={cn("flex min-h-56 flex-col gap-6 p-4 pt-0", focused && "min-h-0 flex-1")}
+        >
           {editing ? (
             <div className="space-y-6">
               <div className="space-y-2 border-b border-border pb-4">
@@ -558,12 +651,13 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
             </div>
           ) : (
             <>
-              <div className="min-w-0 flex-1">
+              <div className={cn("min-w-0 flex-1", focused && "min-h-0 overflow-y-auto")}>
                 {!clientReady || totalScreens === 1 ? (
                   <CookScreen
                     cookIndex={cookIndex}
                     ingredients={recipe.ingredients}
                     steps={recipe.steps}
+                    textSize={textSize}
                   />
                 ) : (
                   <Swiper
@@ -586,11 +680,11 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
                     touchStartPreventDefault={false}
                   >
                     <SwiperSlide>
-                      <CookIngredientsList ingredients={recipe.ingredients} />
+                      <CookIngredientsList ingredients={recipe.ingredients} textSize={textSize} />
                     </SwiperSlide>
                     {recipe.steps.map((step) => (
                       <SwiperSlide key={`step-${step.order}`}>
-                        <CookStepText step={step} />
+                        <CookStepText step={step} textSize={textSize} />
                       </SwiperSlide>
                     ))}
                   </Swiper>
@@ -598,7 +692,7 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
               </div>
 
               {totalScreens > 1 ? (
-                <div className="flex items-center justify-between gap-3 border-t border-border pt-4">
+                <div className="flex shrink-0 items-center justify-between gap-3 border-t border-border pt-4">
                   <Button
                     disabled={!canGoBack}
                     onClick={goBack}
@@ -635,6 +729,7 @@ export function RecipeCookView({ recipe }: { recipe: RecipeRecord }) {
         ingredients={recipe.ingredients}
         onOpenChange={setIngredientsPeekOpen}
         open={ingredientsPeekOpen}
+        textSize={textSize}
       />
     </div>
   );
