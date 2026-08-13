@@ -18,6 +18,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { createPortal } from "react-dom";
 import { useFetcher } from "react-router";
 import type { Swiper as SwiperClass } from "swiper";
 import { Swiper, SwiperSlide } from "swiper/react";
@@ -35,6 +36,7 @@ import {
   type CookTextSize,
   useCookTextSize,
 } from "~/lib/cook-preferences";
+import { linkStepIngredients } from "~/lib/link-step-ingredients";
 import type { RecipeIngredient, RecipeStep } from "~/lib/recipe-schema";
 import { formatIngredientLabel } from "~/lib/units";
 import { cn } from "~/lib/utils";
@@ -251,21 +253,163 @@ function CookIngredientsList({
   );
 }
 
+function IngredientQuantityTooltip({
+  anchor,
+  label,
+  onClose,
+}: {
+  anchor: HTMLElement;
+  label: string;
+  onClose: () => void;
+}) {
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+
+  useLayoutEffect(() => {
+    function updatePosition() {
+      const tooltip = tooltipRef.current;
+      if (!tooltip) return;
+
+      const rect = anchor.getBoundingClientRect();
+      const tipRect = tooltip.getBoundingClientRect();
+      const gap = 8;
+      const padding = 12;
+
+      let top = rect.top - tipRect.height - gap;
+      if (top < padding) {
+        top = rect.bottom + gap;
+      }
+
+      let left = rect.left + rect.width / 2 - tipRect.width / 2;
+      left = Math.min(Math.max(left, padding), window.innerWidth - tipRect.width - padding);
+
+      setPosition({ top, left });
+    }
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [anchor]);
+
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target as Node;
+      if (anchor.contains(target) || tooltipRef.current?.contains(target)) return;
+      onClose();
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [anchor, onClose]);
+
+  if (typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="pointer-events-auto fixed z-50 max-w-[min(18rem,calc(100vw-1.5rem))] rounded-md border border-border bg-card px-3 py-2 text-sm capitalize leading-snug text-card-foreground shadow-lg"
+      id="ingredient-quantity-tooltip"
+      ref={tooltipRef}
+      role="tooltip"
+      style={{
+        top: position?.top ?? -9999,
+        left: position?.left ?? -9999,
+        visibility: position ? "visible" : "hidden",
+      }}
+    >
+      {label}
+    </div>,
+    document.body,
+  );
+}
+
 function CookStepText({
   step,
+  ingredients,
   textSize,
 }: {
   step: RecipeStep | undefined;
+  ingredients: RecipeIngredient[];
   textSize: CookTextSize;
 }) {
+  const [active, setActive] = useState<{
+    ingredientIndex: number;
+    key: string;
+    anchor: HTMLElement;
+  } | null>(null);
+  const stepText = step?.text;
+
+  useEffect(() => {
+    void stepText;
+    setActive(null);
+  }, [stepText]);
+
   if (!step) {
     return <p className="text-sm text-muted-foreground">No steps.</p>;
   }
 
+  const segments = linkStepIngredients(step.text, ingredients);
+  const activeIngredient = active ? ingredients[active.ingredientIndex] : null;
+  let segmentOffset = 0;
+
   return (
-    <p className={cn("leading-relaxed whitespace-pre-wrap", COOK_STEP_TEXT_CLASS[textSize])}>
-      {step.text}
-    </p>
+    <div>
+      <div className={cn("leading-relaxed whitespace-pre-wrap", COOK_STEP_TEXT_CLASS[textSize])}>
+        {segments.map((segment) => {
+          const key = `${segment.type}-${segmentOffset}-${segment.text.length}`;
+          segmentOffset += segment.text.length;
+
+          if (segment.type === "text") {
+            return <span key={key}>{segment.text}</span>;
+          }
+
+          const isActive = active?.key === key;
+          return (
+            <button
+              aria-describedby={isActive ? "ingredient-quantity-tooltip" : undefined}
+              aria-expanded={isActive}
+              aria-label={`Show quantity for ${segment.text}`}
+              className={cn(
+                "rounded-sm font-medium underline decoration-dotted decoration-from-font underline-offset-2",
+                "text-foreground hover:bg-accent/60",
+                isActive && "bg-accent",
+              )}
+              key={key}
+              onClick={(event) => {
+                const anchor = event.currentTarget;
+                setActive((current) =>
+                  current?.key === key
+                    ? null
+                    : { ingredientIndex: segment.ingredientIndex, key, anchor },
+                );
+              }}
+              type="button"
+            >
+              {segment.text}
+            </button>
+          );
+        })}
+      </div>
+
+      {active && activeIngredient ? (
+        <IngredientQuantityTooltip
+          anchor={active.anchor}
+          label={formatIngredientLabel(activeIngredient)}
+          onClose={() => setActive(null)}
+        />
+      ) : null}
+    </div>
   );
 }
 
@@ -284,7 +428,7 @@ function CookScreen({
     return <CookIngredientsList ingredients={ingredients} textSize={textSize} />;
   }
 
-  return <CookStepText step={steps[cookIndex]} textSize={textSize} />;
+  return <CookStepText ingredients={ingredients} step={steps[cookIndex]} textSize={textSize} />;
 }
 
 export function RecipeCookView({
@@ -684,7 +828,11 @@ export function RecipeCookView({
                     </SwiperSlide>
                     {recipe.steps.map((step) => (
                       <SwiperSlide key={`step-${step.order}`}>
-                        <CookStepText step={step} textSize={textSize} />
+                        <CookStepText
+                          ingredients={recipe.ingredients}
+                          step={step}
+                          textSize={textSize}
+                        />
                       </SwiperSlide>
                     ))}
                   </Swiper>
