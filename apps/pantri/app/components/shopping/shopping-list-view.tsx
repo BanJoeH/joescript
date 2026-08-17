@@ -96,6 +96,8 @@ function RecipeIngredientRow({
 function AddOddBitForm({ action }: { action: string }) {
   const fetcher = useFetcher({ key: "shopping-add-odd-bit" });
   const formRef = useRef<HTMLFormElement>(null);
+  const quantityInputRef = useRef<HTMLInputElement>(null);
+  const [addCycle, setAddCycle] = useState(0);
   const [quantity, setQuantity] = useState<{ amount: number | null; unit: string | null }>({
     amount: null,
     unit: null,
@@ -107,9 +109,11 @@ function AddOddBitForm({ action }: { action: string }) {
       className="flex flex-wrap items-end gap-2"
       method="post"
       onSubmit={() => {
+        setQuantity({ amount: null, unit: null });
+        setAddCycle((cycle) => cycle + 1);
         requestAnimationFrame(() => {
           formRef.current?.reset();
-          setQuantity({ amount: null, unit: null });
+          quantityInputRef.current?.focus();
         });
       }}
       ref={formRef}
@@ -117,7 +121,10 @@ function AddOddBitForm({ action }: { action: string }) {
       <input name="intent" type="hidden" value="add-odd-bit" />
       <QuantityInput
         amount={quantity.amount}
+        autoFocus={addCycle > 0}
         className="w-28"
+        inputRef={quantityInputRef}
+        key={`odd-bit-qty-${addCycle}`}
         onChange={setQuantity}
         placeholder="Qty"
         unit={quantity.unit}

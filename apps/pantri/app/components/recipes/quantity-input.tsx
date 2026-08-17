@@ -34,6 +34,8 @@ type QuantityInputProps = {
   id?: string;
   placeholder?: string;
   className?: string;
+  autoFocus?: boolean;
+  inputRef?: RefObject<HTMLInputElement | null>;
 };
 
 const SWIPE_ACCEPT_PX = 48;
@@ -188,6 +190,8 @@ export function QuantityInput({
   id,
   placeholder = "Qty",
   className,
+  autoFocus = false,
+  inputRef,
 }: QuantityInputProps) {
   const listboxId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -378,6 +382,7 @@ export function QuantityInput({
           aria-expanded={showDropdown}
           aria-label={ariaLabel}
           autoComplete="off"
+          autoFocus={autoFocus}
           className="relative bg-transparent"
           id={id}
           onBlur={() => {
@@ -395,10 +400,14 @@ export function QuantityInput({
             setFocused(true);
             setText(formatQuantityString(amount, unit));
             setHighlightIndex(0);
+            if (autoFocus) {
+              event.currentTarget.scrollIntoView({ block: "nearest", inline: "nearest" });
+            }
             requestAnimationFrame(() => {
               event.target.select();
             });
           }}
+          ref={inputRef}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           role="combobox"

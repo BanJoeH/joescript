@@ -153,11 +153,13 @@ function IngredientEditor({
   onChange,
   onAdd,
   onRemove,
+  focusQuantityKey,
 }: {
   ingredients: IngredientRow[];
   onChange: (key: string, patch: Partial<RecipeIngredient>) => void;
   onAdd: () => void;
   onRemove: (key: string) => void;
+  focusQuantityKey?: string | null;
 }) {
   return (
     <div className="space-y-2">
@@ -168,6 +170,7 @@ function IngredientEditor({
         >
           <QuantityInput
             amount={row.amount}
+            autoFocus={row.key === focusQuantityKey}
             onChange={({ amount, unit }) => onChange(row.key, { amount, unit })}
             placeholder="Qty"
             unit={row.unit}
@@ -450,6 +453,7 @@ export function RecipeCookView({
   const [editing, setEditing] = useState(false);
   const [cookIndex, setCookIndex] = useState(INGREDIENTS_SCREEN);
   const [ingredientsPeekOpen, setIngredientsPeekOpen] = useState(false);
+  const [focusIngredientKey, setFocusIngredientKey] = useState<string | null>(null);
   const [name, setName] = useState(recipe.name);
   const [servings, setServings] = useState(recipe.servings ? String(recipe.servings) : "");
   const [link, setLink] = useState(recipe.link ?? "");
@@ -536,10 +540,9 @@ export function RecipeCookView({
   }
 
   function addIngredient() {
-    setIngredients((rows) => [
-      ...rows,
-      { key: crypto.randomUUID(), name: "", amount: null, unit: null, notes: "" },
-    ]);
+    const key = crypto.randomUUID();
+    setIngredients((rows) => [...rows, { key, name: "", amount: null, unit: null, notes: "" }]);
+    setFocusIngredientKey(key);
   }
 
   function removeIngredient(key: string) {
@@ -764,6 +767,7 @@ export function RecipeCookView({
 
               {isIngredientsScreen ? (
                 <IngredientEditor
+                  focusQuantityKey={focusIngredientKey}
                   ingredients={ingredients}
                   onAdd={addIngredient}
                   onChange={updateIngredient}
@@ -784,6 +788,7 @@ export function RecipeCookView({
                       Ingredients
                     </h3>
                     <IngredientEditor
+                      focusQuantityKey={focusIngredientKey}
                       ingredients={ingredients}
                       onAdd={addIngredient}
                       onChange={updateIngredient}

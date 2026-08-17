@@ -1,6 +1,5 @@
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { type KeyboardEvent, useId, useState } from "react";
-import { flushSync } from "react-dom";
 import { Form } from "react-router";
 
 import { QuantityInput } from "~/components/recipes/quantity-input";
@@ -56,6 +55,7 @@ export function RecipeForm({
     toIngredientRows(defaultValues.ingredients),
   );
   const [steps, setSteps] = useState<StepRow[]>(() => toStepRows(defaultValues.steps));
+  const [focusIngredientKey, setFocusIngredientKey] = useState<string | null>(null);
   const formId = useId();
 
   function updateIngredient(key: string, patch: Partial<RecipeIngredient>) {
@@ -64,22 +64,16 @@ export function RecipeForm({
 
   function addIngredient(afterKey?: string) {
     const key = crypto.randomUUID();
-    flushSync(() => {
-      setIngredients((rows) => {
-        const row = emptyIngredientRow(key);
-        if (!afterKey) return [...rows, row];
-        const index = rows.findIndex((candidate) => candidate.key === afterKey);
-        if (index === -1) return [...rows, row];
-        const next = [...rows];
-        next.splice(index + 1, 0, row);
-        return next;
-      });
+    setIngredients((rows) => {
+      const row = emptyIngredientRow(key);
+      if (!afterKey) return [...rows, row];
+      const index = rows.findIndex((candidate) => candidate.key === afterKey);
+      if (index === -1) return [...rows, row];
+      const next = [...rows];
+      next.splice(index + 1, 0, row);
+      return next;
     });
-    const input = document.getElementById(`${formId}-ingredient-${key}-quantity`);
-    if (input instanceof HTMLInputElement) {
-      input.focus();
-      input.select();
-    }
+    setFocusIngredientKey(key);
   }
 
   function removeIngredient(key: string) {
@@ -191,6 +185,7 @@ export function RecipeForm({
               >
                 <QuantityInput
                   amount={row.amount}
+                  autoFocus={row.key === focusIngredientKey}
                   id={`${formId}-ingredient-${row.key}-quantity`}
                   onChange={({ amount, unit }) => updateIngredient(row.key, { amount, unit })}
                   onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
