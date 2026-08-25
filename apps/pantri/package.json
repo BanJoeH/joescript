@@ -34,7 +34,7 @@
     "match-sorter": "^8.3.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "react-router": "8.0.0",
+    "react-router": "8.3.0",
     "swiper": "^11.2.10",
     "tailwind-merge": "^3.5.0",
     "zod": "^4.3.6"
