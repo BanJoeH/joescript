@@ -80,6 +80,7 @@ export function SettingsSheet({ open, onOpenChange, pantryId, pantryName }: Sett
   }
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click dismiss; Escape via onCancel
     <dialog
       aria-label="Settings"
       className={cn(
@@ -90,6 +91,9 @@ export function SettingsSheet({ open, onOpenChange, pantryId, pantryName }: Sett
       onCancel={(event) => {
         event.preventDefault();
         requestClose();
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) requestClose();
       }}
       onClose={() => onOpenChange(false)}
       ref={dialogRef}

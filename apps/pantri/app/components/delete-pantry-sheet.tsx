@@ -59,6 +59,7 @@ export function DeletePantrySheet({ open, onOpenChange, pantryName }: DeletePant
   }
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click dismiss; Escape via onCancel
     <dialog
       aria-label="Delete pantry"
       className={cn(
@@ -69,6 +70,9 @@ export function DeletePantrySheet({ open, onOpenChange, pantryName }: DeletePant
       onCancel={(event) => {
         event.preventDefault();
         requestClose();
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) requestClose();
       }}
       onClose={() => onOpenChange(false)}
       ref={dialogRef}

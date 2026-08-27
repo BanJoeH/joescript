@@ -1,9 +1,8 @@
 import { ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { type KeyboardEvent, useId, useState } from "react";
-import { flushSync } from "react-dom";
 import { Form } from "react-router";
 
-import { QuantityInput } from "~/components/recipes/quantity-input";
+import { IngredientEditorRow } from "~/components/recipes/ingredient-editor-row";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Input } from "~/components/ui/input";
@@ -56,6 +55,7 @@ export function RecipeForm({
     toIngredientRows(defaultValues.ingredients),
   );
   const [steps, setSteps] = useState<StepRow[]>(() => toStepRows(defaultValues.steps));
+  const [focusIngredientKey, setFocusIngredientKey] = useState<string | null>(null);
   const formId = useId();
 
   function updateIngredient(key: string, patch: Partial<RecipeIngredient>) {
@@ -64,22 +64,16 @@ export function RecipeForm({
 
   function addIngredient(afterKey?: string) {
     const key = crypto.randomUUID();
-    flushSync(() => {
-      setIngredients((rows) => {
-        const row = emptyIngredientRow(key);
-        if (!afterKey) return [...rows, row];
-        const index = rows.findIndex((candidate) => candidate.key === afterKey);
-        if (index === -1) return [...rows, row];
-        const next = [...rows];
-        next.splice(index + 1, 0, row);
-        return next;
-      });
+    setIngredients((rows) => {
+      const row = emptyIngredientRow(key);
+      if (!afterKey) return [...rows, row];
+      const index = rows.findIndex((candidate) => candidate.key === afterKey);
+      if (index === -1) return [...rows, row];
+      const next = [...rows];
+      next.splice(index + 1, 0, row);
+      return next;
     });
-    const input = document.getElementById(`${formId}-ingredient-${key}-quantity`);
-    if (input instanceof HTMLInputElement) {
-      input.focus();
-      input.select();
-    }
+    setFocusIngredientKey(key);
   }
 
   function removeIngredient(key: string) {
@@ -185,44 +179,21 @@ export function RecipeForm({
         <CardContent className="space-y-3">
           <div className="space-y-2">
             {ingredients.map((row) => (
-              <div
-                className="grid grid-cols-[6.5rem_1fr_auto] gap-2 overflow-visible sm:grid-cols-[7rem_1fr_1fr_auto]"
+              <IngredientEditorRow
+                amount={row.amount}
+                autoFocusQuantity={row.key === focusIngredientKey}
                 key={row.key}
-              >
-                <QuantityInput
-                  amount={row.amount}
-                  id={`${formId}-ingredient-${row.key}-quantity`}
-                  onChange={({ amount, unit }) => updateIngredient(row.key, { amount, unit })}
-                  onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
-                  placeholder="Qty"
-                  unit={row.unit}
-                />
-                <Input
-                  aria-label="Ingredient name"
-                  id={`${formId}-ingredient-${row.key}-name`}
-                  onChange={(event) => updateIngredient(row.key, { name: event.target.value })}
-                  onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
-                  placeholder="Ingredient"
-                  value={row.name}
-                />
-                <Input
-                  aria-label="Notes"
-                  className="hidden sm:block"
-                  onChange={(event) => updateIngredient(row.key, { notes: event.target.value })}
-                  onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
-                  placeholder="Notes"
-                  value={row.notes ?? ""}
-                />
-                <Button
-                  aria-label="Remove ingredient"
-                  onClick={() => removeIngredient(row.key)}
-                  size="icon"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </div>
+                name={row.name}
+                nameId={`${formId}-ingredient-${row.key}-name`}
+                notes={row.notes ?? ""}
+                onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
+                onNameChange={(name) => updateIngredient(row.key, { name })}
+                onNotesChange={(notes) => updateIngredient(row.key, { notes })}
+                onQuantityChange={({ amount, unit }) => updateIngredient(row.key, { amount, unit })}
+                onRemove={() => removeIngredient(row.key)}
+                quantityId={`${formId}-ingredient-${row.key}-quantity`}
+                unit={row.unit}
+              />
             ))}
           </div>
           <Button onClick={() => addIngredient()} size="sm" type="button" variant="outline">
