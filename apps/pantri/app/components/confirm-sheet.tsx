@@ -79,6 +79,9 @@ export function ConfirmSheet({
         event.preventDefault();
         requestClose();
       }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) requestClose();
+      }}
       onClose={() => onOpenChange(false)}
       ref={dialogRef}
     >

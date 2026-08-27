@@ -91,6 +91,9 @@ export function SettingsSheet({ open, onOpenChange, pantryId, pantryName }: Sett
         event.preventDefault();
         requestClose();
       }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) requestClose();
+      }}
       onClose={() => onOpenChange(false)}
       ref={dialogRef}
     >

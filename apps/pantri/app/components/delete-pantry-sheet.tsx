@@ -70,6 +70,9 @@ export function DeletePantrySheet({ open, onOpenChange, pantryName }: DeletePant
         event.preventDefault();
         requestClose();
       }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) requestClose();
+      }}
       onClose={() => onOpenChange(false)}
       ref={dialogRef}
     >

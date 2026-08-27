@@ -7,7 +7,6 @@ import {
   Minimize2,
   Pencil,
   Plus,
-  Trash2,
   X,
 } from "lucide-react";
 import {
@@ -23,7 +22,7 @@ import { useFetcher } from "react-router";
 import type { Swiper as SwiperClass } from "swiper";
 import { Swiper, SwiperSlide } from "swiper/react";
 
-import { QuantityInput } from "~/components/recipes/quantity-input";
+import { IngredientEditorRow } from "~/components/recipes/ingredient-editor-row";
 import { useFetcherSuccessToast, useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -111,6 +110,9 @@ function IngredientsPeekSheet({
         event.preventDefault();
         requestClose();
       }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) requestClose();
+      }}
       onClose={() => onOpenChange(false)}
       ref={dialogRef}
     >
@@ -164,40 +166,18 @@ function IngredientEditor({
   return (
     <div className="space-y-2">
       {ingredients.map((row) => (
-        <div
-          className="grid grid-cols-[6.5rem_1fr_auto] gap-2 overflow-visible sm:grid-cols-[7rem_1fr_1fr_auto]"
+        <IngredientEditorRow
+          amount={row.amount}
+          autoFocusQuantity={row.key === focusQuantityKey}
           key={row.key}
-        >
-          <QuantityInput
-            amount={row.amount}
-            autoFocus={row.key === focusQuantityKey}
-            onChange={({ amount, unit }) => onChange(row.key, { amount, unit })}
-            placeholder="Qty"
-            unit={row.unit}
-          />
-          <Input
-            aria-label="Ingredient name"
-            onChange={(event) => onChange(row.key, { name: event.target.value })}
-            placeholder="Ingredient"
-            value={row.name}
-          />
-          <Input
-            aria-label="Notes"
-            className="hidden sm:block"
-            onChange={(event) => onChange(row.key, { notes: event.target.value })}
-            placeholder="Notes"
-            value={row.notes ?? ""}
-          />
-          <Button
-            aria-label="Remove ingredient"
-            onClick={() => onRemove(row.key)}
-            size="icon"
-            type="button"
-            variant="ghost"
-          >
-            <Trash2 className="size-4" />
-          </Button>
-        </div>
+          name={row.name}
+          notes={row.notes ?? ""}
+          onNameChange={(name) => onChange(row.key, { name })}
+          onNotesChange={(notes) => onChange(row.key, { notes })}
+          onQuantityChange={({ amount, unit }) => onChange(row.key, { amount, unit })}
+          onRemove={() => onRemove(row.key)}
+          unit={row.unit}
+        />
       ))}
       <Button onClick={onAdd} size="sm" type="button" variant="outline">
         <Plus className="size-4" /> Add ingredient

@@ -138,7 +138,16 @@ function AddOddBitForm({ action }: { action: string }) {
         placeholder="e.g. paper towels"
         required
       />
-      <Button size="sm" type="submit">
+      <Button
+        onTouchEnd={(event) => {
+          // Block the post-keyboard synthetic click so it can't land on a
+          // row control that moved under this point (often Remove).
+          event.preventDefault();
+          event.currentTarget.form?.requestSubmit();
+        }}
+        size="sm"
+        type="submit"
+      >
         <Plus className="size-4" /> Add
       </Button>
     </fetcher.Form>
