@@ -68,6 +68,7 @@ export function ConfirmSheet({
   }
 
   return (
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click dismiss; Escape via onCancel
     <dialog
       aria-label={title}
       className={cn(
