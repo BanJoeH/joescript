@@ -20,7 +20,9 @@ export function meta({ loaderData }: Route.MetaArgs) {
 export default function WorkPage({ loaderData }: Route.ComponentProps) {
   const { project } = loaderData;
   const links = [
-    project.liveUrl ? { href: project.liveUrl, label: `${project.name} live demo` } : null,
+    project.liveUrl
+      ? { href: project.liveUrl, label: project.liveUrlLabel ?? `${project.name} live demo` }
+      : null,
     project.githubUrl ? { href: project.githubUrl, label: `${project.name} on GitHub` } : null,
   ].flatMap((link) => (link ? [link] : []));
 
@@ -33,7 +35,7 @@ export default function WorkPage({ loaderData }: Route.ComponentProps) {
       sections={[
         { heading: "The user problem", body: project.problem },
         { heading: "What I built", body: project.built },
-        { heading: "Constraints", body: project.constraints },
+        { heading: project.constraintsHeading ?? "Constraints", body: project.constraints },
         {
           heading: "Decisions",
           items: project.tradeoffs.map((item) => ({

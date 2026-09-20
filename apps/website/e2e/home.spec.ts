@@ -18,7 +18,7 @@ test("homepage reaches the reporting case study", async ({ page }) => {
   await expect(page.getByRole("link", { name: "View Pantri" })).toBeVisible();
   await expect(page.getByText("Card payments before a 30-day invoice")).toHaveCount(0);
 
-  await page.getByRole("link", { name: /Read the case study/ }).click();
+  await page.getByRole("link", { name: /Read the full case study/ }).click();
   await expect(page).toHaveURL(/\/case-studies\/reporting$/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText(
     "Rebuilding a reporting system without buying a new database",
@@ -48,7 +48,7 @@ test("keyboard users can reach a project and the case study", async ({ page }) =
   await page.keyboard.press("Tab");
   await expect(page.getByRole("link", { name: "Joe Harrison" })).toBeFocused();
 
-  const study = page.getByRole("link", { name: /Read the case study/ });
+  const study = page.getByRole("link", { name: /Read the full case study/ });
   const project = page.getByRole("link", { name: "View Pantri" });
   for (let step = 0; step < 8; step += 1) {
     if (await study.evaluate((element) => element === document.activeElement)) {

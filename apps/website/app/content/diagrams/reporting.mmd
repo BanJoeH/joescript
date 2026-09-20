@@ -1,0 +1,17 @@
+%% Public-safe sketch of the reporting rebuild (derived from Ergon).
+%% Editable source for apps/website/app/components/reporting-architecture-diagram.tsx
+flowchart TD
+  Client[Report UI] --> API[Analytics API]
+  API --> Race[Run query · 10s limit]
+  Race --> MySQL[(MySQL)]
+  Race -->|finishes| Inline[Return inline]
+  Race -->|exceeds limit| Job[Create job record]
+  Job --> SQS[SQS work queue]
+  SQS --> Worker[Lambda worker]
+  Worker --> S3[S3 results]
+  Worker --> Status[Job status in MySQL]
+  Poll[Client polls] -->|poll| Status
+  Poll -->|fetch results| S3
+  API -.->|metrics| CW[CloudWatch]
+  SQS -.->|metrics| CW
+  Worker -.->|metrics| CW

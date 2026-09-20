@@ -12,7 +12,7 @@ export function FeaturedCaseStudy({ study }: { study: CaseStudy }) {
         <p className="lede">{study.context}</p>
         <p className="mt-8">
           <Link className="text-link" to={`/case-studies/${study.slug}`}>
-            Read the case study: {study.title}
+            Read the full case study →
           </Link>
         </p>
       </div>

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Link } from "react-router";
 
 import { MediaFrame } from "~/components/media-frame";
@@ -8,6 +9,8 @@ type Section = {
   heading: string;
   body?: string;
   items?: { title: string; body: string }[];
+  diagram?: ReactNode;
+  diagramCaption?: string;
 };
 
 export function CaseStudyLayout({
@@ -73,6 +76,16 @@ export function CaseStudyLayout({
                     </li>
                   ))}
                 </ul>
+              ) : null}
+              {section.diagram ? (
+                <figure className="architecture-figure">
+                  {section.diagram}
+                  {section.diagramCaption ? (
+                    <figcaption className="architecture-caption">
+                      {section.diagramCaption}
+                    </figcaption>
+                  ) : null}
+                </figure>
               ) : null}
             </section>
           ))}
