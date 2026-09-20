@@ -200,6 +200,78 @@ p {
   gap: 2.5rem;
 }
 
+.architecture-figure {
+  margin: 2rem 0 0;
+  padding: 1.25rem;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.architecture-diagram {
+  display: block;
+  width: 100%;
+  min-width: 36rem;
+  height: auto;
+}
+
+.architecture-caption {
+  margin: 1rem 0 0;
+  max-width: 42rem;
+  color: var(--muted-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.architecture-box {
+  fill: var(--surface);
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+
+.architecture-box-accent {
+  fill: color-mix(in srgb, var(--accent) 12%, var(--surface));
+  stroke: var(--accent);
+}
+
+.architecture-store {
+  fill: var(--surface);
+  stroke: var(--muted-text);
+  stroke-width: 1.5;
+}
+
+.architecture-label {
+  fill: var(--text);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.architecture-small {
+  fill: var(--muted-text);
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 11px;
+}
+
+.architecture-edge {
+  fill: none;
+  stroke: var(--muted-text);
+  stroke-width: 1.25;
+}
+
+.architecture-edge-accent {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.architecture-edge-muted {
+  stroke-dasharray: 4 3;
+}
+
+.architecture-marker {
+  fill: var(--muted-text);
+}
+
 .media-frame {
   margin: 0;
   overflow: hidden;

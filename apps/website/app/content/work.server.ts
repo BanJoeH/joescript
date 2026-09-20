@@ -193,9 +193,9 @@ export const projects: Project[] = [
       "A recipe is copied onto the shopping list, so the same dish can appear twice, each with its own bought state.",
     media: {
       src: "/pantri.png",
-      alt: "Pantri cook view for Butter chicken, with the garlic paste quantity next to the step.",
-      width: 2726,
-      height: 1642,
+      alt: "Pantri cook step for Butter chicken, with the garlic paste quantity shown next to the step.",
+      width: 1745,
+      height: 1051,
     },
     built:
       "It started as ingredient lists and a shop. It is now a pantry my wife and I share: recipes, a list that updates on both phones, and a cook view that ties a step back to the ingredient quantity.",
@@ -217,7 +217,7 @@ export const projects: Project[] = [
       "TypeScript and React on Cloudflare Workers. Turso stores the pantry. One Durable Object per pantry holds the open connections and pushes a change to both phones. A recipe photo can be read into ingredients with Workers AI.",
     result:
       "Importing a recipe is no longer a fragile checklist, and cooking from the steps can jump to the quantity. We use the same list in the shop and when deciding what is already in the fridge.",
-    technologies: ["TypeScript", "React", "Cloudflare Workers"],
+    technologies: ["TypeScript", "React", "Cloudflare Workers", "Turso"],
   },
   {
     slug: "garden",
@@ -256,7 +256,7 @@ export const projects: Project[] = [
       "React Router on Cloudflare Workers, with Turso for the journal and R2 for photos.",
     result:
       "We use it together. The home page lists the jobs for this month, so we know what needs doing without digging through notes.",
-    technologies: ["TypeScript", "React", "Cloudflare Workers"],
+    technologies: ["TypeScript", "React", "Cloudflare Workers", "Turso"],
   },
   {
     slug: "momentum",
@@ -272,8 +272,8 @@ export const projects: Project[] = [
     media: {
       src: "/momentum.png",
       alt: "Momentum home screen, asking how the day feels, with the last workout scored as worth repeating.",
-      width: 3012,
-      height: 1692,
+      width: 2556,
+      height: 1574,
     },
     built:
       "A personal workout journal for sessions, exercises, how the day felt, and whether the last session was worth repeating.",
@@ -295,12 +295,12 @@ export const projects: Project[] = [
       "React Router on Cloudflare Workers, with Turso for the journal and Google for sign-in.",
     result:
       "Before the next session, the last worth-it score is there. The workout almost always feels worth it once it is done, and that is the reason to start again.",
-    technologies: ["TypeScript", "React", "Cloudflare Workers"],
+    technologies: ["TypeScript", "React", "Cloudflare Workers", "Turso"],
   },
 ];
 
 const reportingContext =
-  "I wanted to move reporting to ClickHouse. The cost was not approved, so I rebuilt it on the MySQL database we already had.";
+  "The system needed better reporting performance without the cost and disruption of introducing a new database, so I rebuilt it around the MySQL infrastructure we already had.";
 
 export const caseStudies: CaseStudy[] = [
   {
@@ -313,19 +313,22 @@ export const caseStudies: CaseStudy[] = [
     outcomes: [
       {
         value: "One definition",
-        label: "report columns moved from scattered database records into code",
+        label: "Report columns moved from scattered database records into code",
       },
       {
         value: "Under 10 seconds",
-        label: "the request tries to finish inline, and a miss is queued instead of a 500",
+        label:
+          "Fast reports return immediately. Longer jobs move onto a queue with status tracking and retries",
       },
       {
         value: "Per-client access",
-        label: "allow lists cover users, accounts and child accounts",
+        label:
+          "Allow lists control which columns each client can use, then reports can be shared with users, accounts or child accounts",
       },
       {
         value: "Queued jobs",
-        label: "a worker finishes them, and CloudWatch shows whether that path is holding",
+        label:
+          "SQS and a worker Lambda handle longer jobs, with failures surfaced through CloudWatch",
       },
     ],
     sections: [
@@ -335,7 +338,7 @@ export const caseStudies: CaseStudy[] = [
       },
       {
         heading: "Staying on MySQL",
-        body: "ClickHouse would have kept several dimensions in one table and still answered in a reasonable time. The rebuild was mine: the definitions, the queries, the permissions and the queue. Staying on MySQL meant splitting the data more than I wanted, so a report cannot mix base dimensions such as country and publisher. That was the price of not buying the new database.",
+        body: "A column-store such as ClickHouse would have kept several dimensions in one table and still answered in a reasonable time. The rebuild stayed on MySQL instead. I designed and built the column definitions, query structure, permission model and queued-report path. That meant splitting the data more than ideal, so a report cannot mix base dimensions such as country and publisher.",
       },
       {
         heading: "One source of truth",
@@ -343,14 +346,14 @@ export const caseStudies: CaseStudy[] = [
       },
       {
         heading: "Who can see a report",
-        body: "Allow lists cover users, accounts, and child accounts, so each client only sees the rows they are permitted to see.",
+        body: "Allow lists control which columns each client can use across each base dimension. Reports can then be shared with individual users, accounts or child accounts within those limits.",
       },
       {
         heading: "A ten-second race",
-        body: "EXPLAIN ANALYZE showed where the slow reports spent their time. Covering indexes and earlier filtering removed work the database did not need to do. The request then races to finish in under 10 seconds. If it misses, the job goes to EventBridge, SQS and Lambda, with status tracking and retries. CloudWatch dashboards show whether the inline attempt is holding or the queue is taking the work. Reports that used to time out now finish on that worker instead of failing the request.",
+        body: "EXPLAIN ANALYZE showed where the slow reports spent their time. Covering indexes and earlier filtering removed work the database did not need to do. The request first tries to finish within the ten-second limit. Longer jobs are written as a queued row, then move through SQS to a worker Lambda, with status and retries recorded in MySQL and results stored for the client to poll. CloudWatch dashboards and alarms surface failures across both paths. Reports that exceed the inline limit continue in the background rather than ending in a failed request.",
       },
     ],
-    technologies: ["TypeScript", "MySQL", "EventBridge", "SQS", "Lambda", "CloudWatch"],
+    technologies: ["TypeScript", "MySQL", "SQS", "Lambda", "S3", "CloudWatch"],
   },
   {
     slug: "stripe",
@@ -364,15 +367,15 @@ export const caseStudies: CaseStudy[] = [
     outcomes: [
       {
         value: "Trial, then invoice",
-        label: "card payments before an insertion order and 30-day invoicing",
+        label: "Card payments before an insertion order and 30-day invoicing",
       },
       {
         value: "Multiple currencies",
-        label: "with charge tracking through the flow",
+        label: "Charge tracking through the flow",
       },
       {
         value: "Reconciled",
-        label: "webhooks, and no known missed or duplicate charges",
+        label: "Webhooks, and no known missed or duplicate charges",
       },
     ],
     sections: [
@@ -403,11 +406,11 @@ export const caseStudies: CaseStudy[] = [
     outcomes: [
       {
         value: "Several a day",
-        label: "releases, up from every few weeks",
+        label: "Releases, up from every few weeks",
       },
       {
         value: "Isolated previews",
-        label: "each branch has its own Cloudflare Pages preview",
+        label: "Each branch has its own Cloudflare Pages preview",
       },
     ],
     sections: [

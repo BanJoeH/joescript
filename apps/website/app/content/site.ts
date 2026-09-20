@@ -18,8 +18,8 @@ export const hero = {
 } as const;
 
 export const proofPoints = [
-  { value: "5 years", label: "commercial software development" },
-  { value: "30s → <10s", label: "report performance improvement" },
+  { value: "5 years", label: "Commercial software development" },
+  { value: "30s → <10s", label: "Report performance improvement" },
   {
     value: "Multi-currency",
     label: "Stripe flow, with no known missed or duplicate charges",
