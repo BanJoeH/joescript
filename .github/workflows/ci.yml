@@ -31,6 +31,7 @@ jobs:
         run: |
           pnpm --filter @joescript/garden codegen
           pnpm --filter @joescript/momentum codegen
+          pnpm --filter @joescript/website codegen
 
       - name: Lint and format
         run: pnpm check
@@ -42,6 +43,12 @@ jobs:
         run: |
           pnpm --filter @joescript/garden test
           pnpm --filter @joescript/momentum test
+          pnpm --filter @joescript/website test
+
+      - name: Website smoke test
+        run: |
+          pnpm --filter @joescript/website exec playwright install --with-deps chromium
+          pnpm --filter @joescript/website test:e2e
 
       - name: Build
         run: pnpm build

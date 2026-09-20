@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750">
+  <title>Mock of the Pantri shopping list</title>
+  <rect width="1200" height="750" fill="#f5f1eb"/>
+  <rect x="180" y="48" width="840" height="654" fill="#fffdfa" stroke="#d9cec7"/>
+  <text x="220" y="118" fill="#6f1f37" font-family="Inter, sans-serif" font-size="18" font-weight="500">This week</text>
+  <text x="220" y="164" fill="#211b1c" font-family="Georgia, serif" font-size="40">Shopping</text>
+  <line x1="220" y1="196" x2="980" y2="196" stroke="#6f1f37"/>
+  <text x="220" y="256" fill="#211b1c" font-family="Inter, sans-serif" font-size="24">Cherry tomatoes</text>
+  <text x="860" y="256" fill="#695f5c" font-family="Inter, sans-serif" font-size="20">400 g</text>
+  <line x1="220" y1="284" x2="980" y2="284" stroke="#d9cec7"/>
+  <text x="220" y="344" fill="#211b1c" font-family="Inter, sans-serif" font-size="24">Linguine</text>
+  <text x="860" y="344" fill="#695f5c" font-family="Inter, sans-serif" font-size="20">1 pack</text>
+  <line x1="220" y1="372" x2="980" y2="372" stroke="#d9cec7"/>
+  <text x="220" y="432" fill="#211b1c" font-family="Inter, sans-serif" font-size="24">Parmesan</text>
+  <text x="860" y="432" fill="#695f5c" font-family="Inter, sans-serif" font-size="20">200 g</text>
+  <line x1="220" y1="460" x2="980" y2="460" stroke="#d9cec7"/>
+  <text x="220" y="540" fill="#695f5c" font-family="Inter, sans-serif" font-size="20">From three recipes</text>
+</svg>

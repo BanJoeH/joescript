@@ -33,12 +33,17 @@
   },
   "overrides": [
     {
-      "includes": ["apps/garden/app/**/*.css"],
+      "includes": ["apps/garden/app/**/*.css", "apps/website/app/**/*.css"],
       "linter": { "enabled": false },
       "formatter": { "enabled": false }
     },
     {
-      "includes": ["apps/garden/.react-router/**", "apps/garden/build/**"],
+      "includes": [
+        "apps/garden/.react-router/**",
+        "apps/garden/build/**",
+        "apps/website/.react-router/**",
+        "apps/website/build/**"
+      ],
       "linter": { "enabled": false },
       "formatter": { "enabled": false },
       "assist": { "enabled": false }
