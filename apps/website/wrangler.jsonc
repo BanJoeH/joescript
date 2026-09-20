@@ -19,8 +19,16 @@
     "production": {
       "name": "website-prod",
       "workers_dev": true,
-      // Apex joescript.io stays on SiteGround until the preview is reviewed.
-      "routes": []
+      "routes": [
+        {
+          "pattern": "joescript.io",
+          "custom_domain": true
+        },
+        {
+          "pattern": "www.joescript.io",
+          "custom_domain": true
+        }
+      ]
     }
   }
 }
