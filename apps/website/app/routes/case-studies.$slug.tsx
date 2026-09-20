@@ -43,6 +43,7 @@ export default function CaseStudyPage({ loaderData }: Route.ComponentProps) {
       outcomes={study.outcomes}
       sections={sections}
       technologies={study.technologies}
+      breadcrumb={{ href: "/", label: "Home" }}
     />
   );
 }
