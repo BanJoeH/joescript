@@ -282,10 +282,59 @@ importers:
         version: 4.105.0
 
   apps/website:
+    dependencies:
+      '@fontsource/inter':
+        specifier: ^5.2.8
+        version: 5.3.0
+      isbot:
+        specifier: ^5.1.36
+        version: 5.1.44
+      react:
+        specifier: ^19.2.7
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.2.7
+        version: 19.2.7(react@19.2.7)
+      react-router:
+        specifier: 8.0.0
+        version: 8.0.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
     devDependencies:
+      '@cloudflare/vite-plugin':
+        specifier: ^1.42.3
+        version: 1.42.3(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4))(workerd@1.20260625.1)(wrangler@4.105.0)
+      '@playwright/test':
+        specifier: ^1.56.1
+        version: 1.63.0
+      '@react-router/dev':
+        specifier: 8.0.0
+        version: 8.0.0(react-router@8.0.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(typescript@7.0.2)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4))(wrangler@4.105.0)
+      '@tailwindcss/vite':
+        specifier: ^4.2.2
+        version: 4.3.1(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4))
+      '@types/node':
+        specifier: ^24.0.0
+        version: 24.13.2
+      '@types/react':
+        specifier: ^19.2.14
+        version: 19.2.17
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.17)
+      tailwindcss:
+        specifier: ^4.2.2
+        version: 4.3.1
       typescript:
         specifier: ^7.0.2
         version: 7.0.2
+      vite:
+        specifier: ^8.0.3
+        version: 8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4)
+      vitest:
+        specifier: ^4.0.0
+        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@24.13.2)(vite@8.1.0(@types/node@24.13.2)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.22.4))
+      wrangler:
+        specifier: ^4.105.0
+        version: 4.105.0
 
 packages:
 
@@ -1126,6 +1175,9 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
+  '@fontsource/inter@5.3.0':
+    resolution: {integrity: sha512-RofMylZmjlJEfELXeNHFWBRcSs75rGU/6bV2S2jfnvv/3rPXPGe0LgUJTklcHZ9lM4OZmAVFhcJPnACfb91A3g==}
+
   '@google-cloud/firestore@8.7.0':
     resolution: {integrity: sha512-EvMpZQUXkTRdweSvOu6VL6EEQwHjHAgWz2UYZR+Mj6Ao52S+TWieHbSn15jiNnEw8F8RhbZj7IGXZ1PFB1eA+A==}
     engines: {node: '>=18'}
@@ -1425,6 +1477,11 @@ packages:
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
     engines: {node: '>=14'}
+
+  '@playwright/test@1.63.0':
+    resolution: {integrity: sha512-oxMK4vllB9RK5NQ2l1pq1IfOf2AvnEuj/vYGDj0H2nMtmtZpKtCwt/l00GEO6xjGfpBNAvjovvYdCm50dRQkpQ==}
+    engines: {node: '>=20'}
+    hasBin: true
 
   '@poppinss/colors@4.1.6':
     resolution: {integrity: sha512-H9xkIdFswbS8n1d6vmRd8+c10t2Qe+rZITbbDHHkQixH5+2x1FDGmi/0K+WgWiqQFKPSlIYB7jlH6Kpfn6Fleg==}
@@ -3277,6 +3334,16 @@ packages:
   pkg-types@2.3.1:
     resolution: {integrity: sha512-y+ichcgc2LrADuhLNAx8DFjVfgz91pRxfZdI3UDhxHvcVEZsenLO+7XaU5vOp0u/7V/wZ+plyuQxtrDlZJ+yeg==}
 
+  playwright-core@1.63.0:
+    resolution: {integrity: sha512-rYCsBF/M5HjUch52bbtVONEFjv6Xu8sm8h72dNlR5bzIE1fvC/bxgspzkjSfU+MweEMmPM8KJebG6nnyxo5mCg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.63.0:
+    resolution: {integrity: sha512-+7ziBLidS4NaNCdt57SUDT+wYmmd5fmiQejUic/kb+YsYSCPyOOE9sebzMjNmQrsnNpDJqd4WHvV/8lfKfUDUg==}
+    engines: {node: '>=20'}
+    hasBin: true
+
   postcss@8.5.16:
     resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
     engines: {node: ^10 || ^12 || >=14}
@@ -4472,6 +4539,8 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
+  '@fontsource/inter@5.3.0': {}
+
   '@google-cloud/firestore@8.7.0':
     dependencies:
       '@opentelemetry/api': 1.9.1
@@ -4746,6 +4815,10 @@ snapshots:
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
+
+  '@playwright/test@1.63.0':
+    dependencies:
+      playwright: 1.63.0
 
   '@poppinss/colors@4.1.6':
     dependencies:
@@ -6510,6 +6583,12 @@ snapshots:
       confbox: 0.2.4
       exsolve: 1.1.0
       pathe: 2.0.3
+
+  playwright-core@1.63.0: {}
+
+  playwright@1.63.0:
+    dependencies:
+      playwright-core: 1.63.0
 
   postcss@8.5.16:
     dependencies:

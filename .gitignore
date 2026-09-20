@@ -23,6 +23,16 @@ apps/garden/worker-configuration.d.ts
 apps/garden/.dev.vars
 !apps/garden/.dev.vars.example
 
+# React Router / Cloudflare (website app)
+apps/website/.react-router
+apps/website/build
+apps/website/.mf
+apps/website/worker-configuration.d.ts
+apps/website/.dev.vars
+apps/website/test-results
+apps/website/playwright-report
+apps/website/blob-report
+
 # React Router / Cloudflare (pantri app)
 apps/pantri/.react-router
 apps/pantri/build

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750">
+  <title>Mock of a Garden journal entry</title>
+  <rect width="1200" height="750" fill="#f5f1eb"/>
+  <rect x="180" y="48" width="840" height="654" fill="#fffdfa" stroke="#d9cec7"/>
+  <text x="220" y="118" fill="#6f1f37" font-family="Inter, sans-serif" font-size="18" font-weight="500">Front border</text>
+  <text x="220" y="164" fill="#211b1c" font-family="Georgia, serif" font-size="40">Dogwood</text>
+  <line x1="220" y1="196" x2="980" y2="196" stroke="#6f1f37"/>
+  <rect x="220" y="228" width="250" height="160" fill="#efe0e5" stroke="#d9cec7"/>
+  <rect x="490" y="228" width="250" height="160" fill="#efe0e5" stroke="#d9cec7"/>
+  <text x="220" y="448" fill="#695f5c" font-family="Inter, sans-serif" font-size="18">12 March</text>
+  <text x="220" y="492" fill="#211b1c" font-family="Inter, sans-serif" font-size="24">Cut back the old stems.</text>
+  <text x="220" y="536" fill="#211b1c" font-family="Inter, sans-serif" font-size="24">Left the new growth.</text>
+</svg>

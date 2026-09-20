@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="750" viewBox="0 0 1200 750">
+  <title>Mock of a Momentum workout</title>
+  <rect width="1200" height="750" fill="#171313"/>
+  <rect x="180" y="48" width="840" height="654" fill="#211b1c" stroke="#44383a"/>
+  <text x="220" y="118" fill="#c8738d" font-family="Inter, sans-serif" font-size="18" font-weight="500">Today</text>
+  <text x="220" y="164" fill="#f5efec" font-family="Georgia, serif" font-size="40">Easy run</text>
+  <line x1="220" y1="196" x2="980" y2="196" stroke="#c8738d"/>
+  <text x="220" y="268" fill="#f5efec" font-family="Inter, sans-serif" font-size="24">5 km</text>
+  <text x="860" y="268" fill="#bfb3b0" font-family="Inter, sans-serif" font-size="20">32 min</text>
+  <line x1="220" y1="300" x2="980" y2="300" stroke="#44383a"/>
+  <text x="220" y="372" fill="#f5efec" font-family="Inter, sans-serif" font-size="24">Energy</text>
+  <text x="860" y="372" fill="#bfb3b0" font-family="Inter, sans-serif" font-size="20">Good</text>
+  <line x1="220" y1="404" x2="980" y2="404" stroke="#44383a"/>
+  <text x="220" y="492" fill="#bfb3b0" font-family="Inter, sans-serif" font-size="22">Worth doing again.</text>
+</svg>
