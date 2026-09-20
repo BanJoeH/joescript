@@ -31,11 +31,13 @@ export type Project = {
   purpose: string | null;
   built: string | null;
   constraints: string | null;
+  constraintsHeading?: string | null;
   tradeoffs: Tradeoff[] | null;
   architecture: string | null;
   result: string | null;
   technologies: string[] | null;
   liveUrl: string | null;
+  liveUrlLabel?: string | null;
   githubUrl: string | null;
 };
 
@@ -60,6 +62,7 @@ export type PublishedProject = Omit<
   purpose: string;
   built: string;
   constraints: string;
+  constraintsHeading?: string;
   tradeoffs: Tradeoff[];
   architecture: string;
   result: string;
@@ -199,8 +202,9 @@ export const projects: Project[] = [
     },
     built:
       "It started as ingredient lists and a shop. It is now a pantry my wife and I share: recipes, a list that updates on both phones, and a cook view that ties a step back to the ingredient quantity.",
+    constraintsHeading: "Demo access",
     constraints:
-      "The live pantry needs a sign-in. The screenshot is the cook view, with the ingredient quantity next to the step.",
+      "Pantri contains our real household data, so the live version requires authentication. The screenshot shows cook mode, where each step keeps the relevant ingredient quantities close at hand.",
     tradeoffs: [
       {
         decision: "Copy a recipe onto the list instead of linking it",
@@ -208,16 +212,25 @@ export const projects: Project[] = [
           "The same recipe can be shopped twice, each with its own bought ingredients. Editing the recipe afterwards does not change the copy already on the list.",
       },
       {
-        decision: "Push list changes, not live cursors",
+        decision: "Keep both phones in sync",
         tradeoff:
-          "Server-sent events keep both phones in step while we tick items off. Showing each other's cursor would need operational transform, which the shop does not need.",
+          "Server-sent events notify active clients when the shopping list changes. A normal refetch when the app regains focus restores consistency after a client disconnects.",
       },
     ],
     architecture:
-      "TypeScript and React on Cloudflare Workers. Turso stores the pantry. One Durable Object per pantry holds the open connections and pushes a change to both phones. A recipe photo can be read into ingredients with Workers AI.",
+      "TypeScript and React on Cloudflare Workers. Turso stores the pantry. One Durable Object per pantry manages active connections and notifies connected clients when the list changes. A recipe photo can be read into ingredients with Workers AI.",
     result:
-      "Importing a recipe is no longer a fragile checklist, and cooking from the steps can jump to the quantity. We use the same list in the shop and when deciding what is already in the fridge.",
-    technologies: ["TypeScript", "React", "Cloudflare Workers", "Turso"],
+      "Recipes are no longer fragile nested checklists. Changes made on either phone are shared with the other, while focus-based revalidation handles clients returning after a disconnect. Cook mode keeps each step connected to the quantities it needs.",
+    technologies: [
+      "TypeScript",
+      "React",
+      "Cloudflare Workers",
+      "Durable Objects",
+      "Server-Sent Events",
+      "Workers AI",
+      "Turso",
+    ],
+    liveUrlLabel: "Open Pantri",
   },
   {
     slug: "garden",

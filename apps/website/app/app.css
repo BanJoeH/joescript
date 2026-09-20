@@ -298,10 +298,22 @@ p {
 .decision-list {
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  align-self: stretch;
   gap: 1.5rem;
+  width: 100%;
+  max-width: 42rem;
   margin: 1rem 0 0;
+  margin-inline: 0;
   padding: 0;
   list-style: none;
+  text-align: start;
+}
+
+.decision-list li {
+  margin: 0;
+  padding: 0;
+  text-align: start;
 }
 
 .link-list {
