@@ -268,8 +268,7 @@ export const projects: Project[] = [
     purpose: "A workout journal that remembers how it felt, not only what you did.",
     problem:
       "Workouts lived in handwritten notepads, which were messy and hard to read across weeks.",
-    decision:
-      "Store the session, the work, and whether it was worth it. Do not store streaks.",
+    decision: "Store the session, the work, and whether it was worth it. Do not store streaks.",
     media: {
       src: "/momentum.png",
       alt: "Momentum home screen, asking how the day feels, with the last workout scored as worth repeating.",
