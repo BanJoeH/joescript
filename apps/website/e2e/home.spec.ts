@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const widths = [320, 375, 768, 1024, 1440];
+const projectPaths = ["/work/pantri", "/work/garden", "/work/momentum"];
 
 test("homepage reaches the reporting case study", async ({ page }) => {
   await page.goto("/");
@@ -37,10 +38,42 @@ test("a mock project page is reachable", async ({ page }) => {
   await expect(page).toHaveURL("/");
 });
 
+test("direct navigation opens each published project", async ({ page }) => {
+  for (const path of projectPaths) {
+    const response = await page.goto(path);
+    expect(response?.status()).toBe(200);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toBeVisible();
+  }
+});
+
+test("404 page handles unknown routes", async ({ page }) => {
+  const response = await page.goto("/this-page-does-not-exist");
+  expect(response?.status()).toBe(404);
+  await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Back to the homepage" })).toBeVisible();
+  await page.getByRole("link", { name: "Back to the homepage" }).click();
+  await expect(page).toHaveURL("/");
+});
+
 test("unpublished case studies are not found", async ({ page }) => {
   const response = await page.goto("/case-studies/stripe");
   expect(response?.status()).toBe(404);
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
+});
+
+test("pages expose a single h1 and useful image alt text", async ({ page }) => {
+  for (const path of ["/", ...projectPaths, "/case-studies/reporting"]) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
+
+    const alts = await page
+      .locator("main img")
+      .evaluateAll((images) => images.map((image) => image.getAttribute("alt")));
+    for (const alt of alts) {
+      expect((alt ?? "").trim().length).toBeGreaterThan(0);
+    }
+  }
 });
 
 test("keyboard users can reach a project and the case study", async ({ page }) => {
@@ -65,6 +98,45 @@ test("keyboard users can reach a project and the case study", async ({ page }) =
     await page.keyboard.press("Tab");
   }
   await expect(project).toBeFocused();
+});
+
+test("sitemap and robots are published for crawlers", async ({ page }) => {
+  const robots = await page.goto("/robots.txt");
+  expect(robots?.status()).toBe(200);
+  expect(robots?.headers()["content-type"]).toMatch(/text\/plain/);
+  const robotsBody = await robots?.text();
+  expect(robotsBody).toContain("Sitemap: https://joescript.io/sitemap.xml");
+
+  const sitemap = await page.goto("/sitemap.xml");
+  expect(sitemap?.status()).toBe(200);
+  expect(sitemap?.headers()["content-type"]).toMatch(/xml/);
+  const sitemapBody = await sitemap?.text();
+  expect(sitemapBody).toContain("https://joescript.io/");
+  expect(sitemapBody).toContain("https://joescript.io/work/pantri");
+  expect(sitemapBody).toContain("https://joescript.io/case-studies/reporting");
+  expect(sitemapBody).not.toContain("https://joescript.io/case-studies/stripe");
+});
+
+test("canonical and open graph tags are present", async ({ page }) => {
+  await page.goto("/work/pantri");
+  const canonical = page.locator('link[rel="canonical"]');
+  await expect(canonical).toHaveAttribute("href", "https://joescript.io/work/pantri");
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
+    "content",
+    /Pantri · Joe Harrison/,
+  );
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute(
+    "content",
+    /shared pantry/i,
+  );
+  await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
+    "content",
+    "https://joescript.io/og.png",
+  );
+  await expect(page.locator('meta[name="twitter:card"]')).toHaveAttribute(
+    "content",
+    "summary_large_image",
+  );
 });
 
 test("pages do not scroll sideways", async ({ page }) => {

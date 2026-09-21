@@ -4,4 +4,6 @@ export default [
   index("routes/home.tsx"),
   route("work/:slug", "routes/work.$slug.tsx"),
   route("case-studies/:slug", "routes/case-studies.$slug.tsx"),
+  route("sitemap.xml", "routes/sitemap.ts"),
+  route("robots.txt", "routes/robots.ts"),
 ] satisfies RouteConfig;
