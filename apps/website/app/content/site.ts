@@ -30,6 +30,13 @@ export function absoluteUrl(path: string) {
   return new URL(path, site.url).href;
 }
 
+export const defaultOgImage = {
+  path: "/og.png",
+  width: "1200",
+  height: "630",
+  alt: `${site.name}, senior full-stack developer`,
+} as const;
+
 type CreativeWorkInput = {
   name: string;
   purpose: string;

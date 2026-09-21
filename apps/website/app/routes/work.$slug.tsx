@@ -14,6 +14,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
     title: `${loaderData.project.name} · Joe Harrison`,
     description: loaderData.project.purpose,
     path: `/work/${loaderData.project.slug}`,
+    imageAlt: loaderData.project.media.alt,
   });
 }
 

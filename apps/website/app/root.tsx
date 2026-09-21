@@ -57,6 +57,10 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 
   return (
     <>
+      <title>{`${title} · Joe Harrison`}</title>
+      {isRouteErrorResponse(error) && error.status === 404 ? (
+        <meta name="robots" content="noindex" />
+      ) : null}
       <SiteHeader cvHref={site.cvHref} />
       <main id="main" className="site-shell site-section">
         <h1 className="section-heading">{title}</h1>
