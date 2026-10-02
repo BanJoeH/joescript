@@ -1,5 +1,7 @@
 import { env } from "cloudflare:workers";
-import { CustomFont, ImageResponse } from "cf-workers-og/html";
+// Explicit workerd entry: Vite SSR otherwise resolves the node condition and
+// evaluates `new URL("./wasm/...", import.meta.url)` which crashes every request.
+import { CustomFont, ImageResponse } from "cf-workers-og/workerd/html";
 
 import poppinsExtraBoldUrl from "~/assets/fonts/Poppins-ExtraBold.ttf?inline";
 import poppinsSemiBoldUrl from "~/assets/fonts/Poppins-SemiBold.ttf?inline";

@@ -22,5 +22,8 @@ export default defineConfig({
   },
   ssr: {
     noExternal: ["swiper", "cf-workers-og"],
+    resolve: {
+      conditions: ["workerd", "worker", "browser"],
+    },
   },
 });
