@@ -117,6 +117,43 @@ describe("applyShoppingListOptimistic", () => {
       },
     ]);
   });
+
+  it("toggles and removes only one of two copies of the same recipe", () => {
+    const first = {
+      ...recipe,
+      id: "shop-1",
+      sourceRecipeId: "recipe-carbonara",
+      name: "Carbonara",
+      ingredients: [{ name: "pasta", amount: 200, unit: "g", purchased: false }],
+    } satisfies ShoppingRecipeRecord;
+    const second = {
+      ...recipe,
+      id: "shop-2",
+      sourceRecipeId: "recipe-carbonara",
+      name: "Carbonara",
+      ingredients: [{ name: "pasta", amount: 200, unit: "g", purchased: false }],
+    } satisfies ShoppingRecipeRecord;
+
+    const result = applyShoppingListOptimistic(
+      [first, second],
+      [],
+      [
+        {
+          formData: formData({
+            intent: "toggle-ingredient",
+            shoppingRecipeId: "shop-1",
+            ingredientIndex: "0",
+            purchased: "true",
+          }),
+        },
+        { formData: formData({ intent: "remove-recipe", shoppingRecipeId: "shop-2" }) },
+      ],
+    );
+
+    expect(result.recipes).toHaveLength(1);
+    expect(result.recipes[0]?.id).toBe("shop-1");
+    expect(result.recipes[0]?.ingredients[0]?.purchased).toBe(true);
+  });
 });
 
 describe("applySortedOptimistic", () => {

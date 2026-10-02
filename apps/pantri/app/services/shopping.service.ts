@@ -49,10 +49,14 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
         .select()
         .from(shoppingRecipes)
         .where(scope)
-        .orderBy(asc(shoppingRecipes.name));
+        .orderBy(asc(shoppingRecipes.name), asc(shoppingRecipes.createdAt));
       return rows
         .map(toRecord)
-        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+        .sort((a, b) => {
+          const byName = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+          if (byName !== 0) return byName;
+          return a.createdAt.getTime() - b.createdAt.getTime();
+        });
     },
 
     async get(shoppingRecipeId: string): Promise<ShoppingRecipeRecord | null> {
@@ -66,16 +70,6 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
     },
 
     async addFromRecipe(recipeId: string): Promise<ShoppingRecipeRecord> {
-      const [existing] = await db
-        .select()
-        .from(shoppingRecipes)
-        .where(and(eq(shoppingRecipes.sourceRecipeId, recipeId), scope))
-        .limit(1);
-
-      if (existing) {
-        return toRecord(existing);
-      }
-
       const [recipe] = await db
         .select()
         .from(recipes)
