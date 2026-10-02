@@ -39,7 +39,11 @@ export async function loader({ params }: Route.LoaderArgs) {
 
   const host = new URL(env.BETTER_AUTH_URL).host;
   const fonts = await loadOgFonts();
-  const html = buildShareOgHtml({ host, recipeName: recipe.name });
+  const html = buildShareOgHtml({
+    host,
+    recipeName: recipe.name,
+    description: recipe.description,
+  });
 
   return ImageResponse.create(html, {
     width: SHARE_OG_IMAGE_WIDTH,

@@ -42,6 +42,7 @@ describe("toSharedRecipePayload / parseSharedRecipePayload", () => {
   it("round-trips a public payload without internal ids", () => {
     const payload = toSharedRecipePayload({
       name: "Carbonara",
+      description: "Silky Roman classic.",
       link: "https://example.com",
       servings: 2,
       ingredients: [{ name: "pasta", amount: 200, unit: "g" }],
@@ -52,6 +53,7 @@ describe("toSharedRecipePayload / parseSharedRecipePayload", () => {
     expect(payload).toEqual({
       v: 1,
       name: "Carbonara",
+      description: "Silky Roman classic.",
       link: "https://example.com",
       servings: 2,
       ingredients: [{ name: "pasta", amount: 200, unit: "g" }],
@@ -61,6 +63,20 @@ describe("toSharedRecipePayload / parseSharedRecipePayload", () => {
     expect(parseSharedRecipePayload(payload)).toEqual(payload);
   });
 
+  it("defaults missing description to null for older share payloads", () => {
+    expect(
+      parseSharedRecipePayload({
+        v: 1,
+        name: "Old share",
+        link: null,
+        servings: null,
+        ingredients: [],
+        steps: [],
+        updatedAt: "2026-01-02T03:04:05.000Z",
+      }),
+    ).toMatchObject({ description: null });
+  });
+
   it("rejects invalid payloads", () => {
     expect(parseSharedRecipePayload({ v: 2, name: "Nope" })).toBeNull();
     expect(parseSharedRecipePayload(null)).toBeNull();
@@ -68,7 +84,7 @@ describe("toSharedRecipePayload / parseSharedRecipePayload", () => {
 });
 
 describe("sharedRecipeDescription", () => {
-  it("summarizes ingredients and servings for OG cards", () => {
+  it("summarizes ingredients and servings when no blurb is set", () => {
     const payload = toSharedRecipePayload({
       name: "Soup",
       link: null,
@@ -82,5 +98,19 @@ describe("sharedRecipeDescription", () => {
     });
 
     expect(sharedRecipeDescription(payload)).toBe("2 ingredients · Serves 4 · Shared on Pantri");
+  });
+
+  it("prefers the recipe description when present", () => {
+    const payload = toSharedRecipePayload({
+      name: "Soup",
+      description: "  A cozy weeknight bowl.  ",
+      link: null,
+      servings: 4,
+      ingredients: [{ name: "onion", amount: 1, unit: null }],
+      steps: [],
+      updatedAt: "2026-01-02T03:04:05.000Z",
+    });
+
+    expect(sharedRecipeDescription(payload)).toBe("A cozy weeknight bowl.");
   });
 });

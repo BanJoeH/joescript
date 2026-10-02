@@ -9,9 +9,17 @@ import {
   recipeStepsSchema,
 } from "~/lib/recipe-schema";
 
+const sharedDescriptionSchema = z
+  .string()
+  .trim()
+  .max(2000)
+  .nullish()
+  .transform((value) => (value && value.length > 0 ? value : null));
+
 export const sharedRecipePayloadSchema = z.object({
   v: z.literal(1),
   name: z.string().trim().min(1),
+  description: sharedDescriptionSchema,
   link: z.string().trim().nullable(),
   servings: z.number().int().positive().nullable(),
   ingredients: recipeIngredientsSchema,
@@ -50,6 +58,7 @@ export const SHARE_OG_IMAGE_HEIGHT = 630;
 
 export function toSharedRecipePayload(input: {
   name: string;
+  description?: string | null;
   link: string | null;
   servings: number | null;
   ingredients: RecipeIngredient[];
@@ -62,6 +71,7 @@ export function toSharedRecipePayload(input: {
   return sharedRecipePayloadSchema.parse({
     v: 1,
     name: input.name,
+    description: input.description ?? null,
     link: input.link,
     servings: input.servings,
     ingredients: parseRecipeIngredients(input.ingredients),
@@ -99,7 +109,17 @@ export async function deleteSharedRecipe(kv: KVNamespace, token: string): Promis
   await kv.delete(token);
 }
 
+function truncateMetaText(value: string, maxChars: number): string {
+  const trimmed = value.trim().replace(/\s+/g, " ");
+  if (trimmed.length <= maxChars) return trimmed;
+  return `${trimmed.slice(0, maxChars - 1).trimEnd()}…`;
+}
+
 export function sharedRecipeDescription(payload: SharedRecipePayload): string {
+  if (payload.description) {
+    return truncateMetaText(payload.description, 300);
+  }
+
   const parts: string[] = [];
   const ingredientCount = payload.ingredients.length;
   parts.push(`${ingredientCount} ingredient${ingredientCount === 1 ? "" : "s"}`);

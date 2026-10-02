@@ -94,6 +94,12 @@ export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
         />
       ) : null}
 
+      {!focused && recipe.description ? (
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+          {recipe.description}
+        </p>
+      ) : null}
+
       {shopFetcher.data?.error && !focused ? (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           {shopFetcher.data.error}

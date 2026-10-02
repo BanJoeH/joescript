@@ -15,6 +15,7 @@ type StepRow = RecipeStep & { key: string };
 
 export type RecipeFormDefaultValues = {
   name: string;
+  description: string;
   link: string;
   servings: string;
   ingredients: RecipeIngredient[];
@@ -23,6 +24,7 @@ export type RecipeFormDefaultValues = {
 
 export const emptyRecipeFormDefaultValues: RecipeFormDefaultValues = {
   name: "",
+  description: "",
   link: "",
   servings: "",
   ingredients: [],
@@ -144,6 +146,16 @@ export function RecipeForm({
               name="name"
               placeholder="Chicken curry"
               required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor={`${formId}-description`}>Description (optional)</Label>
+            <Textarea
+              defaultValue={defaultValues.description}
+              id={`${formId}-description`}
+              name="description"
+              placeholder="Weeknight chili mac with a crispy cheddar top."
+              rows={3}
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

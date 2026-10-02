@@ -61,6 +61,7 @@ export default function EditRecipePage({ loaderData, actionData }: Route.Compone
       <RecipeForm
         defaultValues={{
           name: recipe.name,
+          description: recipe.description ?? "",
           link: recipe.link ?? "",
           servings: recipe.servings ? String(recipe.servings) : "",
           ingredients: recipe.ingredients,

@@ -17,6 +17,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     const servingsRaw = getOptionalString(formData, "servings");
     const recipe = await pantri.recipes.create({
       name: getString(formData, "name"),
+      description: getOptionalString(formData, "description"),
       link: getOptionalString(formData, "link"),
       servings: servingsRaw ? Number(servingsRaw) : undefined,
       ingredients: parseRecipeIngredients(

@@ -22,6 +22,7 @@ function toCookRecipe(token: string, recipe: SharedRecipePayload): CookViewRecip
   return {
     id: `shared:${token}`,
     name: recipe.name,
+    description: recipe.description,
     link: recipe.link,
     servings: recipe.servings,
     ingredients: recipe.ingredients,
@@ -93,6 +94,11 @@ export default function SharedRecipePage({ loaderData }: Route.ComponentProps) {
           <div className="space-y-1">
             <h1 className="text-xl font-semibold tracking-tight">{recipe.name}</h1>
             <p className="text-sm text-muted-foreground">{sharedRecipeMeta(recipe)}</p>
+            {recipe.description ? (
+              <p className="whitespace-pre-wrap pt-1 text-sm leading-relaxed text-muted-foreground">
+                {recipe.description}
+              </p>
+            ) : null}
           </div>
         </header>
 
