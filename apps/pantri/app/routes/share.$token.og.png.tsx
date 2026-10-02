@@ -5,12 +5,8 @@ import { CustomFont, ImageResponse } from "cf-workers-og/workerd/html";
 
 import poppinsExtraBoldUrl from "~/assets/fonts/Poppins-ExtraBold.ttf?inline";
 import poppinsSemiBoldUrl from "~/assets/fonts/Poppins-SemiBold.ttf?inline";
+import { getSharedRecipe, SHARE_OG_IMAGE_HEIGHT, SHARE_OG_IMAGE_WIDTH } from "~/lib/recipe-share";
 import { buildShareOgHtml } from "~/lib/recipe-share-og";
-import {
-  getSharedRecipe,
-  SHARE_OG_IMAGE_HEIGHT,
-  SHARE_OG_IMAGE_WIDTH,
-} from "~/lib/recipe-share";
 
 import type { Route } from "./+types/share.$token.og.png";
 
@@ -28,12 +24,10 @@ async function loadOgFonts(): Promise<CustomFont[]> {
       if (!response.ok) throw new Error("Failed to load Poppins ExtraBold");
       return response.arrayBuffer();
     }),
-  ]).then(
-    ([semiBold, extraBold]) => [
-      new CustomFont("Poppins", semiBold, { weight: 600 }),
-      new CustomFont("Poppins", extraBold, { weight: 800 }),
-    ],
-  );
+  ]).then(([semiBold, extraBold]) => [
+    new CustomFont("Poppins", semiBold, { weight: 600 }),
+    new CustomFont("Poppins", extraBold, { weight: 800 }),
+  ]);
   return fontsPromise;
 }
 

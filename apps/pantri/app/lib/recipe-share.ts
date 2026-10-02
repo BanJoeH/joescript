@@ -39,11 +39,7 @@ export function buildShareUrl(baseUrl: string, token: string): string {
   return `${origin}/r/${token}`;
 }
 
-export function buildShareOgImageUrl(
-  baseUrl: string,
-  token: string,
-  updatedAt: string,
-): string {
+export function buildShareOgImageUrl(baseUrl: string, token: string, updatedAt: string): string {
   const origin = baseUrl.replace(/\/+$/, "");
   const version = encodeURIComponent(updatedAt);
   return `${origin}/r/${token}/og.png?v=${version}`;

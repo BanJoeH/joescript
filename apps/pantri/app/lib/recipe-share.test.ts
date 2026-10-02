@@ -34,9 +34,7 @@ describe("buildShareOgImageUrl", () => {
         "abc123XYZ_-token",
         "2026-01-02T03:04:05.000Z",
       ),
-    ).toBe(
-      "https://pantri.joescript.io/r/abc123XYZ_-token/og.png?v=2026-01-02T03%3A04%3A05.000Z",
-    );
+    ).toBe("https://pantri.joescript.io/r/abc123XYZ_-token/og.png?v=2026-01-02T03%3A04%3A05.000Z");
   });
 });
 

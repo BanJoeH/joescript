@@ -1,16 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  buildShareOgHtml,
-  escapeHtml,
-  truncateOgTitle,
-} from "./recipe-share-og";
+import { buildShareOgHtml, escapeHtml, truncateOgTitle } from "./recipe-share-og";
 
 describe("escapeHtml", () => {
   it("escapes markup characters", () => {
-    expect(escapeHtml(`a <b> & "c" 'd'`)).toBe(
-      "a &lt;b&gt; &amp; &quot;c&quot; &#39;d&#39;",
-    );
+    expect(escapeHtml(`a <b> & "c" 'd'`)).toBe("a &lt;b&gt; &amp; &quot;c&quot; &#39;d&#39;");
   });
 });
 
