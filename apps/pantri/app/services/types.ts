@@ -5,6 +5,7 @@ export type PantriContext = {
   userId: string;
   pantryId: string;
   photosBucket: R2Bucket;
+  recipeShares: KVNamespace;
 };
 
 export function newId() {

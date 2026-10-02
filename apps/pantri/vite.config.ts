@@ -21,6 +21,9 @@ export default defineConfig({
     include: ["swiper", "swiper/react"],
   },
   ssr: {
-    noExternal: ["swiper"],
+    noExternal: ["swiper", "cf-workers-og"],
+    resolve: {
+      conditions: ["workerd", "worker", "browser"],
+    },
   },
 });

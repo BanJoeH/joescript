@@ -14,21 +14,27 @@ import { pantries } from "./domain";
  * RecipeStep = { order: number, text: string }
  */
 
-export const recipes = sqliteTable("recipes", {
-  id: idColumn(),
-  pantryId: text("pantry_id")
-    .notNull()
-    .references(() => pantries.id, { onDelete: "cascade" }),
-  createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
-  name: text("name").notNull(),
-  link: text("link"),
-  servings: integer("servings"),
-  ingredients: text("ingredients").notNull().default("[]"),
-  steps: text("steps").notNull().default("[]"),
-  createdAt: createdAtColumn(),
-  updatedAt: updatedAtColumn(),
-  deletedAt: deletedAtColumn(),
-});
+export const recipes = sqliteTable(
+  "recipes",
+  {
+    id: idColumn(),
+    pantryId: text("pantry_id")
+      .notNull()
+      .references(() => pantries.id, { onDelete: "cascade" }),
+    createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    link: text("link"),
+    servings: integer("servings"),
+    ingredients: text("ingredients").notNull().default("[]"),
+    steps: text("steps").notNull().default("[]"),
+    /** Opaque public share token; null when the recipe is not shared. */
+    shareToken: text("share_token"),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+    deletedAt: deletedAtColumn(),
+  },
+  (table) => [uniqueIndex("recipes_share_token_unique").on(table.shareToken)],
+);
 
 export const shoppingRecipes = sqliteTable("shopping_recipes", {
   id: idColumn(),

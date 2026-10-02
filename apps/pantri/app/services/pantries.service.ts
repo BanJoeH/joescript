@@ -13,6 +13,7 @@ import {
   userPreferences,
 } from "~/db/schema";
 import type { Database } from "~/lib/db.server";
+import { deleteSharedRecipe } from "~/lib/recipe-share";
 import { normalizeEmail } from "~/services/pantry-members.server";
 import { newId } from "~/services/types";
 
@@ -28,7 +29,15 @@ const addMemberInput = z.object({
   email: z.string().trim().email(),
 });
 
-export function createPantriesService({ db, userId }: { db: Database; userId: string }) {
+export function createPantriesService({
+  db,
+  userId,
+  recipeShares,
+}: {
+  db: Database;
+  userId: string;
+  recipeShares: KVNamespace;
+}) {
   async function assertMember(pantryId: string) {
     const [membership] = await db
       .select({ id: pantryMembers.id })
@@ -226,9 +235,20 @@ export function createPantriesService({ db, userId }: { db: Database; userId: st
 
       const now = new Date();
 
+      const sharedRows = await db
+        .select({ shareToken: recipes.shareToken })
+        .from(recipes)
+        .where(and(eq(recipes.pantryId, pantryId), isNull(recipes.deletedAt)));
+
+      const shareTokens = sharedRows
+        .map((row) => row.shareToken)
+        .filter((token): token is string => Boolean(token));
+
+      await Promise.all(shareTokens.map((token) => deleteSharedRecipe(recipeShares, token)));
+
       await db
         .update(recipes)
-        .set({ deletedAt: now, updatedAt: now })
+        .set({ deletedAt: now, updatedAt: now, shareToken: null })
         .where(and(eq(recipes.pantryId, pantryId), isNull(recipes.deletedAt)));
 
       await db

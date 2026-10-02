@@ -425,12 +425,21 @@ function CookScreen({
   return <CookStepText ingredients={ingredients} step={steps[cookIndex]} textSize={textSize} />;
 }
 
+/** Minimal recipe shape needed to cook through ingredients and steps. */
+export type CookViewRecipe = Pick<
+  RecipeRecord,
+  "id" | "name" | "link" | "servings" | "ingredients" | "steps"
+>;
+
 export function RecipeCookView({
   recipe,
   className,
+  readOnly = false,
 }: {
-  recipe: RecipeRecord;
+  recipe: CookViewRecipe;
   className?: string;
+  /** Hide edit/save controls; keep navigation and text-size tools. */
+  readOnly?: boolean;
 }) {
   const { toast } = useToast();
   const cookFocus = useCookFocus();
@@ -576,6 +585,7 @@ export function RecipeCookView({
   }
 
   function startEditing() {
+    if (readOnly) return;
     setIngredientsPeekOpen(false);
     cookFocus?.setFocused(false);
     syncDraftFromRecipe();
@@ -610,16 +620,18 @@ export function RecipeCookView({
         </p>
       ) : null}
 
-      <ConfirmSheet
-        FormComponent={syncFetcher.Form as ComponentType<ConfirmFormProps>}
-        cancelLabel="Not now"
-        confirmLabel="Update shopping list"
-        description={shoppingCopyDescription(pendingSyncCount)}
-        intent="sync-to-shopping"
-        onOpenChange={setSyncSheetOpen}
-        open={syncSheetOpen}
-        title="Update shopping list?"
-      />
+      {readOnly ? null : (
+        <ConfirmSheet
+          FormComponent={syncFetcher.Form as ComponentType<ConfirmFormProps>}
+          cancelLabel="Not now"
+          confirmLabel="Update shopping list"
+          description={shoppingCopyDescription(pendingSyncCount)}
+          intent="sync-to-shopping"
+          onOpenChange={setSyncSheetOpen}
+          open={syncSheetOpen}
+          title="Update shopping list?"
+        />
+      )}
 
       <Card className={cn(focused && "flex h-full min-h-0 flex-col border-0 shadow-none")}>
         <CardHeader className="gap-3 space-y-0 p-4">
@@ -642,7 +654,7 @@ export function RecipeCookView({
                 </p>
               ) : null}
             </div>
-            {editing ? (
+            {editing && !readOnly ? (
               <div className="flex shrink-0 flex-wrap gap-2">
                 <Button
                   disabled={saving}
@@ -693,18 +705,20 @@ export function RecipeCookView({
                     {focused ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
                   </Button>
                 ) : null}
-                <Button
-                  aria-label={
-                    isIngredientsScreen ? "Edit ingredients" : `Edit step ${cookIndex + 1}`
-                  }
-                  className="size-8"
-                  onClick={startEditing}
-                  size="icon"
-                  type="button"
-                  variant="ghost"
-                >
-                  <Pencil className="size-4" />
-                </Button>
+                {readOnly ? null : (
+                  <Button
+                    aria-label={
+                      isIngredientsScreen ? "Edit ingredients" : `Edit step ${cookIndex + 1}`
+                    }
+                    className="size-8"
+                    onClick={startEditing}
+                    size="icon"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -755,7 +769,7 @@ export function RecipeCookView({
         <CardContent
           className={cn("flex min-h-56 flex-col gap-6 p-4 pt-0", focused && "min-h-0 flex-1")}
         >
-          {editing ? (
+          {editing && !readOnly ? (
             <div className="space-y-6">
               <div className="space-y-2 border-b border-border pb-4">
                 <Input
