@@ -39,6 +39,19 @@ export function buildShareUrl(baseUrl: string, token: string): string {
   return `${origin}/r/${token}`;
 }
 
+export function buildShareOgImageUrl(
+  baseUrl: string,
+  token: string,
+  updatedAt: string,
+): string {
+  const origin = baseUrl.replace(/\/+$/, "");
+  const version = encodeURIComponent(updatedAt);
+  return `${origin}/r/${token}/og.png?v=${version}`;
+}
+
+export const SHARE_OG_IMAGE_WIDTH = 1200;
+export const SHARE_OG_IMAGE_HEIGHT = 630;
+
 export function toSharedRecipePayload(input: {
   name: string;
   link: string | null;

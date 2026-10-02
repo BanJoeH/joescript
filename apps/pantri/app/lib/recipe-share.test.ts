@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildShareOgImageUrl,
   buildShareUrl,
   isShareToken,
   newShareToken,
@@ -21,6 +22,20 @@ describe("buildShareUrl", () => {
   it("joins origin and token without trailing slash duplication", () => {
     expect(buildShareUrl("https://pantri.joescript.io/", "abc123XYZ_-token")).toBe(
       "https://pantri.joescript.io/r/abc123XYZ_-token",
+    );
+  });
+});
+
+describe("buildShareOgImageUrl", () => {
+  it("version-stamps the og.png path for cache busting", () => {
+    expect(
+      buildShareOgImageUrl(
+        "https://pantri.joescript.io/",
+        "abc123XYZ_-token",
+        "2026-01-02T03:04:05.000Z",
+      ),
+    ).toBe(
+      "https://pantri.joescript.io/r/abc123XYZ_-token/og.png?v=2026-01-02T03%3A04%3A05.000Z",
     );
   });
 });

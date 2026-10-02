@@ -5,6 +5,7 @@ export default [
   route("logout", "routes/logout.tsx"),
   route("api/auth/*", "routes/api.auth.$.tsx"),
   route("r/:token", "routes/share.$token.tsx"),
+  route("r/:token/og.png", "routes/share.$token.og.png.tsx"),
   layout("routes/app.tsx", [
     index("routes/app-index.tsx"),
     route("pantries", "routes/pantries.tsx"),

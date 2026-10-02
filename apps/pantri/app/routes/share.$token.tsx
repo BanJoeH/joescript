@@ -4,8 +4,11 @@ import { PantriBrand } from "~/components/pantri-brand";
 import { type CookViewRecipe, RecipeCookView } from "~/components/recipes/recipe-cook-view";
 import { CookFocusProvider } from "~/lib/cook-focus";
 import {
+  buildShareOgImageUrl,
   buildShareUrl,
   getSharedRecipe,
+  SHARE_OG_IMAGE_HEIGHT,
+  SHARE_OG_IMAGE_WIDTH,
   type SharedRecipePayload,
   sharedRecipeDescription,
 } from "~/lib/recipe-share";
@@ -37,7 +40,7 @@ export async function loader({ params }: Route.LoaderArgs) {
     recipe,
     token: params.token,
     url: buildShareUrl(baseUrl, params.token),
-    imageUrl: `${baseUrl}/web-app-manifest-512x512.png`,
+    imageUrl: buildShareOgImageUrl(baseUrl, params.token, recipe.updatedAt),
   };
 }
 
@@ -67,12 +70,14 @@ export function meta({ loaderData }: Route.MetaArgs) {
     { property: "og:type", content: "article" },
     { property: "og:url", content: url },
     { property: "og:image", content: imageUrl },
-    { property: "og:image:alt", content: "Pantri" },
-    { name: "twitter:card", content: "summary" },
+    { property: "og:image:alt", content: recipe.name },
+    { property: "og:image:width", content: String(SHARE_OG_IMAGE_WIDTH) },
+    { property: "og:image:height", content: String(SHARE_OG_IMAGE_HEIGHT) },
+    { name: "twitter:card", content: "summary_large_image" },
     { name: "twitter:title", content: recipe.name },
     { name: "twitter:description", content: description },
     { name: "twitter:image", content: imageUrl },
-    { name: "twitter:image:alt", content: "Pantri" },
+    { name: "twitter:image:alt", content: recipe.name },
   ];
 }
 
