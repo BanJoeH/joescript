@@ -59,10 +59,23 @@ export async function action({ request, params }: Route.ActionArgs) {
         ),
         steps: parseRecipeSteps(JSON.parse(getString(formData, "stepsJson") || "[]")),
       });
+      const shoppingCopyCount = await pantri.shopping.countBySourceRecipe(params.recipeId);
       await notifyPantryMutation(context, getWorkerEnv());
-      return { saved: true as const };
+      return { saved: true as const, shoppingCopyCount };
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Could not update recipe." };
+    }
+  }
+
+  if (intent === "sync-to-shopping") {
+    try {
+      const synced = await pantri.shopping.syncFromRecipe(params.recipeId);
+      await notifyPantryMutation(context, getWorkerEnv());
+      return { synced };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : "Could not update shopping list copies.",
+      };
     }
   }
 

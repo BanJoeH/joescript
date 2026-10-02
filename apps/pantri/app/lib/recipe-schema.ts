@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { getCanonicalIngredientName } from "./ingredient-name";
+
 /** A single structured ingredient line shared by recipes and shopping recipes. */
 export type RecipeIngredient = {
   name: string;
@@ -101,4 +103,31 @@ export function parseRecipeStepsJson(json: string | null | undefined): RecipeSte
 
 export function toShoppingIngredients(ingredients: RecipeIngredient[]): ShoppingIngredient[] {
   return ingredients.map((ingredient) => ({ ...ingredient, purchased: false }));
+}
+
+/**
+ * Rebuild shopping ingredients from a recipe snapshot while preserving purchased
+ * flags by canonical name. Each purchased prior line contributes one token that
+ * the first matching next line can consume.
+ */
+export function mergeShoppingIngredients(
+  previous: ShoppingIngredient[],
+  next: RecipeIngredient[],
+): ShoppingIngredient[] {
+  const purchasedTokens = new Map<string, number>();
+  for (const ingredient of previous) {
+    if (!ingredient.purchased) continue;
+    const key = getCanonicalIngredientName(ingredient.name);
+    purchasedTokens.set(key, (purchasedTokens.get(key) ?? 0) + 1);
+  }
+
+  return next.map((ingredient) => {
+    const key = getCanonicalIngredientName(ingredient.name);
+    const remaining = purchasedTokens.get(key) ?? 0;
+    const purchased = remaining > 0;
+    if (purchased) {
+      purchasedTokens.set(key, remaining - 1);
+    }
+    return { ...ingredient, purchased };
+  });
 }
