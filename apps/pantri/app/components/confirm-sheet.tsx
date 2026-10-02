@@ -1,11 +1,27 @@
 import { X } from "lucide-react";
-import { type AnimationEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type AnimationEvent,
+  type ComponentType,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Form } from "react-router";
 
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/utils";
 
 type SheetMotion = "enter" | "exit" | "idle";
+
+type ConfirmFormProps = {
+  action?: string;
+  className?: string;
+  method?: "get" | "post";
+  children?: ReactNode;
+};
+
+export type { ConfirmFormProps };
 
 type ConfirmSheetProps = {
   open: boolean;
@@ -18,6 +34,8 @@ type ConfirmSheetProps = {
   intent?: string;
   hiddenFields?: Record<string, string>;
   destructive?: boolean;
+  /** Override the form element (e.g. a `useFetcher().Form`). Defaults to React Router `Form`. */
+  FormComponent?: ComponentType<ConfirmFormProps>;
 };
 
 export function ConfirmSheet({
@@ -31,6 +49,7 @@ export function ConfirmSheet({
   intent = "delete",
   hiddenFields = {},
   destructive = false,
+  FormComponent = Form as ComponentType<ConfirmFormProps>,
 }: ConfirmSheetProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [motion, setMotion] = useState<SheetMotion>("idle");
@@ -118,7 +137,11 @@ export function ConfirmSheet({
           </Button>
         </div>
 
-        <Form action={action} className="mt-6 flex flex-wrap justify-end gap-2" method="post">
+        <FormComponent
+          action={action}
+          className="mt-6 flex flex-wrap justify-end gap-2"
+          method="post"
+        >
           <input name="intent" type="hidden" value={intent} />
           {Object.entries(hiddenFields).map(([name, value]) => (
             <input key={name} name={name} type="hidden" value={value} />
@@ -134,7 +157,7 @@ export function ConfirmSheet({
           >
             {confirmLabel}
           </Button>
-        </Form>
+        </FormComponent>
       </div>
     </dialog>
   );

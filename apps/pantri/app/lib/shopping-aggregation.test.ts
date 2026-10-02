@@ -28,6 +28,19 @@ describe("aggregateIngredients", () => {
     expect(result[0].sources).toEqual(["Chilli", "Soup"]);
   });
 
+  it("sums compatible amounts from duplicate copies of the same recipe", () => {
+    const result = aggregateIngredients([
+      line({ name: "pasta", amount: 200, unit: "g", source: "Carbonara" }),
+      line({ name: "pasta", amount: 200, unit: "g", source: "Carbonara" }),
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].amounts).toEqual([{ amount: 400, unit: "g" }]);
+    expect(result[0].instanceCount).toBe(2);
+    expect(result[0].sources).toEqual(["Carbonara", "Carbonara"]);
+    expect(getSortedQuantityBadge(result[0])).toBe("0/2");
+  });
+
   it("sums compatible mass units, preferring kg when present", () => {
     const result = aggregateIngredients([
       line({ name: "flour", amount: 500, unit: "g", source: "Bread" }),

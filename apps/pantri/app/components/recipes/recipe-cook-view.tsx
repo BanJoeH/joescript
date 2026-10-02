@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import {
   type AnimationEvent,
+  type ComponentType,
   useEffect,
   useLayoutEffect,
   useRef,
@@ -22,6 +23,7 @@ import { useFetcher } from "react-router";
 import type { Swiper as SwiperClass } from "swiper";
 import { Swiper, SwiperSlide } from "swiper/react";
 
+import { type ConfirmFormProps, ConfirmSheet } from "~/components/confirm-sheet";
 import { IngredientEditorRow } from "~/components/recipes/ingredient-editor-row";
 import { useFetcherSuccessToast, useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
@@ -48,7 +50,15 @@ type SheetMotion = "enter" | "exit" | "idle";
 type CookViewActionData = {
   error?: string;
   saved?: true;
+  shoppingCopyCount?: number;
+  synced?: number;
 };
+
+function shoppingCopyDescription(count: number) {
+  return count === 1
+    ? "Also update 1 shopping list copy of this recipe?"
+    : `Also update ${count} shopping list copies of this recipe?`;
+}
 
 /** -1 = ingredients screen; 0..n-1 = method steps. */
 const INGREDIENTS_SCREEN = -1;
@@ -427,6 +437,7 @@ export function RecipeCookView({
   const focused = cookFocus?.focused ?? false;
   const { textSize, cycleTextSize } = useCookTextSize();
   const saveFetcher = useFetcher<CookViewActionData>({ key: `recipe-cook-save:${recipe.id}` });
+  const syncFetcher = useFetcher<CookViewActionData>({ key: `recipe-cook-sync:${recipe.id}` });
   const recipeIdRef = useRef(recipe.id);
   const swiperRef = useRef<SwiperClass | null>(null);
   const clientReady = useClientReady();
@@ -435,6 +446,8 @@ export function RecipeCookView({
   const [cookIndex, setCookIndex] = useState(INGREDIENTS_SCREEN);
   const [ingredientsPeekOpen, setIngredientsPeekOpen] = useState(false);
   const [focusIngredientKey, setFocusIngredientKey] = useState<string | null>(null);
+  const [syncSheetOpen, setSyncSheetOpen] = useState(false);
+  const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [name, setName] = useState(recipe.name);
   const [servings, setServings] = useState(recipe.servings ? String(recipe.servings) : "");
   const [link, setLink] = useState(recipe.link ?? "");
@@ -464,6 +477,23 @@ export function RecipeCookView({
     if (data.saved) {
       toast({ title: recipe.name, message: "Saved" });
       setEditing(false);
+      if (data.shoppingCopyCount && data.shoppingCopyCount > 0) {
+        setPendingSyncCount(data.shoppingCopyCount);
+        setSyncSheetOpen(true);
+      }
+    }
+  });
+
+  useFetcherSuccessToast(syncFetcher, (data) => {
+    if (data.synced != null && data.synced > 0) {
+      setSyncSheetOpen(false);
+      toast({
+        title: recipe.name,
+        message:
+          data.synced === 1
+            ? "Updated 1 shopping list copy"
+            : `Updated ${data.synced} shopping list copies`,
+      });
     }
   });
 
@@ -579,6 +609,17 @@ export function RecipeCookView({
           {error}
         </p>
       ) : null}
+
+      <ConfirmSheet
+        FormComponent={syncFetcher.Form as ComponentType<ConfirmFormProps>}
+        cancelLabel="Not now"
+        confirmLabel="Update shopping list"
+        description={shoppingCopyDescription(pendingSyncCount)}
+        intent="sync-to-shopping"
+        onOpenChange={setSyncSheetOpen}
+        open={syncSheetOpen}
+        title="Update shopping list?"
+      />
 
       <Card className={cn(focused && "flex h-full min-h-0 flex-col border-0 shadow-none")}>
         <CardHeader className="gap-3 space-y-0 p-4">

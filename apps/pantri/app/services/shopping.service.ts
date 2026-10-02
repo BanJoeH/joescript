@@ -3,6 +3,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { recipes, shoppingRecipes } from "~/db/schema";
 import { ingredientNamesMatch } from "~/lib/ingredient-name";
 import {
+  mergeShoppingIngredients,
   parseRecipeIngredientsJson,
   parseRecipeStepsJson,
   parseShoppingIngredientsJson,
@@ -49,10 +50,12 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
         .select()
         .from(shoppingRecipes)
         .where(scope)
-        .orderBy(asc(shoppingRecipes.name));
-      return rows
-        .map(toRecord)
-        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+        .orderBy(asc(shoppingRecipes.name), asc(shoppingRecipes.createdAt));
+      return rows.map(toRecord).sort((a, b) => {
+        const byName = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+        if (byName !== 0) return byName;
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      });
     },
 
     async get(shoppingRecipeId: string): Promise<ShoppingRecipeRecord | null> {
@@ -66,16 +69,6 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
     },
 
     async addFromRecipe(recipeId: string): Promise<ShoppingRecipeRecord> {
-      const [existing] = await db
-        .select()
-        .from(shoppingRecipes)
-        .where(and(eq(shoppingRecipes.sourceRecipeId, recipeId), scope))
-        .limit(1);
-
-      if (existing) {
-        return toRecord(existing);
-      }
-
       const [recipe] = await db
         .select()
         .from(recipes)
@@ -109,6 +102,62 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
       const record = await this.get(id);
       if (!record) throw new Error("Failed to add recipe to shopping list");
       return record;
+    },
+
+    async countBySourceRecipe(recipeId: string): Promise<number> {
+      const rows = await db
+        .select({ id: shoppingRecipes.id })
+        .from(shoppingRecipes)
+        .where(and(eq(shoppingRecipes.sourceRecipeId, recipeId), scope));
+      return rows.length;
+    },
+
+    async syncFromRecipe(recipeId: string): Promise<number> {
+      const [recipe] = await db
+        .select()
+        .from(recipes)
+        .where(
+          and(eq(recipes.id, recipeId), eq(recipes.pantryId, pantryId), isNull(recipes.deletedAt)),
+        )
+        .limit(1);
+
+      if (!recipe) {
+        throw new Error("Recipe not found");
+      }
+
+      const linked = await db
+        .select()
+        .from(shoppingRecipes)
+        .where(and(eq(shoppingRecipes.sourceRecipeId, recipeId), scope));
+
+      if (linked.length === 0) {
+        return 0;
+      }
+
+      const nextIngredients = parseRecipeIngredientsJson(recipe.ingredients);
+      const stepsJson = serializeRecipeSteps(parseRecipeStepsJson(recipe.steps));
+      const updatedAt = new Date();
+
+      for (const row of linked) {
+        const ingredients = mergeShoppingIngredients(
+          parseShoppingIngredientsJson(row.ingredients),
+          nextIngredients,
+        );
+
+        await db
+          .update(shoppingRecipes)
+          .set({
+            name: recipe.name,
+            link: recipe.link,
+            servings: recipe.servings,
+            ingredients: serializeShoppingIngredients(ingredients),
+            steps: stepsJson,
+            updatedAt,
+          })
+          .where(eq(shoppingRecipes.id, row.id));
+      }
+
+      return linked.length;
     },
 
     async remove(shoppingRecipeId: string): Promise<boolean> {
