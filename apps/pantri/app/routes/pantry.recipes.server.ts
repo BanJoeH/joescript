@@ -33,6 +33,30 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
   }
 
+  if (intent === "ensure-share") {
+    try {
+      const { url } = await pantri.recipes.ensureShare(recipeId);
+      await notifyPantryMutation(context, getWorkerEnv());
+      return { url };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : "Could not create share link.",
+      };
+    }
+  }
+
+  if (intent === "unshare") {
+    try {
+      await pantri.recipes.unshare(recipeId);
+      await notifyPantryMutation(context, getWorkerEnv());
+      return { unshared: true as const };
+    } catch (error) {
+      return {
+        error: error instanceof Error ? error.message : "Could not stop sharing.",
+      };
+    }
+  }
+
   if (intent === "delete") {
     try {
       await pantri.recipes.remove(recipeId);

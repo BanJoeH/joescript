@@ -5,6 +5,7 @@ import { DeleteForm } from "~/components/delete-form";
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
 import { RecipeCookView } from "~/components/recipes/recipe-cook-view";
+import { ShareRecipeButton } from "~/components/recipes/share-recipe-button";
 import { useFetcherSuccessToast, useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { useCookFocus } from "~/lib/cook-focus";
@@ -53,6 +54,11 @@ export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
                   {shopping ? "Adding…" : "Shop"}
                 </Button>
               </shopFetcher.Form>
+              <ShareRecipeButton
+                isShared={Boolean(recipe.shareToken)}
+                recipeId={recipe.id}
+                recipeName={recipe.name}
+              />
               <Button asChild size="sm" variant="outline">
                 <Link to={pantryPath(pantryId, `recipes/${recipe.id}/edit`)}>Edit</Link>
               </Button>

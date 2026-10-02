@@ -30,6 +30,13 @@
       "remote": true
     }
   ],
+  "kv_namespaces": [
+    {
+      "binding": "RECIPE_SHARES",
+      "id": "08303386bb8548c8be2443ce6918455f",
+      "preview_id": "186f3d47a80c41bca3e9385d893b4a03"
+    }
+  ],
   "durable_objects": {
     "bindings": [
       {
@@ -63,6 +70,13 @@
         {
           "binding": "PHOTOS",
           "bucket_name": "pantri-photos-prod"
+        }
+      ],
+      "kv_namespaces": [
+        {
+          "binding": "RECIPE_SHARES",
+          "id": "24bd82e8bf8a49fd8d04de8eb1bbd276",
+          "preview_id": "c12d7074453b41698b921b5a885db261"
         }
       ],
       "durable_objects": {

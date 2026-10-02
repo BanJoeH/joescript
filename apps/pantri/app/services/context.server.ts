@@ -18,7 +18,11 @@ export { listPantriesForUser } from "~/services/pantries.service";
 async function loadPantriSessionContext(request: Request, env: PantriEnv) {
   const { session, db } = await requirePantriSession(request, env);
   const userPantries = await listPantriesForUser(db, session.user.id);
-  const pantriesService = createPantriesService({ db, userId: session.user.id });
+  const pantriesService = createPantriesService({
+    db,
+    userId: session.user.id,
+    recipeShares: workerEnv.RECIPE_SHARES,
+  });
 
   return {
     session,
@@ -41,7 +45,13 @@ export async function requirePantriContext(
   pantryId: string,
 ): Promise<PantriContext> {
   await assertPantryMember(db, userId, pantryId);
-  return { db, userId, pantryId, photosBucket: workerEnv.PHOTOS };
+  return {
+    db,
+    userId,
+    pantryId,
+    photosBucket: workerEnv.PHOTOS,
+    recipeShares: workerEnv.RECIPE_SHARES,
+  };
 }
 
 async function loadPantriService(request: Request, env: PantriEnv, pantryId?: string) {
@@ -62,6 +72,7 @@ async function loadPantriService(request: Request, env: PantriEnv, pantryId?: st
     userId: sessionContext.userId,
     pantryId: resolvedPantryId,
     photosBucket: workerEnv.PHOTOS,
+    recipeShares: workerEnv.RECIPE_SHARES,
   };
   const pantri = createPantriService(context);
 

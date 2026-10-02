@@ -16,6 +16,7 @@ import { useFetcher } from "react-router";
 import { DeleteForm } from "~/components/delete-form";
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
+import { ShareRecipeButton } from "~/components/recipes/share-recipe-button";
 import { useFetcherSuccessToast, useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { CardList, CardListItem } from "~/components/ui/card-list";
@@ -211,6 +212,12 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                           Edit
                         </Link>
                       </Button>
+                      <ShareRecipeButton
+                        action={action}
+                        isShared={Boolean(recipe.shareToken)}
+                        recipeId={recipe.id}
+                        recipeName={recipe.name}
+                      />
                       {recipe.link ? (
                         <Button asChild size="sm" variant="outline">
                           <a href={recipe.link} rel="noreferrer" target="_blank">

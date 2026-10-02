@@ -13,7 +13,11 @@ export function createPantriService(context: PantriContext) {
     oddBits: createOddBitsService(context),
     categories: createCategoriesService(context),
     photos: createPhotosService(context),
-    pantries: createPantriesService({ db: context.db, userId: context.userId }),
+    pantries: createPantriesService({
+      db: context.db,
+      userId: context.userId,
+      recipeShares: context.recipeShares,
+    }),
   };
 }
 

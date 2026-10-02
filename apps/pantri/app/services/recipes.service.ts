@@ -2,6 +2,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 
 import { recipes } from "~/db/schema";
+import { getPantriEnv } from "~/lib/context.server";
 import {
   parseRecipeIngredientsJson,
   parseRecipeStepsJson,
@@ -12,6 +13,13 @@ import {
   serializeRecipeIngredients,
   serializeRecipeSteps,
 } from "~/lib/recipe-schema";
+import {
+  buildShareUrl,
+  deleteSharedRecipe,
+  newShareToken,
+  putSharedRecipe,
+  toSharedRecipePayload,
+} from "~/lib/recipe-share";
 import type { PantriContext } from "~/services/types";
 import { newId } from "~/services/types";
 
@@ -34,6 +42,7 @@ export type RecipeRecord = {
   servings: number | null;
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
+  shareToken: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -48,13 +57,29 @@ function toRecord(row: typeof recipes.$inferSelect): RecipeRecord {
     servings: row.servings,
     ingredients: parseRecipeIngredientsJson(row.ingredients),
     steps: parseRecipeStepsJson(row.steps),
+    shareToken: row.shareToken,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
 }
 
-export function createRecipesService({ db, userId, pantryId }: PantriContext) {
+export function createRecipesService({ db, userId, pantryId, recipeShares }: PantriContext) {
   const scope = and(eq(recipes.pantryId, pantryId), isNull(recipes.deletedAt));
+
+  async function writeSharePayload(record: RecipeRecord, token: string) {
+    await putSharedRecipe(
+      recipeShares,
+      token,
+      toSharedRecipePayload({
+        name: record.name,
+        link: record.link,
+        servings: record.servings,
+        ingredients: record.ingredients,
+        steps: record.steps,
+        updatedAt: record.updatedAt,
+      }),
+    );
+  }
 
   return {
     async list(): Promise<RecipeRecord[]> {
@@ -112,6 +137,7 @@ export function createRecipesService({ db, userId, pantryId }: PantriContext) {
 
       const record = await this.get(recipeId);
       if (!record) throw new Error("Recipe not found");
+      await this.publishShare(recipeId);
       return record;
     },
 
@@ -119,10 +145,59 @@ export function createRecipesService({ db, userId, pantryId }: PantriContext) {
       const record = await this.get(recipeId);
       if (!record) return false;
 
+      if (record.shareToken) {
+        await deleteSharedRecipe(recipeShares, record.shareToken);
+      }
+
       await db
         .update(recipes)
-        .set({ deletedAt: new Date(), updatedAt: new Date() })
+        .set({
+          deletedAt: new Date(),
+          updatedAt: new Date(),
+          shareToken: null,
+        })
         .where(eq(recipes.id, recipeId));
+
+      return true;
+    },
+
+    async ensureShare(recipeId: string): Promise<{ url: string; token: string }> {
+      const record = await this.get(recipeId);
+      if (!record) throw new Error("Recipe not found");
+
+      let token = record.shareToken;
+      if (!token) {
+        token = newShareToken();
+        await db
+          .update(recipes)
+          .set({ shareToken: token, updatedAt: new Date() })
+          .where(and(eq(recipes.id, recipeId), scope));
+      }
+
+      const latest = (await this.get(recipeId)) ?? record;
+      await writeSharePayload(latest, token);
+
+      const { BETTER_AUTH_URL } = getPantriEnv();
+      return { url: buildShareUrl(BETTER_AUTH_URL, token), token };
+    },
+
+    async publishShare(recipeId: string): Promise<boolean> {
+      const record = await this.get(recipeId);
+      if (!record?.shareToken) return false;
+      await writeSharePayload(record, record.shareToken);
+      return true;
+    },
+
+    async unshare(recipeId: string): Promise<boolean> {
+      const record = await this.get(recipeId);
+      if (!record) return false;
+      if (!record.shareToken) return false;
+
+      await deleteSharedRecipe(recipeShares, record.shareToken);
+      await db
+        .update(recipes)
+        .set({ shareToken: null, updatedAt: new Date() })
+        .where(and(eq(recipes.id, recipeId), scope));
 
       return true;
     },
