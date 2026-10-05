@@ -5,8 +5,10 @@ import {
   buildShareUrl,
   isShareToken,
   newShareToken,
+  parseSafeShareLoginNext,
   parseSharedRecipePayload,
   sharedRecipeDescription,
+  sharedRecipeToCreateInput,
   toSharedRecipePayload,
 } from "./recipe-share";
 
@@ -23,6 +25,68 @@ describe("buildShareUrl", () => {
     expect(buildShareUrl("https://pantri.joescript.io/", "abc123XYZ_-token")).toBe(
       "https://pantri.joescript.io/r/abc123XYZ_-token",
     );
+  });
+});
+
+describe("parseSafeShareLoginNext", () => {
+  it("accepts a share path with a valid token", () => {
+    expect(parseSafeShareLoginNext("/r/abc123XYZ_-token12")).toBe("/r/abc123XYZ_-token12");
+  });
+
+  it("rejects open redirects and malformed paths", () => {
+    expect(parseSafeShareLoginNext(null)).toBeNull();
+    expect(parseSafeShareLoginNext("/")).toBeNull();
+    expect(parseSafeShareLoginNext("/pantries")).toBeNull();
+    expect(parseSafeShareLoginNext("https://evil.example/r/abc123XYZ_-token12")).toBeNull();
+    expect(parseSafeShareLoginNext("/r/abc123XYZ_-token12/extra")).toBeNull();
+    expect(parseSafeShareLoginNext("/r/abc123XYZ_-token12?x=1")).toBeNull();
+    expect(parseSafeShareLoginNext("/r/short")).toBeNull();
+    expect(parseSafeShareLoginNext("//evil.example")).toBeNull();
+  });
+});
+
+describe("sharedRecipeToCreateInput", () => {
+  it("maps share payload fields for create without a shareToken", () => {
+    const payload = toSharedRecipePayload({
+      name: "Chili mac",
+      description: "Comfort food",
+      link: "https://example.com/chili",
+      servings: 4,
+      ingredients: [{ name: "pasta", amount: 200, unit: "g" }],
+      steps: [{ order: 0, text: "Boil" }],
+      updatedAt: "2026-01-02T03:04:05.000Z",
+    });
+
+    const input = sharedRecipeToCreateInput(payload);
+    expect(input).toEqual({
+      name: "Chili mac",
+      description: "Comfort food",
+      link: "https://example.com/chili",
+      servings: 4,
+      ingredients: [{ name: "pasta", amount: 200, unit: "g" }],
+      steps: [{ order: 0, text: "Boil" }],
+    });
+    expect(input).not.toHaveProperty("shareToken");
+  });
+
+  it("omits null optional fields so create leaves them unset", () => {
+    const payload = toSharedRecipePayload({
+      name: "Plain",
+      link: null,
+      servings: null,
+      ingredients: [],
+      steps: [],
+      updatedAt: "2026-01-02T03:04:05.000Z",
+    });
+
+    expect(sharedRecipeToCreateInput(payload)).toEqual({
+      name: "Plain",
+      description: undefined,
+      link: undefined,
+      servings: undefined,
+      ingredients: [],
+      steps: [],
+    });
   });
 });
 

@@ -4,21 +4,24 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "~/components/ui/card";
 import { authClient } from "~/lib/auth.client";
 import { getPantriEnv } from "~/lib/context.server";
+import { parseSafeShareLoginNext } from "~/lib/recipe-share";
 import { getOptionalPantriSession } from "~/lib/session.server";
 
 import type { Route } from "./+types/login";
 
 export async function loader({ request }: Route.LoaderArgs) {
+  const url = new URL(request.url);
+  const next = parseSafeShareLoginNext(url.searchParams.get("next"));
   const session = await getOptionalPantriSession(request, getPantriEnv());
 
   if (session) {
-    throw redirect("/");
+    throw redirect(next ?? "/");
   }
 
-  return null;
+  return { callbackURL: next ?? "/" };
 }
 
-export default function Login() {
+export default function Login({ loaderData }: Route.ComponentProps) {
   return (
     <main className="relative flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-md">
@@ -32,7 +35,7 @@ export default function Login() {
             onClick={() => {
               void authClient.signIn.social({
                 provider: "google",
-                callbackURL: "/",
+                callbackURL: loaderData.callbackURL,
               });
             }}
             type="button"

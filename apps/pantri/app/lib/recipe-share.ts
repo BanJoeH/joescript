@@ -42,6 +42,14 @@ export function isShareToken(value: string): boolean {
   return /^[A-Za-z0-9_-]{16,32}$/.test(value);
 }
 
+/** Safe post-login return path for shared recipes only (open redirect guard). */
+export function parseSafeShareLoginNext(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const match = /^\/r\/([A-Za-z0-9_-]{16,32})$/.exec(value);
+  if (!match) return null;
+  return `/r/${match[1]}`;
+}
+
 export function buildShareUrl(baseUrl: string, token: string): string {
   const origin = baseUrl.replace(/\/+$/, "");
   return `${origin}/r/${token}`;
@@ -95,6 +103,18 @@ export async function getSharedRecipe(
   const value = await kv.get(token, { type: "json" });
 
   return parseSharedRecipePayload(value);
+}
+
+/** Fields to pass to `recipes.create` when importing a share (never includes shareToken). */
+export function sharedRecipeToCreateInput(recipe: SharedRecipePayload) {
+  return {
+    name: recipe.name,
+    description: recipe.description ?? undefined,
+    link: recipe.link ?? undefined,
+    servings: recipe.servings ?? undefined,
+    ingredients: recipe.ingredients,
+    steps: recipe.steps,
+  };
 }
 
 export async function putSharedRecipe(

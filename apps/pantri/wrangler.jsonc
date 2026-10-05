@@ -11,6 +11,9 @@
   },
   "upload_source_maps": true,
   "compatibility_flags": ["nodejs_compat"],
+  "cache": {
+    "enabled": true
+  },
   "routes": [
     {
       "pattern": "pantri-dev.joescript.io",

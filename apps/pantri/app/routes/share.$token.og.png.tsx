@@ -10,7 +10,8 @@ import { buildShareOgHtml } from "~/lib/recipe-share-og";
 
 import type { Route } from "./+types/share.$token.og.png";
 
-const OG_CACHE_CONTROL = "public, max-age=3600";
+/** Browser 5m; edge 24h. URL is versioned with ?v=updatedAt so renames bust cache. */
+const OG_CACHE_CONTROL = "public, max-age=300, s-maxage=86400";
 
 let fontsPromise: Promise<CustomFont[]> | null = null;
 
