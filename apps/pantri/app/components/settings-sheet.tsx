@@ -3,6 +3,7 @@ import { type AnimationEvent, useEffect, useRef, useState } from "react";
 
 import { Link } from "~/components/link";
 import { Button } from "~/components/ui/button";
+import { APP_VERSION } from "~/lib/app-version";
 import { pantryPath } from "~/lib/pantry-path";
 import { cn } from "~/lib/utils";
 
@@ -137,6 +138,10 @@ export function SettingsSheet({ open, onOpenChange, pantryId, pantryName }: Sett
             </Link>
           ))}
         </nav>
+
+        <p className="mt-6 text-center font-mono text-xs text-muted-foreground">
+          Version {APP_VERSION}
+        </p>
       </div>
     </dialog>
   );
