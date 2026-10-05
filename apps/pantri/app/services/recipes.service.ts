@@ -23,8 +23,12 @@ import {
 import type { PantriContext } from "~/services/types";
 import { newId } from "~/services/types";
 
+/** Generous cap so share/cook blobs stay bounded without feeling form-limited. */
+export const RECIPE_DESCRIPTION_MAX_LENGTH = 2000;
+
 const recipeInput = z.object({
   name: z.string().trim().min(1),
+  description: z.string().trim().max(RECIPE_DESCRIPTION_MAX_LENGTH).optional(),
   link: z.string().trim().min(1).optional(),
   servings: z.number().int().positive().optional(),
   ingredients: recipeIngredientsSchema,
@@ -38,6 +42,7 @@ export type RecipeRecord = {
   pantryId: string;
   createdByUserId: string | null;
   name: string;
+  description: string | null;
   link: string | null;
   servings: number | null;
   ingredients: RecipeIngredient[];
@@ -53,6 +58,7 @@ function toRecord(row: typeof recipes.$inferSelect): RecipeRecord {
     pantryId: row.pantryId,
     createdByUserId: row.createdByUserId,
     name: row.name,
+    description: row.description,
     link: row.link,
     servings: row.servings,
     ingredients: parseRecipeIngredientsJson(row.ingredients),
@@ -72,6 +78,7 @@ export function createRecipesService({ db, userId, pantryId, recipeShares }: Pan
       token,
       toSharedRecipePayload({
         name: record.name,
+        description: record.description,
         link: record.link,
         servings: record.servings,
         ingredients: record.ingredients,
@@ -107,6 +114,7 @@ export function createRecipesService({ db, userId, pantryId, recipeShares }: Pan
         pantryId,
         createdByUserId: userId,
         name: data.name,
+        description: data.description || null,
         link: data.link ?? null,
         servings: data.servings ?? null,
         ingredients: serializeRecipeIngredients(data.ingredients),
@@ -127,6 +135,7 @@ export function createRecipesService({ db, userId, pantryId, recipeShares }: Pan
         .update(recipes)
         .set({
           name: data.name,
+          description: data.description || null,
           link: data.link ?? null,
           servings: data.servings ?? null,
           ingredients: serializeRecipeIngredients(data.ingredients),

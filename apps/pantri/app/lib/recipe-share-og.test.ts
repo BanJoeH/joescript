@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { buildShareOgHtml, escapeHtml, truncateOgTitle } from "./recipe-share-og";
+import {
+  buildShareOgHtml,
+  escapeHtml,
+  truncateOgDescription,
+  truncateOgTitle,
+} from "./recipe-share-og";
 
 describe("escapeHtml", () => {
   it("escapes markup characters", () => {
@@ -19,6 +24,12 @@ describe("truncateOgTitle", () => {
   });
 });
 
+describe("truncateOgDescription", () => {
+  it("collapses whitespace and truncates long blurbs", () => {
+    expect(truncateOgDescription("  cozy\nweeknight  bowl  ", 14)).toBe("cozy weeknigh…");
+  });
+});
+
 describe("buildShareOgHtml", () => {
   it("includes host, title, CTA, and escapes the recipe name", () => {
     const html = buildShareOgHtml({
@@ -31,5 +42,16 @@ describe("buildShareOgHtml", () => {
     expect(html).toContain("See Recipe");
     expect(html).toContain("data:image/svg+xml");
     expect(html).not.toContain("<mac>");
+  });
+
+  it("includes a truncated description when provided", () => {
+    const html = buildShareOgHtml({
+      host: "pantri-dev.joescript.io",
+      recipeName: "chili mac",
+      description: 'Weeknight <comfort> & "cheese"',
+    });
+
+    expect(html).toContain("Weeknight &lt;comfort&gt; &amp; &quot;cheese&quot;");
+    expect(html).not.toContain("<comfort>");
   });
 });

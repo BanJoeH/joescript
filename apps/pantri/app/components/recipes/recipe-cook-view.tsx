@@ -428,7 +428,7 @@ function CookScreen({
 /** Minimal recipe shape needed to cook through ingredients and steps. */
 export type CookViewRecipe = Pick<
   RecipeRecord,
-  "id" | "name" | "link" | "servings" | "ingredients" | "steps"
+  "id" | "name" | "description" | "link" | "servings" | "ingredients" | "steps"
 >;
 
 export function RecipeCookView({
@@ -458,6 +458,7 @@ export function RecipeCookView({
   const [syncSheetOpen, setSyncSheetOpen] = useState(false);
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
   const [name, setName] = useState(recipe.name);
+  const [description, setDescription] = useState(recipe.description ?? "");
   const [servings, setServings] = useState(recipe.servings ? String(recipe.servings) : "");
   const [link, setLink] = useState(recipe.link ?? "");
   const [ingredients, setIngredients] = useState<IngredientRow[]>(() =>
@@ -472,6 +473,7 @@ export function RecipeCookView({
     recipeIdRef.current = recipe.id;
 
     setName(recipe.name);
+    setDescription(recipe.description ?? "");
     setServings(recipe.servings ? String(recipe.servings) : "");
     setLink(recipe.link ?? "");
     setIngredients(toIngredientRows(recipe.ingredients));
@@ -549,6 +551,7 @@ export function RecipeCookView({
 
   function syncDraftFromRecipe() {
     setName(recipe.name);
+    setDescription(recipe.description ?? "");
     setServings(recipe.servings ? String(recipe.servings) : "");
     setLink(recipe.link ?? "");
     setIngredients(toIngredientRows(recipe.ingredients));
@@ -668,6 +671,7 @@ export function RecipeCookView({
                 <saveFetcher.Form method="post">
                   <input name="intent" type="hidden" value="update" />
                   <input name="name" type="hidden" value={name} />
+                  <input name="description" type="hidden" value={description} />
                   <input name="link" type="hidden" value={link} />
                   <input name="servings" type="hidden" value={servings} />
                   <input
@@ -778,6 +782,14 @@ export function RecipeCookView({
                   onChange={(event) => setName(event.target.value)}
                   required
                   value={name}
+                />
+                <Textarea
+                  aria-label="Description"
+                  className="min-h-20 text-sm leading-relaxed"
+                  onChange={(event) => setDescription(event.target.value)}
+                  placeholder="Optional description"
+                  rows={3}
+                  value={description}
                 />
                 <div className="flex flex-wrap gap-2">
                   <Input

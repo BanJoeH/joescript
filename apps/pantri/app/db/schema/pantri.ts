@@ -23,6 +23,8 @@ export const recipes = sqliteTable(
       .references(() => pantries.id, { onDelete: "cascade" }),
     createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
     name: text("name").notNull(),
+    /** Optional plain-text blurb for cook/share/OG; null when unset. */
+    description: text("description"),
     link: text("link"),
     servings: integer("servings"),
     ingredients: text("ingredients").notNull().default("[]"),

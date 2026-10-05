@@ -23,10 +23,26 @@ export function truncateOgTitle(name: string, maxChars = 48): string {
   return `${trimmed.slice(0, maxChars - 1).trimEnd()}…`;
 }
 
-export function buildShareOgHtml(input: { host: string; recipeName: string }): string {
+/** Caps blurb length for the OG image card (meta uses a longer limit). */
+export function truncateOgDescription(description: string, maxChars = 140): string {
+  const trimmed = description.trim().replace(/\s+/g, " ");
+  if (trimmed.length <= maxChars) return trimmed;
+  return `${trimmed.slice(0, maxChars - 1).trimEnd()}…`;
+}
+
+export function buildShareOgHtml(input: {
+  host: string;
+  recipeName: string;
+  description?: string | null;
+}): string {
   const host = escapeHtml(input.host.toLowerCase());
   const title = escapeHtml(truncateOgTitle(input.recipeName));
+  const description = input.description?.trim()
+    ? escapeHtml(truncateOgDescription(input.description))
+    : null;
   const markSrc = pantriMarkDataUri();
+  const titleSize = description ? 56 : 72;
+  const titleMaxHeight = description ? 130 : 160;
 
   return `
 <div style="display: flex; width: 100%; height: 100%; background: #ffffff; align-items: center; justify-content: center; padding: 56px 64px; font-family: Poppins, sans-serif;">
@@ -36,13 +52,20 @@ export function buildShareOgHtml(input: { host: string; recipeName: string }): s
         <img src="${markSrc}" width="200" height="218" style="display: flex; width: 200px; height: 218px;" />
       </div>
     </div>
-    <div style="display: flex; flex-direction: column; flex: 1; align-items: flex-start; justify-content: center; gap: 28px; min-width: 0;">
+    <div style="display: flex; flex-direction: column; flex: 1; align-items: flex-start; justify-content: center; gap: 22px; min-width: 0;">
       <div style="display: flex; align-items: center; justify-content: center; background: #eceef1; border-radius: 999px; padding: 10px 22px; font-size: 22px; font-weight: 600; color: #1a1a1a; letter-spacing: 0.01em;">
         ${host}
       </div>
-      <div style="display: flex; font-size: 72px; font-weight: 800; color: #0a0a0a; line-height: 1.1; letter-spacing: -0.02em; max-height: 160px; overflow: hidden;">
+      <div style="display: flex; font-size: ${titleSize}px; font-weight: 800; color: #0a0a0a; line-height: 1.1; letter-spacing: -0.02em; max-height: ${titleMaxHeight}px; overflow: hidden;">
         ${title}
       </div>
+      ${
+        description
+          ? `<div style="display: flex; font-size: 28px; font-weight: 600; color: #5c6370; line-height: 1.35; max-height: 80px; overflow: hidden;">
+        ${description}
+      </div>`
+          : ""
+      }
       <div style="display: flex; align-items: center; justify-content: center; background: #0a0a0a; color: #ffffff; border-radius: 999px; padding: 18px 36px; font-size: 28px; font-weight: 600; box-shadow: 0 10px 24px rgba(0,0,0,0.18);">
         See Recipe
       </div>

@@ -7,6 +7,10 @@ import { PageHeader } from "~/components/page-header";
 import { ShoppingGotItSection } from "~/components/shopping/shopping-got-it-section";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import {
+  celebrateSortedComplete,
+  shouldCelebrateSortedComplete,
+} from "~/lib/celebrate-sorted-complete";
 import { getIngredientSection, SHOPPING_SECTIONS } from "~/lib/ingredient-sections";
 import { pantryPath } from "~/lib/pantry-path";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
@@ -221,6 +225,28 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
     purchased.sort((a, b) => a.name.localeCompare(b.name));
     return { toBuySections: toBuy, gotIt: purchased };
   }, [optimisticSections]);
+
+  const remainingCount = useMemo(
+    () => toBuySections.reduce((count, section) => count + section.items.length, 0),
+    [toBuySections],
+  );
+
+  const prevRemainingRef = useRef<number | null>(null);
+  const celebrationReadyRef = useRef(false);
+
+  useEffect(() => {
+    if (
+      shouldCelebrateSortedComplete(
+        prevRemainingRef.current,
+        remainingCount,
+        celebrationReadyRef.current,
+      )
+    ) {
+      void celebrateSortedComplete();
+    }
+    prevRemainingRef.current = remainingCount;
+    celebrationReadyRef.current = true;
+  }, [remainingCount]);
 
   const isEmpty = toBuySections.length === 0 && gotIt.length === 0;
 
