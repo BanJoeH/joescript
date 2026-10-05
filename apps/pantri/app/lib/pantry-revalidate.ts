@@ -4,6 +4,8 @@ const OPTIMISTIC_HOME_INTENTS = new Set([
   "toggle-odd-bit",
   "clear-recipe-purchased",
   "clear-odd-bits-purchased",
+  "toggle",
+  "clear-all-purchased",
 ]);
 
 /** Revalidate after this many skipped optimistic actions. */
