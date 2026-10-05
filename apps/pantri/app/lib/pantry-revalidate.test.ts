@@ -97,4 +97,18 @@ describe("shouldRevalidatePantryRoutes", () => {
       }),
     ).toBe(false);
   });
+
+  it("skips revalidation for sorted list toggles so in-flight loaders cannot revert an uncheck", () => {
+    const formData = new FormData();
+    formData.set("intent", "toggle");
+    formData.set("purchased", "false");
+
+    expect(
+      shouldRevalidatePantryRoutes({
+        formMethod: "POST",
+        formData,
+        defaultShouldRevalidate: true,
+      }),
+    ).toBe(false);
+  });
 });

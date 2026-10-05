@@ -13,9 +13,14 @@ import {
 } from "~/lib/celebrate-sorted-complete";
 import { getIngredientSection, SHOPPING_SECTIONS } from "~/lib/ingredient-sections";
 import { pantryPath } from "~/lib/pantry-path";
+import { markOptimisticShoppingActionSubmitted } from "~/lib/pantry-revalidate";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
 import { getSortedQuantityBadge } from "~/lib/shopping-aggregation";
 import { applySortedOptimistic } from "~/lib/shopping-optimistic";
+import {
+  resetSortedPurchasedOverrides,
+  setSortedPurchasedOverride,
+} from "~/lib/shopping-purchased-overrides";
 import { cn } from "~/lib/utils";
 
 import type { Route } from "./+types/pantry.sorted";
@@ -99,11 +104,14 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
           className="size-4 shrink-0 accent-foreground cursor-pointer"
           id={`sorted-item-${item.canonicalName}-checkbox`}
           onChange={(event) => {
+            const next = event.target.checked;
+            setSortedPurchasedOverride(item.canonicalName, next);
+            markOptimisticShoppingActionSubmitted();
             toggleFetcher.submit(
               {
                 intent: "toggle",
                 name: item.name,
-                purchased: String(event.target.checked),
+                purchased: String(next),
               },
               { method: "post" },
             );
@@ -298,13 +306,15 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
                 <ShoppingGotItSection
                   count={gotIt.length}
                   onResetAll={() => {
+                    resetSortedPurchasedOverrides(gotIt.map((item) => item.canonicalName));
+                    markOptimisticShoppingActionSubmitted();
                     clearFetcher.submit({ intent: "clear-all-purchased" }, { method: "post" });
                   }}
                 >
                   {gotIt.map((item) => (
                     <SortedItemRow
                       item={item}
-                      key={`got-${item.canonicalName}`}
+                      key={item.canonicalName}
                       section={item.section || getIngredientSection(item.name)}
                     />
                   ))}

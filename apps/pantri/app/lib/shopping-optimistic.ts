@@ -1,7 +1,10 @@
 import type { ShoppingSection } from "~/lib/ingredient-sections";
 import type { ShoppingIngredient } from "~/lib/recipe-schema";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
-import { applyShoppingPurchasedOverrides } from "~/lib/shopping-purchased-overrides";
+import {
+  applyShoppingPurchasedOverrides,
+  applySortedPurchasedOverrides,
+} from "~/lib/shopping-purchased-overrides";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
 
 type FetcherLike = {
@@ -133,7 +136,7 @@ export function applySortedOptimistic(
 ): SortedSection[] {
   let next = sections.map((section) => ({
     ...section,
-    items: section.items.map((item) => ({ ...item })),
+    items: applySortedPurchasedOverrides(section.items.map((item) => ({ ...item }))),
   }));
 
   for (const formData of readFormData(fetchers)) {

@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
 import { applyShoppingListOptimistic, applySortedOptimistic } from "~/lib/shopping-optimistic";
-import { setIngredientPurchasedOverride } from "~/lib/shopping-purchased-overrides";
+import {
+  clearShoppingPurchasedOverrides,
+  setIngredientPurchasedOverride,
+  setSortedPurchasedOverride,
+} from "~/lib/shopping-purchased-overrides";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
 
 function formData(entries: Record<string, string>) {
@@ -180,5 +184,19 @@ describe("applySortedOptimistic", () => {
         items: [onion],
       },
     ]);
+  });
+
+  it("keeps an uncheck after fetchers complete when loader data is still all purchased", () => {
+    clearShoppingPurchasedOverrides();
+    const onion = aggregatedItem({
+      canonicalName: "onion",
+      name: "onion",
+      purchased: true,
+    });
+    setSortedPurchasedOverride("onion", false);
+
+    const result = applySortedOptimistic([{ section: "Produce", items: [onion] }], []);
+
+    expect(result[0]?.items[0]?.purchased).toBe(false);
   });
 });

@@ -83,4 +83,37 @@ export function applyShoppingPurchasedOverrides(
 export function clearShoppingPurchasedOverrides() {
   ingredientOverrides.clear();
   oddBitOverrides.clear();
+  sortedPurchasedOverrides.clear();
+}
+
+const sortedPurchasedOverrides = new Map<string, boolean>();
+
+export function setSortedPurchasedOverride(canonicalName: string, purchased: boolean) {
+  sortedPurchasedOverrides.set(canonicalName, purchased);
+}
+
+export function resetSortedPurchasedOverrides(canonicalNames: string[]) {
+  for (const canonicalName of canonicalNames) {
+    sortedPurchasedOverrides.set(canonicalName, false);
+  }
+}
+
+export function applySortedPurchasedOverrides<
+  T extends { canonicalName: string; purchased: boolean },
+>(items: T[]): T[] {
+  if (sortedPurchasedOverrides.size === 0) {
+    return items;
+  }
+
+  return items.map((item) => {
+    const override = sortedPurchasedOverrides.get(item.canonicalName);
+    if (override === undefined) {
+      return item;
+    }
+    if (item.purchased === override) {
+      sortedPurchasedOverrides.delete(item.canonicalName);
+      return item;
+    }
+    return { ...item, purchased: override };
+  });
 }
