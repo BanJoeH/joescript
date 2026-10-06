@@ -14,7 +14,8 @@ import {
   RecipeUrlError,
 } from "~/lib/recipe-url";
 import {
-  parseIngredientLine,
+  coerceVisionIngredient,
+  parseAmountFromUnknown,
   refineExtractedIngredients,
 } from "~/lib/refine-extracted-ingredients";
 
@@ -36,15 +37,24 @@ const VISION_MODEL = "@cf/moondream/moondream3.1-9B-A2B";
 /** Text model for structuring OCR into JSON; no Meta EU license gate. */
 const STRUCTURE_MODEL = "@cf/qwen/qwen3-30b-a3b-fp8";
 
-const TRANSCRIBE_QUESTION = `Transcribe this recipe photo verbatim.
-Include the title, servings if shown, every ingredient line exactly as printed (one line each), and the full method/steps.
-Copy only what you can read. Do not invent ingredients, blurbs, or rewrite the recipe. Output plain text only.`;
+const TRANSCRIBE_QUESTION = `Transcribe this recipe photo verbatim using the section labels below.
+Copy only what you can read. Do not invent or rewrite. Omit a section if it is not visible.
+
+TITLE:
+DESCRIPTION:
+SERVINGS:
+INGREDIENTS:
+(one printed ingredient line per line)
+METHOD:
+(one step per line; keep step numbers if shown)
+`;
 
 const DIRECT_JSON_QUESTION = `Extract the recipe from this image.
 
 Return exactly one valid JSON object with this structure:
 {
   "name": "string",
+  "description": null,
   "servings": null,
   "ingredients": [
     {
@@ -67,6 +77,8 @@ Rules:
 - Do not guess or invent missing information.
 - Use null for missing or unclear servings, amounts, or units.
 - Include "notes" only when there is preparation/detail text to preserve.
+- Include "description" only for a visible introductory blurb or subtitle under the title (plain text, at most a few sentences). Use null if none is shown.
+- Do not put ingredients, method steps, or marketing copy in "description".
 - Include exactly one ingredient per item.
 - Ingredient "name" must contain only the food name, in lowercase.
 - Put preparation details like "finely diced", "minced", or "room temperature" in "notes".
@@ -76,9 +88,11 @@ Rules:
 - Keep recipe steps in their original order.
 - Set step "order" starting at 1 and increment by 1.
 - Ignore marketing text, stories, captions, serving suggestions, and unrelated text.
+- Example ingredient: {"name": "onion", "amount": 1, "unit": null, "notes": "finely diced"}
 - If no readable recipe is present, return:
   {
     "name": "",
+    "description": null,
     "servings": null,
     "ingredients": [],
     "steps": []
@@ -89,6 +103,7 @@ const STRUCTURE_SYSTEM = `You convert recipe transcriptions into JSON. Output on
 const STRUCTURE_QUESTION = `Convert the recipe transcription below into JSON with this shape:
 {
   "name": string,
+  "description": string | null,
   "servings": number | null,
   "ingredients": Array<{ "name": string, "amount": number | null, "unit": string | null, "notes"?: string }>,
   "steps": Array<{ "order": number, "text": string }> | Array<string>
@@ -96,12 +111,14 @@ const STRUCTURE_QUESTION = `Convert the recipe transcription below into JSON wit
 
 Rules:
 - Use ONLY the transcription. Do not invent ingredients, amounts, or steps.
+- Include "description" only when the transcription has a clear intro before the ingredient list; otherwise null.
 - ONE ingredient per array item. Never combine foods (bad: "beef, onion, chili powder").
 - "name" is the food only, lowercase. Put prep like "finely diced" / "minced" in "notes".
 - Copy amounts/units from the transcription. If missing or unclear, use null — do not invent cups/tbsp.
 - Valid units examples: tsp, tbsp, cup, lb, oz, g, ml, clove, tin, can.
 - Steps may be strings or { "order", "text" } objects.
 - Ignore marketing blurbs that are not part of the recipe.
+- If the transcription uses TITLE / DESCRIPTION / SERVINGS / INGREDIENTS / METHOD labels, map each section to the matching JSON field.
 
 Transcription:
 `;
@@ -204,15 +221,7 @@ function extractJsonObject(text: string): unknown {
 }
 
 function coerceAmount(value: unknown): number | null {
-  if (value == null || value === "") return null;
-  if (typeof value === "number" && Number.isFinite(value)) return value;
-  if (typeof value === "string") {
-    const match = value.replace(",", ".").match(/-?\d+(\.\d+)?/);
-    if (!match) return null;
-    const parsed = Number(match[0]);
-    return Number.isFinite(parsed) ? parsed : null;
-  }
-  return null;
+  return parseAmountFromUnknown(value);
 }
 
 function coerceRawRecipe(raw: unknown): unknown {
@@ -220,20 +229,9 @@ function coerceRawRecipe(raw: unknown): unknown {
   const record = raw as Record<string, unknown>;
 
   const ingredients = Array.isArray(record.ingredients)
-    ? record.ingredients.map((item) => {
-        if (typeof item === "string") {
-          return parseIngredientLine(item) ?? { name: item, amount: null, unit: null };
-        }
-        if (!item || typeof item !== "object") return item;
-        const ingredient = item as Record<string, unknown>;
-        return {
-          ...ingredient,
-          amount: coerceAmount(ingredient.amount),
-          unit: ingredient.unit == null || ingredient.unit === "" ? null : String(ingredient.unit),
-          name:
-            typeof ingredient.name === "string" ? ingredient.name : String(ingredient.name ?? ""),
-        };
-      })
+    ? record.ingredients
+        .map((item) => coerceVisionIngredient(item))
+        .filter((item): item is RecipeIngredient => item != null)
     : record.ingredients;
 
   const steps = Array.isArray(record.steps)
@@ -255,7 +253,7 @@ function coerceRawRecipe(raw: unknown): unknown {
   return { ...record, ingredients, steps };
 }
 
-function normalizeExtracted(raw: unknown, fallbackName?: string): ExtractedRecipe {
+export function normalizeExtracted(raw: unknown, fallbackName?: string): ExtractedRecipe {
   const coerced = coerceRawRecipe(raw);
   logExtract("normalize:coerced", coerced);
 
@@ -349,12 +347,19 @@ function mergeExtracted(parts: ExtractedRecipe[], nameHint?: string): ExtractedR
     nameHint?.trim() ??
     "Imported recipe";
   const servings = parts.find((part) => part.servings != null)?.servings ?? null;
+  const description = parts.find((part) => part.description?.trim())?.description?.trim();
   const ingredients = parts.flatMap((part) => part.ingredients);
   const steps = parts
     .flatMap((part) => part.steps)
     .map((step, index) => ({ ...step, order: index }));
 
-  const merged = { name, servings, ingredients, steps };
+  const merged = {
+    name,
+    ...(description ? { description } : {}),
+    servings,
+    ingredients,
+    steps,
+  };
   logExtract("merge:result", summarizeRecipe(merged));
   return merged;
 }
@@ -617,8 +622,11 @@ async function extractFromSinglePhoto(
     const parsed = extractJsonObject(directText);
     logExtract(`photo[${photoIndex}]:parsed-json-direct`, parsed);
     const normalized = normalizeExtracted(parsed, nameHint);
-    logExtract(`photo[${photoIndex}]:done-direct`, summarizeRecipe(normalized));
-    return normalized;
+    if (extractedLooksUsable(normalized)) {
+      logExtract(`photo[${photoIndex}]:done-direct`, summarizeRecipe(normalized));
+      return normalized;
+    }
+    logExtract(`photo[${photoIndex}]:direct-empty`, summarizeRecipe(normalized));
   } catch (error) {
     logExtract(`photo[${photoIndex}]:direct-failed`, {
       reason: error instanceof Error ? error.message : String(error),

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   cleanExtractedUnit,
+  coerceVisionIngredient,
+  parseAmountFromUnknown,
   parseIngredientLine,
   refineExtractedIngredients,
 } from "~/lib/refine-extracted-ingredients";
@@ -64,6 +66,35 @@ describe("refineExtractedIngredients", () => {
       unit: "cup",
       notes: "divided; shredded",
     });
+  });
+
+  it("coerces vision JSON rows that put the full line in name", () => {
+    expect(
+      coerceVisionIngredient({
+        name: "3 garlic cloves finely chopped",
+        amount: null,
+        unit: null,
+      }),
+    ).toEqual({
+      name: "garlic",
+      amount: 3,
+      unit: "clove",
+      notes: "finely chopped",
+    });
+    expect(
+      coerceVisionIngredient({ name: "onion", amount: 1, unit: null, notes: "finely diced" }),
+    ).toEqual({
+      name: "onion",
+      amount: 1,
+      unit: null,
+      notes: "finely diced",
+    });
+  });
+
+  it("parses fractional string amounts from models", () => {
+    expect(parseAmountFromUnknown("1/2")).toBe(0.5);
+    expect(parseAmountFromUnknown("1 1/2")).toBe(1.5);
+    expect(parseAmountFromUnknown("Serves 4–6")).toBe(4);
   });
 
   it("parses BBC Good Food JSON-LD style lines (no comma before prep)", () => {
