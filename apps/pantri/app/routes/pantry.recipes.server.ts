@@ -35,9 +35,9 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (intent === "ensure-share") {
     try {
-      const { url } = await pantri.recipes.ensureShare(recipeId);
+      const { url, ogImageUrl } = await pantri.recipes.ensureShare(recipeId);
       await notifyPantryMutation(context, getWorkerEnv());
-      return { url };
+      return { url, ogImageUrl };
     } catch (error) {
       return {
         error: error instanceof Error ? error.message : "Could not create share link.",

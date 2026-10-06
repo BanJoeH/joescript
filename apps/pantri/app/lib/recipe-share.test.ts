@@ -9,6 +9,7 @@ import {
   parseSharedRecipePayload,
   sharedRecipeDescription,
   sharedRecipeToCreateInput,
+  shareOgImagePath,
   toSharedRecipePayload,
 } from "./recipe-share";
 
@@ -90,8 +91,16 @@ describe("sharedRecipeToCreateInput", () => {
   });
 });
 
-describe("buildShareOgImageUrl", () => {
+describe("shareOgImagePath", () => {
   it("version-stamps the og.png path for cache busting", () => {
+    expect(shareOgImagePath("abc123XYZ_-token", "2026-01-02T03:04:05.000Z")).toBe(
+      "/r/abc123XYZ_-token/og.png?v=2026-01-02T03%3A04%3A05.000Z",
+    );
+  });
+});
+
+describe("buildShareOgImageUrl", () => {
+  it("joins origin with the relative og path", () => {
     expect(
       buildShareOgImageUrl(
         "https://pantri.joescript.io/",

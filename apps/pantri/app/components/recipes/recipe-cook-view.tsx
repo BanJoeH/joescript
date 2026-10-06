@@ -37,6 +37,7 @@ import {
   type CookTextSize,
   useCookTextSize,
 } from "~/lib/cook-preferences";
+import { cookPrepScreenTitle } from "~/lib/cook-prep-screen";
 import { linkStepIngredients } from "~/lib/link-step-ingredients";
 import type { RecipeIngredient, RecipeStep } from "~/lib/recipe-schema";
 import { formatIngredientLabel } from "~/lib/units";
@@ -247,6 +248,49 @@ function CookIngredientsList({
   );
 }
 
+function CookIngredientsScreen({
+  description,
+  ingredients,
+  textSize,
+}: {
+  description: string | null | undefined;
+  ingredients: RecipeIngredient[];
+  textSize: CookTextSize;
+}) {
+  const intro = description?.trim() ?? "";
+  const hasIntro = intro.length > 0;
+  const hasIngredients = ingredients.length > 0;
+
+  if (!hasIntro && !hasIngredients) {
+    return <p className="text-sm text-muted-foreground">No ingredients.</p>;
+  }
+
+  return (
+    <div className="space-y-6">
+      {hasIntro ? (
+        <p
+          className={cn(
+            "whitespace-pre-wrap leading-relaxed text-muted-foreground",
+            COOK_STEP_TEXT_CLASS[textSize],
+          )}
+        >
+          {intro}
+        </p>
+      ) : null}
+      {hasIngredients ? (
+        hasIntro ? (
+          <div className="space-y-3 border-t border-border pt-6">
+            <h3 className="text-sm font-semibold uppercase tracking-[0.06em]">Ingredients</h3>
+            <CookIngredientsList ingredients={ingredients} textSize={textSize} />
+          </div>
+        ) : (
+          <CookIngredientsList ingredients={ingredients} textSize={textSize} />
+        )
+      ) : null}
+    </div>
+  );
+}
+
 function IngredientQuantityTooltip({
   anchor,
   label,
@@ -409,17 +453,25 @@ function CookStepText({
 
 function CookScreen({
   cookIndex,
+  description,
   ingredients,
   steps,
   textSize,
 }: {
   cookIndex: number;
+  description: string | null | undefined;
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
   textSize: CookTextSize;
 }) {
   if (cookIndex === INGREDIENTS_SCREEN) {
-    return <CookIngredientsList ingredients={ingredients} textSize={textSize} />;
+    return (
+      <CookIngredientsScreen
+        description={description}
+        ingredients={ingredients}
+        textSize={textSize}
+      />
+    );
   }
 
   return <CookStepText ingredients={ingredients} step={steps[cookIndex]} textSize={textSize} />;
@@ -548,6 +600,8 @@ export function RecipeCookView({
   const totalScreens = 1 + recipe.steps.length;
   const screenNumber = cookIndex + 2; // ingredients = 1
   const activeSlide = cookIndexToSlide(cookIndex);
+  const prepScreenTitle = cookPrepScreenTitle(recipe.description, recipe.ingredients.length);
+  const firstScreenDotLabel = recipe.description?.trim() ? "prep" : "ingredients";
 
   function syncDraftFromRecipe() {
     setName(recipe.name);
@@ -647,7 +701,7 @@ export function RecipeCookView({
                   </span>
                 ) : null}
                 <span className={cn(focused && !editing && "mt-1 block")}>
-                  {isIngredientsScreen ? "Ingredients" : `Step ${cookIndex + 1}`}
+                  {isIngredientsScreen ? prepScreenTitle : `Step ${cookIndex + 1}`}
                   {editing ? " · Edit" : null}
                 </span>
               </CardTitle>
@@ -748,10 +802,16 @@ export function RecipeCookView({
                 >
                   {Array.from({ length: totalScreens }, (_, index) => {
                     const active = index === cookIndex + 1;
-                    const label = index === 0 ? "ingredients" : `step-${index}`;
+                    const label = index === 0 ? firstScreenDotLabel : `step-${index}`;
                     return (
                       <button
-                        aria-label={index === 0 ? "Go to ingredients" : `Go to step ${index}`}
+                        aria-label={
+                          index === 0
+                            ? recipe.description?.trim()
+                              ? "Go to prep"
+                              : "Go to ingredients"
+                            : `Go to step ${index}`
+                        }
                         className={cn(
                           "h-1.5 rounded-full transition-all",
                           active
@@ -852,6 +912,7 @@ export function RecipeCookView({
                 {!clientReady || totalScreens === 1 ? (
                   <CookScreen
                     cookIndex={cookIndex}
+                    description={recipe.description}
                     ingredients={recipe.ingredients}
                     steps={recipe.steps}
                     textSize={textSize}
@@ -877,7 +938,11 @@ export function RecipeCookView({
                     touchStartPreventDefault={false}
                   >
                     <SwiperSlide>
-                      <CookIngredientsList ingredients={recipe.ingredients} textSize={textSize} />
+                      <CookIngredientsScreen
+                        description={recipe.description}
+                        ingredients={recipe.ingredients}
+                        textSize={textSize}
+                      />
                     </SwiperSlide>
                     {recipe.steps.map((step) => (
                       <SwiperSlide key={`step-${step.order}`}>

@@ -55,10 +55,14 @@ export function buildShareUrl(baseUrl: string, token: string): string {
   return `${origin}/r/${token}`;
 }
 
+export function shareOgImagePath(token: string, updatedAt: string): string {
+  const version = encodeURIComponent(updatedAt);
+  return `/r/${token}/og.png?v=${version}`;
+}
+
 export function buildShareOgImageUrl(baseUrl: string, token: string, updatedAt: string): string {
   const origin = baseUrl.replace(/\/+$/, "");
-  const version = encodeURIComponent(updatedAt);
-  return `${origin}/r/${token}/og.png?v=${version}`;
+  return `${origin}${shareOgImagePath(token, updatedAt)}`;
 }
 
 export const SHARE_OG_IMAGE_WIDTH = 1200;

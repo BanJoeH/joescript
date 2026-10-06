@@ -1,15 +1,18 @@
-import { Share2 } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Share2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { useFetcher } from "react-router";
 
 import { ConfirmSheet } from "~/components/confirm-sheet";
 import { useFetcherSuccessToast, useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
+import { shareDialogOgImageUrl, sharedRecipeViewHref } from "~/lib/share-dialog";
+import { cn } from "~/lib/utils";
 
 type ShareActionData = {
   error?: string;
   url?: string;
+  ogImageUrl?: string;
   unshared?: boolean;
 };
 
@@ -18,15 +21,55 @@ type ShareRecipeButtonProps = {
   recipeName: string;
   action?: string;
   isShared?: boolean;
+  shareToken?: string | null;
+  shareUpdatedAt?: Date | string | null;
   size?: "sm" | "default";
   variant?: "outline" | "ghost";
 };
+
+function usePrefetchImage(url: string | null) {
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!url) {
+      setLoaded(false);
+      setFailed(false);
+      return;
+    }
+
+    setLoaded(false);
+    setFailed(false);
+
+    const link = document.createElement("link");
+    link.rel = "prefetch";
+    link.as = "image";
+    link.href = url;
+    document.head.appendChild(link);
+
+    const img = new Image();
+    img.decoding = "async";
+    img.onload = () => setLoaded(true);
+    img.onerror = () => setFailed(true);
+    img.src = url;
+
+    return () => {
+      link.remove();
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [url]);
+
+  return { loaded, failed };
+}
 
 export function ShareRecipeButton({
   recipeId,
   recipeName,
   action,
   isShared = false,
+  shareToken = null,
+  shareUpdatedAt = null,
   size = "sm",
   variant = "outline",
 }: ShareRecipeButtonProps) {
@@ -35,14 +78,31 @@ export function ShareRecipeButton({
   const unshareFetcher = useFetcher<ShareActionData>({ key: `recipe-unshare:${recipeId}` });
   const [sheetOpen, setSheetOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [ogImageUrl, setOgImageUrl] = useState<string | null>(null);
   const [stopConfirmOpen, setStopConfirmOpen] = useState(false);
 
   const busy = shareFetcher.state !== "idle";
   const shared = Boolean(isShared || shareUrl);
 
+  const fallbackOgImageUrl = useMemo(
+    () =>
+      shareDialogOgImageUrl({
+        ogImageUrlFromShare: null,
+        shareToken,
+        shareUpdatedAt,
+      }),
+    [shareToken, shareUpdatedAt],
+  );
+  const resolvedOgImageUrl = ogImageUrl ?? fallbackOgImageUrl;
+
+  const { loaded: ogLoaded, failed: ogFailed } = usePrefetchImage(
+    shared || sheetOpen ? resolvedOgImageUrl : null,
+  );
+
   useFetcherSuccessToast(shareFetcher, (data) => {
     if (!data.url) return;
     setShareUrl(data.url);
+    if (data.ogImageUrl) setOgImageUrl(data.ogImageUrl);
     setSheetOpen(true);
     void navigator.clipboard.writeText(data.url).then(
       () => toast({ title: recipeName, message: "Link copied" }),
@@ -53,10 +113,14 @@ export function ShareRecipeButton({
   useFetcherSuccessToast(unshareFetcher, (data) => {
     if (!data.unshared) return;
     setShareUrl(null);
+    setOgImageUrl(null);
     setSheetOpen(false);
     setStopConfirmOpen(false);
     toast({ title: recipeName, message: "Stopped sharing" });
   });
+
+  const previewUrl = resolvedOgImageUrl;
+  const sharedViewHref = sharedRecipeViewHref(shareUrl, shareToken);
 
   return (
     <>
@@ -91,6 +155,45 @@ export function ShareRecipeButton({
           <p className="mt-1 text-sm text-muted-foreground">
             Anyone with this link can view the recipe. Edits stay in sync.
           </p>
+
+          {previewUrl && sharedViewHref ? (
+            <a
+              aria-label={`Open shared view of ${recipeName}`}
+              className="relative mt-4 block overflow-hidden rounded-lg border border-border bg-muted/30 ring-offset-background transition-colors hover:border-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              href={sharedViewHref}
+              rel="noopener noreferrer"
+              target="_blank"
+            >
+              <div className="aspect-1200/630 w-full">
+                {!ogLoaded && !ogFailed ? (
+                  <div
+                    aria-hidden
+                    className="flex size-full items-center justify-center text-muted-foreground"
+                  >
+                    <Loader2 className="size-6 animate-spin" />
+                  </div>
+                ) : null}
+                {ogFailed ? (
+                  <p className="flex size-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
+                    Preview image unavailable
+                  </p>
+                ) : (
+                  <img
+                    alt=""
+                    className={cn(
+                      "size-full object-cover transition-opacity duration-200",
+                      ogLoaded ? "opacity-100" : "opacity-0",
+                    )}
+                    decoding="async"
+                    height={630}
+                    src={previewUrl}
+                    width={1200}
+                  />
+                )}
+              </div>
+            </a>
+          ) : null}
+
           {shareUrl ? (
             <Input
               aria-label="Share link"

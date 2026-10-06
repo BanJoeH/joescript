@@ -65,4 +65,56 @@ describe("refineExtractedIngredients", () => {
       notes: "divided; shredded",
     });
   });
+
+  it("parses BBC Good Food JSON-LD style lines (no comma before prep)", () => {
+    expect(parseIngredientLine("oil for cooking")).toEqual({
+      name: "oil",
+      amount: null,
+      unit: null,
+      notes: "for cooking",
+    });
+    expect(parseIngredientLine("3 garlic cloves finely chopped")).toEqual({
+      name: "garlic",
+      amount: 3,
+      unit: "clove",
+      notes: "finely chopped",
+    });
+    expect(parseIngredientLine("small piece of ginger peeled and finely chopped")).toEqual({
+      name: "ginger",
+      amount: null,
+      unit: null,
+      notes: "small piece; peeled and finely chopped",
+    });
+    expect(parseIngredientLine("400g can of chickpeas drained and rinsed")).toEqual({
+      name: "chickpeas",
+      amount: 1,
+      unit: "can",
+      notes: "400g; drained and rinsed",
+    });
+    expect(
+      parseIngredientLine("½ bunch of coriander leaves picked, stalks finely chopped"),
+    ).toEqual({
+      name: "coriander",
+      amount: 0.5,
+      unit: "bunch",
+      notes: "leaves picked, stalks finely chopped",
+    });
+    expect(parseIngredientLine("1 lime juiced")).toEqual({
+      name: "lime",
+      amount: 1,
+      unit: null,
+      notes: "juiced",
+    });
+    expect(parseIngredientLine("wholemeal pittas to serve")).toEqual({
+      name: "wholemeal pittas",
+      amount: null,
+      unit: null,
+      notes: "to serve",
+    });
+    expect(parseIngredientLine("handful of spinach")).toEqual({
+      name: "spinach",
+      amount: null,
+      unit: "handful",
+    });
+  });
 });
