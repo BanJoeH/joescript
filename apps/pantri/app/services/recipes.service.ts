@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import { recipes } from "~/db/schema";
 import { getPantriEnv } from "~/lib/context.server";
+import { RECIPE_DESCRIPTION_MAX_LENGTH } from "~/lib/recipe-limits";
 import {
   parseRecipeIngredientsJson,
   parseRecipeStepsJson,
@@ -14,6 +15,7 @@ import {
   serializeRecipeSteps,
 } from "~/lib/recipe-schema";
 import {
+  buildShareOgImageUrl,
   buildShareUrl,
   deleteSharedRecipe,
   newShareToken,
@@ -23,8 +25,7 @@ import {
 import type { PantriContext } from "~/services/types";
 import { newId } from "~/services/types";
 
-/** Generous cap so share/cook blobs stay bounded without feeling form-limited. */
-export const RECIPE_DESCRIPTION_MAX_LENGTH = 2000;
+export { RECIPE_DESCRIPTION_MAX_LENGTH };
 
 const recipeInput = z.object({
   name: z.string().trim().min(1),
@@ -170,7 +171,9 @@ export function createRecipesService({ db, userId, pantryId, recipeShares }: Pan
       return true;
     },
 
-    async ensureShare(recipeId: string): Promise<{ url: string; token: string }> {
+    async ensureShare(
+      recipeId: string,
+    ): Promise<{ url: string; token: string; ogImageUrl: string }> {
       const record = await this.get(recipeId);
       if (!record) throw new Error("Recipe not found");
 
@@ -187,7 +190,12 @@ export function createRecipesService({ db, userId, pantryId, recipeShares }: Pan
       await writeSharePayload(latest, token);
 
       const { BETTER_AUTH_URL } = getPantriEnv();
-      return { url: buildShareUrl(BETTER_AUTH_URL, token), token };
+      const updatedAtIso = latest.updatedAt.toISOString();
+      return {
+        url: buildShareUrl(BETTER_AUTH_URL, token),
+        token,
+        ogImageUrl: buildShareOgImageUrl(BETTER_AUTH_URL, token, updatedAtIso),
+      };
     },
 
     async publishShare(recipeId: string): Promise<boolean> {

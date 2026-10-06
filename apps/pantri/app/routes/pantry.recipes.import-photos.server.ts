@@ -3,8 +3,9 @@ import { redirect } from "react-router";
 import { getPantriEnv, getWorkerEnv } from "~/lib/context.server";
 import { getString } from "~/lib/forms.server";
 import { pantryPath } from "~/lib/pantry-path";
+import { RecipeUrlError } from "~/lib/recipe-url";
 import { requirePantriService } from "~/services";
-import { extractRecipeFromPhotos } from "~/services/extract.server";
+import { extractRecipeFromPhotos, extractRecipeFromUrl } from "~/services/extract.server";
 import { notifyPantryMutation } from "~/services/realtime.server";
 
 import type { Route } from "./+types/pantry.recipes.import-photos";
@@ -81,7 +82,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       });
       const recipe = await pantri.recipes.create({
         name: extracted.name,
-        servings: extracted.servings ?? undefined,
+        servings: extracted.servings && extracted.servings > 0 ? extracted.servings : undefined,
         ingredients: extracted.ingredients,
         steps: extracted.steps,
       });
@@ -100,6 +101,40 @@ export async function action({ request, params }: Route.ActionArgs) {
     } catch (error) {
       if (error instanceof Response) throw error;
       return { error: error instanceof Error ? error.message : "Could not create recipe draft." };
+    }
+  }
+
+  if (intent === "extract-url") {
+    const url = getString(formData, "url");
+    if (!url) {
+      return { error: "Paste a recipe link first." };
+    }
+
+    try {
+      const env = getWorkerEnv();
+      const { recipe: extracted, sourceUrl } = await extractRecipeFromUrl({
+        url,
+        ai: env.AI,
+      });
+      const recipe = await pantri.recipes.create({
+        name: extracted.name,
+        description: extracted.description ?? undefined,
+        link: sourceUrl,
+        servings: extracted.servings && extracted.servings > 0 ? extracted.servings : undefined,
+        ingredients: extracted.ingredients,
+        steps: extracted.steps,
+      });
+      await notifyPantryMutation(context, env);
+      throw redirect(pantryPath(context.pantryId, `recipes/${recipe.id}`));
+    } catch (error) {
+      if (error instanceof Response) throw error;
+      const message =
+        error instanceof RecipeUrlError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Could not import that recipe.";
+      return { error: message };
     }
   }
 

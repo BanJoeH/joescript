@@ -1,3 +1,4 @@
+import { RECIPE_DESCRIPTION_MAX_LENGTH } from "~/lib/recipe-limits";
 import {
   type RecipeIngredient,
   type RecipeStep,
@@ -5,12 +6,21 @@ import {
   recipeStepsSchema,
 } from "~/lib/recipe-schema";
 import {
+  fetchRecipePageHtml,
+  htmlToPlainText,
+  jsonLdRecipeLooksComplete,
+  pickBestJsonLdRecipe,
+  type RecipePageFetch,
+  RecipeUrlError,
+} from "~/lib/recipe-url";
+import {
   parseIngredientLine,
   refineExtractedIngredients,
 } from "~/lib/refine-extracted-ingredients";
 
 export type ExtractedRecipe = {
   name: string;
+  description?: string | null;
   servings: number | null;
   ingredients: RecipeIngredient[];
   steps: RecipeStep[];
@@ -251,6 +261,7 @@ function normalizeExtracted(raw: unknown, fallbackName?: string): ExtractedRecip
 
   const record = coerced as {
     name?: unknown;
+    description?: unknown;
     servings?: unknown;
     ingredients?: unknown;
     steps?: unknown;
@@ -307,8 +318,20 @@ function normalizeExtracted(raw: unknown, fallbackName?: string): ExtractedRecip
       ? Math.max(0, Math.round(record.servings))
       : coerceAmount(record.servings);
 
+  let description: string | null = null;
+  if (typeof record.description === "string") {
+    const trimmed = record.description.trim();
+    if (trimmed) {
+      description =
+        trimmed.length > RECIPE_DESCRIPTION_MAX_LENGTH
+          ? trimmed.slice(0, RECIPE_DESCRIPTION_MAX_LENGTH)
+          : trimmed;
+    }
+  }
+
   const result = {
     name,
+    ...(description ? { description } : {}),
     servings: servings != null ? Math.max(0, Math.round(servings)) : null,
     ingredients: refineExtractedIngredients(ingredients),
     steps,
@@ -678,5 +701,96 @@ export async function extractRecipeFromPhotos(options: {
     const placeholder = placeholderRecipe(photos.length, nameHint);
     logExtract("fallback:placeholder", summarizeRecipe(placeholder));
     return placeholder;
+  }
+}
+
+function jsonLdToExtracted(recipe: {
+  name: string;
+  description: string | null;
+  servings: number | null;
+  ingredients: string[];
+  steps: string[];
+}): ExtractedRecipe {
+  return normalizeExtracted(
+    {
+      name: recipe.name,
+      description: recipe.description,
+      servings: recipe.servings,
+      ingredients: recipe.ingredients,
+      steps: recipe.steps,
+    },
+    recipe.name,
+  );
+}
+
+function extractedLooksUsable(recipe: ExtractedRecipe): boolean {
+  return recipe.ingredients.length > 0 || recipe.steps.length > 0;
+}
+
+async function structurePageText(ai: Ai, pageText: string): Promise<ExtractedRecipe> {
+  const pageHint =
+    "\nThis text was copied from a recipe webpage. Ignore ads, comments, navigation, and related recipes.";
+  let structuredText = await structureTranscript(ai, pageText, pageHint);
+  logExtract("url:structured-text", {
+    chars: structuredText.length,
+    preview: truncateForLog(structuredText),
+  });
+
+  let parsed: unknown;
+  try {
+    parsed = extractJsonObject(structuredText);
+  } catch (error) {
+    logExtract("url:structured-retry", {
+      reason: error instanceof Error ? error.message : String(error),
+    });
+    structuredText = await structureTranscript(ai, pageText, pageHint, false);
+    parsed = extractJsonObject(structuredText);
+  }
+
+  return normalizeExtracted(parsed);
+}
+
+/**
+ * Import a recipe from a public webpage. Prefers schema.org Recipe JSON-LD,
+ * then structures visible page text with the same model used for photo OCR.
+ */
+export async function extractRecipeFromUrl(options: {
+  url: string;
+  ai?: Ai;
+  fetch?: RecipePageFetch;
+}): Promise<{ recipe: ExtractedRecipe; sourceUrl: string }> {
+  const { html, url: sourceUrl } = await fetchRecipePageHtml(options.url, options.fetch);
+  logExtract("url:fetched", { sourceUrl, htmlChars: html.length });
+
+  const jsonLd = pickBestJsonLdRecipe(html);
+  if (jsonLd && jsonLdRecipeLooksComplete(jsonLd)) {
+    const recipe = jsonLdToExtracted(jsonLd);
+    logExtract("url:json-ld", summarizeRecipe(recipe));
+    if (extractedLooksUsable(recipe)) {
+      return { recipe, sourceUrl };
+    }
+  }
+
+  const pageText = htmlToPlainText(html);
+  logExtract("url:page-text", { chars: pageText.length, preview: truncateForLog(pageText, 400) });
+  if (pageText.length < 80) {
+    throw new RecipeUrlError("Couldn't find a recipe on that page.");
+  }
+
+  if (!options.ai) {
+    throw new RecipeUrlError("Recipe import is unavailable right now.");
+  }
+
+  try {
+    const recipe = await structurePageText(options.ai, pageText);
+    logExtract("url:structured", summarizeRecipe(recipe));
+    if (!extractedLooksUsable(recipe)) {
+      throw new RecipeUrlError("Couldn't find a recipe on that page.");
+    }
+    return { recipe, sourceUrl };
+  } catch (error) {
+    if (error instanceof RecipeUrlError) throw error;
+    console.error(LOG_PREFIX, "url import failed", error);
+    throw new RecipeUrlError("Couldn't read a recipe from that page.");
   }
 }

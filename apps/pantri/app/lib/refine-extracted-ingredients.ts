@@ -1,7 +1,20 @@
 import type { RecipeIngredient } from "~/lib/recipe-schema";
 
 const PREP_WORDS =
-  "diced|minced|chopped|sliced|crushed|grated|shredded|drained|divided|peeled|seeded|softened|melted|room temperature";
+  "diced|minced|chopped|sliced|crushed|grated|shredded|drained|divided|peeled|seeded|softened|melted|room temperature|picked|rinsed|juiced";
+
+const TRAILING_PREP_PATTERNS: RegExp[] = [
+  /^(.*?)\s+(peeled and finely chopped)$/i,
+  /^(.*?)\s+(peeled and chopped)$/i,
+  /^(.*?)\s+(drained and rinsed)$/i,
+  /^(.*?)\s+(leaves picked,\s*stalks finely chopped)$/i,
+  /^(.*?)\s+(leaves picked)$/i,
+  /^(.*?)\s+((?:finely|roughly|thinly)\s+(?:chopped|diced|minced|sliced|grated|shredded))$/i,
+  /^(.*?)\s+(juiced)$/i,
+  /^(.*?)\s+(to serve)$/i,
+  /^(.*?)\s+(for cooking)$/i,
+  /^(.*?)\s+(\d+\s+chopped)$/i,
+];
 
 const PREP_SUFFIX_RE = new RegExp(
   `^(.*?),\\s*((?:finely|roughly|thinly)\\s+)?(${PREP_WORDS})$`,
@@ -83,7 +96,30 @@ export function cleanExtractedUnit(unit: string | null | undefined): string | nu
 }
 
 const LEADING_UNIT_RE =
-  /^(tablespoons?|teaspoons?|tbsp\.?|tsp\.?|cups?|pounds?|lbs?\.?|ounces?|oz\.?|grams?|kg|ml|l|liters?|litres?|cloves?|tins?|cans?)\b\s*/i;
+  /^(tablespoons?|teaspoons?|tbsp\.?|tsp\.?|cups?|pounds?|lbs?\.?|ounces?|oz\.?|grams?|kg|ml|l|liters?|litres?|cloves?|tins?|cans?|bunch(?:es)?|handfuls?)\b\s*/i;
+
+const METRIC_CAN_RE = /^(\d+(?:\.\d+)?)\s*(g|kg|ml|l)\s+(?:can|cans|tin|tins)\s+(?:of\s+)?(.+)$/i;
+
+const SIZE_PIECE_RE = /^(small|medium|large)\s+piece\s+of\s+(.+)$/i;
+
+function normalizeUnicodeFractions(line: string): string {
+  return line
+    .replace(/^\u00bd(?=\s)/u, "1/2 ")
+    .replace(/^\u00bc(?=\s)/u, "1/4 ")
+    .replace(/^\u00be(?=\s)/u, "3/4 ")
+    .replace(/^\u2153(?=\s)/u, "1/3 ")
+    .replace(/^\u2154(?=\s)/u, "2/3 ");
+}
+
+function peelTrailingPrepWithoutComma(name: string): { name: string; prep?: string } {
+  for (const pattern of TRAILING_PREP_PATTERNS) {
+    const match = name.match(pattern);
+    if (match?.[1]?.trim() && match[2]?.trim()) {
+      return { name: match[1].trim(), prep: match[2].trim() };
+    }
+  }
+  return { name };
+}
 
 function parseNumericAmount(token: string): number | null {
   const mixed = token.match(/^(\d+)\s+(\d+)\/(\d+)$/);
@@ -103,8 +139,20 @@ function parseNumericAmount(token: string): number | null {
  * or "1/4 cup shredded Monterey Jack, divided".
  */
 export function parseIngredientLine(line: string): RecipeIngredient | null {
-  let rest = line.trim().replace(/\s+/g, " ");
+  let rest = normalizeUnicodeFractions(line.trim()).replace(/\s+/g, " ");
   if (!rest) return null;
+
+  const metricCan = rest.match(METRIC_CAN_RE);
+  if (metricCan) {
+    const weightNote = `${metricCan[1]}${metricCan[2].toLowerCase()}`;
+    const refined = refineOneIngredient({
+      name: metricCan[3].trim(),
+      amount: 1,
+      unit: "can",
+      notes: weightNote,
+    });
+    return refined[0] ?? null;
+  }
 
   let amount: number | null = null;
   const amountMatch = rest.match(/^(?:(\d+)\s+(\d+\/\d+)|(\d+\/\d+)|(\d+(?:\.\d+)?))\s+/);
@@ -125,6 +173,8 @@ export function parseIngredientLine(line: string): RecipeIngredient | null {
     unit = cleanExtractedUnit(unitMatch[1].replace(/\.$/, ""));
     rest = rest.slice(unitMatch[0].length).trim();
   }
+
+  rest = rest.replace(/^of\s+/i, "").trim();
 
   if (!rest) return null;
 
@@ -158,6 +208,40 @@ function refineOneIngredient(ingredient: RecipeIngredient): RecipeIngredient[] {
     const prep = [suffixPrep[2]?.trim(), suffixPrep[3]?.trim()].filter(Boolean).join(" ");
     notes = joinNotes(notes, prep);
     return refineOneIngredient({ name, amount, unit, notes });
+  }
+
+  const sizePiece = name.match(SIZE_PIECE_RE);
+  if (sizePiece) {
+    name = sizePiece[2].trim();
+    notes = joinNotes(notes, `${sizePiece[1]} piece`);
+    return refineOneIngredient({ name, amount, unit, notes });
+  }
+
+  const trailingPrep = peelTrailingPrepWithoutComma(name);
+  if (trailingPrep.prep) {
+    name = trailingPrep.name;
+    notes = joinNotes(notes, trailingPrep.prep);
+    return refineOneIngredient({ name, amount, unit, notes });
+  }
+
+  if (name.includes(",")) {
+    const parts = name
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (parts.length === 2 && !isPrepOnly(parts[1])) {
+      const second = parts[1];
+      const looksLikePrepNote =
+        /(?:finely|roughly|thinly|stalks|picked|chopped|diced|minced|drained|rinsed|peeled|juiced|serve)/i.test(
+          second,
+        );
+      if (looksLikePrepNote) {
+        name = parts[0];
+        notes = joinNotes(notes, second);
+        return refineOneIngredient({ name, amount, unit, notes });
+      }
+    }
   }
 
   if (name.includes(",")) {

@@ -217,6 +217,8 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                         isShared={Boolean(recipe.shareToken)}
                         recipeId={recipe.id}
                         recipeName={recipe.name}
+                        shareToken={recipe.shareToken}
+                        shareUpdatedAt={recipe.updatedAt}
                       />
                       {recipe.link ? (
                         <Button asChild size="sm" variant="outline">

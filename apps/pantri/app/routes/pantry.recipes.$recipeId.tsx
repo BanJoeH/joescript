@@ -58,6 +58,8 @@ export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
                 isShared={Boolean(recipe.shareToken)}
                 recipeId={recipe.id}
                 recipeName={recipe.name}
+                shareToken={recipe.shareToken}
+                shareUpdatedAt={recipe.updatedAt}
               />
               <Button asChild size="sm" variant="outline">
                 <Link to={pantryPath(pantryId, `recipes/${recipe.id}/edit`)}>Edit</Link>
@@ -92,12 +94,6 @@ export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
           }
           title={recipe.name}
         />
-      ) : null}
-
-      {!focused && recipe.description ? (
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
-          {recipe.description}
-        </p>
       ) : null}
 
       {shopFetcher.data?.error && !focused ? (

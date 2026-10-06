@@ -1,10 +1,11 @@
-import { ImagePlus, Loader2, Sparkles, Trash2, Upload } from "lucide-react";
+import { ImagePlus, Link2, Loader2, Sparkles, Trash2, Upload } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { Form, useNavigation, useSubmit } from "react-router";
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
 import { Button, buttonVariants } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card";
+import { Input } from "~/components/ui/input";
 import { pantryPath } from "~/lib/pantry-path";
 import { MAX_PHOTOS_PER_IMPORT } from "~/lib/photos";
 import { resizeImageFiles } from "~/lib/resize-image";
@@ -15,7 +16,7 @@ import type { Route } from "./+types/pantry.recipes.import-photos";
 export { action, loader } from "./pantry.recipes.import-photos.server";
 
 export function meta(_args: Route.MetaArgs) {
-  return [{ title: "Import recipe photos · Pantri" }];
+  return [{ title: "Import recipe · Pantri" }];
 }
 
 type StagingPhoto = {
@@ -61,7 +62,8 @@ export default function ImportPhotosPage({ loaderData, actionData }: Route.Compo
   const intent = navigation.formData?.get("intent");
   const submitting = navigation.state !== "idle";
   const uploading = preparing || (submitting && intent === "upload");
-  const extracting = submitting && intent === "extract";
+  const extracting = submitting && (intent === "extract" || intent === "extract-url");
+  const extractingUrl = submitting && intent === "extract-url";
   const removing = submitting && intent === "remove-photo";
   const removingPhotoId = removing ? String(navigation.formData?.get("photoId") ?? "") : null;
   const busy = preparing || submitting;
@@ -152,10 +154,10 @@ export default function ImportPhotosPage({ loaderData, actionData }: Route.Compo
             <Link className="hover:underline" to={pantryPath(pantryId, "recipes")}>
               Recipes
             </Link>{" "}
-            / Import from photos
+            / Import
           </>
         }
-        title="Import from photos"
+        title="Import recipe"
       />
 
       {errorMessage ? (
@@ -174,6 +176,43 @@ export default function ImportPhotosPage({ loaderData, actionData }: Route.Compo
       ) : null}
       {extracting ? <StatusBanner tone="accent">Reading recipe…</StatusBanner> : null}
       {removing ? <StatusBanner>Removing photo…</StatusBanner> : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>From a link</CardTitle>
+          <CardDescription>
+            Paste a recipe webpage. Structured recipe data is used when the site provides it.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form className="flex flex-col gap-3 sm:flex-row" method="post">
+            <input name="intent" type="hidden" value="extract-url" />
+            <Input
+              aria-label="Recipe link"
+              autoComplete="url"
+              className="sm:flex-1"
+              disabled={busy}
+              inputMode="url"
+              name="url"
+              placeholder="https://…"
+              type="text"
+            />
+            <Button className="shrink-0" disabled={busy} type="submit">
+              {extractingUrl ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  Reading…
+                </>
+              ) : (
+                <>
+                  <Link2 />
+                  Import link
+                </>
+              )}
+            </Button>
+          </Form>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

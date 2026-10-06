@@ -91,11 +91,6 @@ export default function SharedRecipePage({ loaderData, actionData }: Route.Compo
               {recipe.name}
             </h1>
             <p className="text-sm text-muted-foreground">{sharedRecipeMeta(recipe)}</p>
-            {recipe.description ? (
-              <p className="whitespace-pre-wrap pt-1 text-sm leading-relaxed text-muted-foreground">
-                {recipe.description}
-              </p>
-            ) : null}
           </div>
         </header>
 
