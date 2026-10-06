@@ -8,6 +8,7 @@ function recipe(id: string): RecipeRecord {
     id,
     name: `Recipe ${id}`,
     pantryId: "pantry-1",
+    createdByUserId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     servings: null,
