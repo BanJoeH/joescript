@@ -82,6 +82,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       });
       const recipe = await pantri.recipes.create({
         name: extracted.name,
+        description: extracted.description ?? undefined,
         servings: extracted.servings && extracted.servings > 0 ? extracted.servings : undefined,
         ingredients: extracted.ingredients,
         steps: extracted.steps,

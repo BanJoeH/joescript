@@ -121,6 +121,28 @@ function peelTrailingPrepWithoutComma(name: string): { name: string; prep?: stri
   return { name };
 }
 
+export function parseAmountFromUnknown(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return null;
+
+  let token = normalizeUnicodeFractions(value.trim()).replace(",", ".");
+  const wordNumber = token.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+  if (wordNumber) {
+    token = wordNumber[1];
+  }
+
+  const parsed = parseNumericAmount(token);
+  if (parsed != null) return parsed;
+
+  const embedded = token.match(/-?\d+(?:\.\d+)?/);
+  if (embedded) {
+    const n = Number(embedded[0]);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
 function parseNumericAmount(token: string): number | null {
   const mixed = token.match(/^(\d+)\s+(\d+)\/(\d+)$/);
   if (mixed) {
@@ -192,6 +214,64 @@ function isPrepOnly(part: string): boolean {
  */
 export function refineExtractedIngredients(ingredients: RecipeIngredient[]): RecipeIngredient[] {
   return ingredients.flatMap((ingredient) => refineOneIngredient(ingredient));
+}
+
+function mergeIngredientNotes(
+  ingredient: RecipeIngredient,
+  extraNotes: string | undefined,
+): RecipeIngredient {
+  if (!extraNotes) return ingredient;
+  const notes = joinNotes(ingredient.notes, extraNotes);
+  return notes ? { ...ingredient, notes } : ingredient;
+}
+
+function looksLikeFullIngredientLine(name: string): boolean {
+  return /^(?:\d+|½|\d+\/\d|\d+\s+\d+\/\d)/u.test(name.trim());
+}
+
+/** Normalize one vision/structure ingredient row (string or partial JSON). */
+export function coerceVisionIngredient(item: unknown): RecipeIngredient | null {
+  if (typeof item === "string") {
+    const trimmed = item.trim();
+    if (!trimmed) return null;
+    return (
+      parseIngredientLine(trimmed) ?? {
+        name: trimmed.toLowerCase(),
+        amount: null,
+        unit: null,
+      }
+    );
+  }
+  if (!item || typeof item !== "object") return null;
+
+  const record = item as Record<string, unknown>;
+  const extraNotes =
+    typeof record.notes === "string" && record.notes.trim() ? record.notes.trim() : undefined;
+  const nameRaw = typeof record.name === "string" ? record.name.trim() : "";
+  if (!nameRaw) return null;
+
+  const amountFromField = parseAmountFromUnknown(record.amount);
+  const unitFromField =
+    record.unit == null || record.unit === "" ? null : cleanExtractedUnit(String(record.unit));
+
+  if (looksLikeFullIngredientLine(nameRaw) || (amountFromField == null && !unitFromField)) {
+    const fromName = parseIngredientLine(nameRaw);
+    if (fromName) return mergeIngredientNotes(fromName, extraNotes);
+  }
+
+  const rebuilt = [amountFromField, unitFromField, nameRaw]
+    .filter((part) => part != null && part !== "")
+    .join(" ");
+  const fromRebuilt = parseIngredientLine(rebuilt);
+  if (fromRebuilt) return mergeIngredientNotes(fromRebuilt, extraNotes);
+
+  const refined = refineOneIngredient({
+    name: nameRaw,
+    amount: amountFromField,
+    unit: unitFromField,
+    notes: extraNotes,
+  });
+  return refined[0] ?? null;
 }
 
 function refineOneIngredient(ingredient: RecipeIngredient): RecipeIngredient[] {
