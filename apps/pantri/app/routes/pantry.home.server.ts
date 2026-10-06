@@ -5,12 +5,14 @@ import type { Route } from "./+types/pantry.home";
 
 export async function loader({ request, params }: Route.LoaderArgs) {
   const { pantri, pantryId } = await requirePantriService(request, getPantriEnv(), params.pantryId);
-  const loadRecipes = new URL(request.url).pathname.includes("/recipes");
 
+  // Always load recipes: the home layout loader does not re-run when navigating
+  // between /shopping and /recipes (sibling child routes), so skipping recipes on
+  // the shopping URL leaves the recipes tab empty until a full refresh.
   const [shoppingRecipes, oddBits, recipes] = await Promise.all([
     pantri.shopping.list(),
     pantri.oddBits.list(),
-    loadRecipes ? pantri.recipes.list() : Promise.resolve([]),
+    pantri.recipes.list(),
   ]);
 
   return { shoppingRecipes, oddBits, recipes, pantryId };
