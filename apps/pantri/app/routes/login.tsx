@@ -4,6 +4,7 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader } from "~/components/ui/card";
 import { authClient } from "~/lib/auth.client";
 import { getPantriEnv } from "~/lib/context.server";
+import { useOnlineStatus } from "~/lib/offline/connectivity";
 import { parseSafeShareLoginNext } from "~/lib/recipe-share";
 import { getOptionalPantriSession } from "~/lib/session.server";
 
@@ -22,22 +23,30 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function Login({ loaderData }: Route.ComponentProps) {
+  const online = useOnlineStatus();
+
   return (
     <main className="relative flex min-h-screen items-center justify-center p-6">
       <Card className="w-full max-w-md">
         <CardHeader className="items-center text-center">
           <PantriBrand className="mb-2" iconClassName="size-14" titleClassName="text-2xl" />
-          <CardDescription>Sign in with Google to use your pantry.</CardDescription>
+          <CardDescription>
+            {online
+              ? "Sign in with Google to use your pantry."
+              : "You're offline. Sign-in needs a connection — reopen Pantri once you're back online."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Button
             className="w-full"
+            disabled={!online}
             onClick={() => {
               void authClient.signIn.social({
                 provider: "google",
                 callbackURL: loaderData.callbackURL,
               });
             }}
+            title={online ? undefined : "Requires a connection"}
             type="button"
           >
             Continue with Google

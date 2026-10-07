@@ -1,7 +1,7 @@
 import { redirect } from "react-router";
 
 import { getPantriEnv, getWorkerEnv } from "~/lib/context.server";
-import { getString } from "~/lib/forms.server";
+import { getOptionalString, getString } from "~/lib/forms.server";
 import { pantryPath } from "~/lib/pantry-path";
 import { requirePantriService } from "~/services";
 import { notifyPantryMutation } from "~/services/realtime.server";
@@ -23,7 +23,9 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (intent === "add-to-shopping") {
     try {
-      const shoppingRecipe = await pantri.shopping.addFromRecipe(recipeId);
+      const shoppingRecipe = await pantri.shopping.addFromRecipe(recipeId, {
+        id: getOptionalString(formData, "shoppingRecipeId"),
+      });
       await notifyPantryMutation(context, getWorkerEnv());
       return { added: shoppingRecipe.name };
     } catch (error) {
