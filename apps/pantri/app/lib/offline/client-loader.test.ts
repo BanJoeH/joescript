@@ -5,7 +5,7 @@ import { loadWithOfflineFallback } from "~/lib/offline/client-loader";
 describe("loadWithOfflineFallback", () => {
   it("uses server data and writes snapshot when online", async () => {
     const serverData = { pantryId: "p1", recipes: [{ id: "r1" }] };
-    const writeSnapshot = vi.fn(async () => {});
+    const writeSnapshot = vi.fn(async () => undefined);
     const readSnapshot = vi.fn(async () => null);
 
     const result = await loadWithOfflineFallback({
@@ -42,7 +42,7 @@ describe("loadWithOfflineFallback", () => {
         throw new Error("network");
       },
       readSnapshot: async () => snapshot,
-      writeSnapshot: async () => {},
+      writeSnapshot: async () => undefined,
     });
 
     expect(result).toEqual(snapshot);
@@ -56,7 +56,7 @@ describe("loadWithOfflineFallback", () => {
       offline: true,
       serverLoader,
       readSnapshot: async () => snapshot,
-      writeSnapshot: async () => {},
+      writeSnapshot: async () => undefined,
     });
 
     expect(result).toEqual(snapshot);
