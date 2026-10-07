@@ -24,9 +24,7 @@ export function toSingleFetchActionUrl(actionUrl: string): string {
   if (url.pathname.endsWith(".data")) {
     return `${url.pathname}${url.search}`;
   }
-  url.pathname = url.pathname.endsWith("/")
-    ? `${url.pathname}_.data`
-    : `${url.pathname}.data`;
+  url.pathname = url.pathname.endsWith("/") ? `${url.pathname}_.data` : `${url.pathname}.data`;
   return `${url.pathname}${url.search}`;
 }
 
@@ -182,9 +180,7 @@ export async function interpretOutboxResponse(response: Response): Promise<{
           const location =
             typeof value.redirect === "string"
               ? value.redirect
-              : typeof value.redirect === "object" &&
-                  value.redirect &&
-                  "redirect" in value.redirect
+              : typeof value.redirect === "object" && value.redirect && "redirect" in value.redirect
                 ? String((value.redirect as { redirect: unknown }).redirect)
                 : String(value.redirect);
           if (isAuthRedirect(location)) {
