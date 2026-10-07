@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useFetcher, useRevalidator } from "react-router";
 
-import { shouldQueueIntent, submitOrQueue } from "~/lib/offline/outbox";
+import { submitOrQueue } from "~/lib/offline/outbox";
 
 type SubmitData = Record<string, string> | FormData;
 
@@ -22,15 +22,13 @@ export function usePantryMutation(pantryId: string, fetcherKey?: string) {
   const submit = useCallback(
     async (data: SubmitData, action: string) => {
       const formData = toFormData(data);
-      const intent = String(formData.get("intent") ?? "");
       const result = await submitOrQueue({
         pantryId,
         actionUrl: action,
         formData,
         fetcherSubmit: (body, opts) => fetcher.submit(body, opts),
       });
-      // Shopping intents use fetch (not fetcher) so we always revalidate to refresh loader data.
-      if (result === "queued" || shouldQueueIntent(intent)) {
+      if (result === "queued") {
         revalidator.revalidate();
       }
       return result;
