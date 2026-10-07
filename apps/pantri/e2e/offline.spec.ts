@@ -12,6 +12,7 @@ test.describe("offline shell", () => {
     expect(swBody).toContain("pantri-v3");
     expect(swBody).toContain("offline.html");
     expect(swBody).toContain("PRECACHE_SHELLS");
+    expect(swBody).toContain("PREFETCH_CONCURRENCY");
     expect(swBody).toContain("photos");
 
     const offline = await request.get("/offline.html");

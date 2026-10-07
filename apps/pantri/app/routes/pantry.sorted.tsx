@@ -13,7 +13,7 @@ import {
 } from "~/lib/celebrate-sorted-complete";
 import { getIngredientSection, groupBySection, SHOPPING_SECTIONS } from "~/lib/ingredient-sections";
 import { loadWithOfflineFallback } from "~/lib/offline/client-loader";
-import { applyPendingOutboxToHomeSnapshot } from "~/lib/offline/outbox";
+import { applyPendingOutboxToHomeSnapshot, listOutbox } from "~/lib/offline/outbox";
 import { getHomeSnapshot, saveCategoryOverrides } from "~/lib/offline/snapshot";
 import { usePantryMutation } from "~/lib/offline/use-pantry-mutation";
 import { pantryPath } from "~/lib/pantry-path";
@@ -26,6 +26,7 @@ import {
 } from "~/lib/shopping-aggregation";
 import { applySortedOptimistic } from "~/lib/shopping-optimistic";
 import {
+  reconcileSortedPurchasedOverrides,
   resetSortedPurchasedOverrides,
   setSortedPurchasedOverride,
 } from "~/lib/shopping-purchased-overrides";
@@ -74,7 +75,12 @@ export async function clientLoader({ params, serverLoader }: Route.ClientLoaderA
     writeSnapshot: async (data) => {
       await saveCategoryOverrides(params.pantryId, data.categoryOverrides ?? {});
       await applyPendingOutboxToHomeSnapshot(params.pantryId);
-      return (await sortedLoaderFromSnapshot(params.pantryId)) ?? data;
+      const next = (await sortedLoaderFromSnapshot(params.pantryId)) ?? data;
+      const pending = await listOutbox(params.pantryId);
+      if (pending.length === 0) {
+        reconcileSortedPurchasedOverrides(next.sections.flatMap((section) => section.items));
+      }
+      return next;
     },
   });
 }

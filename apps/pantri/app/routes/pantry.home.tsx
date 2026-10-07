@@ -10,11 +10,12 @@ import { resolveHomeRecipes } from "~/lib/home-recipes-cache";
 import { type HomeTab, useHomeTabPaneRef } from "~/lib/home-tab-scroll";
 import { loadWithOfflineFallback } from "~/lib/offline/client-loader";
 import { useOnlineStatus } from "~/lib/offline/connectivity";
-import { applyPendingOutboxToHomeSnapshot } from "~/lib/offline/outbox";
+import { applyPendingOutboxToHomeSnapshot, listOutbox } from "~/lib/offline/outbox";
 import { prefetchPantryOfflineShells } from "~/lib/offline/register-sw";
 import { getHomeSnapshot, saveHomeSnapshot } from "~/lib/offline/snapshot";
 import { getHomeTabIndex, pantryPath } from "~/lib/pantry-path";
 import { shouldRevalidatePantryRoutes } from "~/lib/pantry-revalidate";
+import { reconcileShoppingPurchasedOverrides } from "~/lib/shopping-purchased-overrides";
 
 import type { Route } from "./+types/pantry.home";
 
@@ -38,14 +39,20 @@ export async function clientLoader({ params, serverLoader }: Route.ClientLoaderA
     writeSnapshot: async (data) => {
       await saveHomeSnapshot(data);
       const merged = await applyPendingOutboxToHomeSnapshot(pantryId);
-      if (!merged) return data;
-      return {
-        shoppingRecipes: merged.shoppingRecipes,
-        oddBits: merged.oddBits,
-        recipes: merged.recipes,
-        categoryOverrides: merged.categoryOverrides,
-        pantryId: merged.pantryId,
-      };
+      const pending = await listOutbox(pantryId);
+      const next = merged
+        ? {
+            shoppingRecipes: merged.shoppingRecipes,
+            oddBits: merged.oddBits,
+            recipes: merged.recipes,
+            categoryOverrides: merged.categoryOverrides,
+            pantryId: merged.pantryId,
+          }
+        : data;
+      if (pending.length === 0) {
+        reconcileShoppingPurchasedOverrides(next.shoppingRecipes, next.oddBits);
+      }
+      return next;
     },
   });
 }

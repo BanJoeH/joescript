@@ -12,6 +12,7 @@ import {
   interpretOutboxResponse,
   isSuccessfulOutboxResponse,
   listOutbox,
+  toSingleFetchActionUrl,
 } from "~/lib/offline/outbox";
 import { saveHomeSnapshot } from "~/lib/offline/snapshot";
 
@@ -147,7 +148,10 @@ describe("outbox", () => {
 
     const result = await drainOutbox({ pantryId: "pantry-1" });
     expect(result.sent).toBe(1);
-    expect(fetchMock).toHaveBeenCalledOnce();
+    const actionCalls = fetchMock.mock.calls.filter(
+      ([url]) => typeof url === "string" && url.includes("shopping.data"),
+    );
+    expect(actionCalls).toHaveLength(1);
     expect(await listOutbox("pantry-1")).toHaveLength(0);
   });
 
@@ -275,6 +279,14 @@ describe("isSuccessfulOutboxResponse", () => {
   });
 });
 
+describe("toSingleFetchActionUrl", () => {
+  it("appends .data for React Router single-fetch actions", () => {
+    expect(toSingleFetchActionUrl("/p1/shopping")).toBe("/p1/shopping.data");
+    expect(toSingleFetchActionUrl("/p1/shopping/")).toBe("/p1/shopping/_.data");
+    expect(toSingleFetchActionUrl("/p1/shopping.data")).toBe("/p1/shopping.data");
+  });
+});
+
 describe("interpretOutboxResponse", () => {
   it("rejects JSON action errors even when status is 200", async () => {
     const response = new Response(JSON.stringify({ error: "Shopping recipe not found" }), {
@@ -293,5 +305,16 @@ describe("interpretOutboxResponse", () => {
       headers: { "Content-Type": "application/json" },
     });
     await expect(interpretOutboxResponse(response)).resolves.toEqual({ ok: true });
+  });
+
+  it("rejects HTML document responses that hide action errors", async () => {
+    const response = new Response("<html>ok</html>", {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
+    await expect(interpretOutboxResponse(response)).resolves.toEqual({
+      ok: false,
+      error: "Unexpected HTML response from action",
+    });
   });
 });

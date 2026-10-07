@@ -1,5 +1,6 @@
 /* Pantri service worker: precache shell assets, network-first documents. */
 const CACHE_VERSION = "pantri-v3";
+const PREFETCH_CONCURRENCY = 4;
 const PRECACHE = [
   "/",
   "/offline.html",
@@ -12,6 +13,10 @@ const PRECACHE = [
   "/web-app-manifest-192x192.png",
   "/web-app-manifest-512x512.png",
 ];
+
+/** URLs waiting to be precached; coalesces overlapping PRECACHE_SHELLS messages. */
+const pendingPrecacheUrls = new Set();
+let precacheRunning = false;
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -33,25 +38,62 @@ self.addEventListener("activate", (event) => {
   );
 });
 
+async function precacheUrlBatch(urls) {
+  const cache = await caches.open(CACHE_VERSION);
+  // Skip hits — big lists re-trigger often; document shells rarely need rewrite.
+  const hits = await Promise.all(urls.map((url) => cache.match(url)));
+  const missing = urls.filter((_, index) => !hits[index]);
+
+  if (missing.length === 0) return;
+
+  let next = 0;
+  async function worker() {
+    while (next < missing.length) {
+      const url = missing[next++];
+      try {
+        const response = await fetch(url, { credentials: "same-origin" });
+        if (response.ok) {
+          await cache.put(url, response.clone());
+        }
+      } catch {
+        // Ignore individual prefetch failures (offline / auth).
+      }
+    }
+  }
+
+  const workers = Math.min(PREFETCH_CONCURRENCY, missing.length);
+  await Promise.all(Array.from({ length: workers }, () => worker()));
+}
+
+async function drainPrecacheQueue() {
+  if (precacheRunning) return;
+  precacheRunning = true;
+  try {
+    while (pendingPrecacheUrls.size > 0) {
+      const batch = [...pendingPrecacheUrls];
+      pendingPrecacheUrls.clear();
+      await precacheUrlBatch(batch);
+    }
+  } finally {
+    precacheRunning = false;
+    // A message may have enqueued more while we were finishing.
+    if (pendingPrecacheUrls.size > 0) {
+      void drainPrecacheQueue();
+    }
+  }
+}
+
 self.addEventListener("message", (event) => {
   const data = event.data;
   if (data?.type !== "PRECACHE_SHELLS" || !Array.isArray(data.urls)) return;
 
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then(async (cache) => {
-      for (const raw of data.urls) {
-        if (typeof raw !== "string" || !raw.startsWith("/")) continue;
-        try {
-          const response = await fetch(raw, { credentials: "same-origin" });
-          if (response.ok) {
-            await cache.put(raw, response.clone());
-          }
-        } catch {
-          // Ignore individual prefetch failures (offline / auth).
-        }
-      }
-    }),
-  );
+  for (const raw of data.urls) {
+    if (typeof raw === "string" && raw.startsWith("/")) {
+      pendingPrecacheUrls.add(raw);
+    }
+  }
+
+  event.waitUntil(drainPrecacheQueue());
 });
 
 function isDocumentRequest(request) {

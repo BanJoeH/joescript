@@ -1,16 +1,34 @@
+import { UNSAFE_decodeViaTurboStream as decodeViaTurboStream } from "react-router";
+
 import {
   applyShoppingFormToSnapshot,
   entriesToFormData,
   formDataToEntries,
   SHOPPING_OUTBOX_INTENTS,
 } from "~/lib/offline/apply-mutation";
-import { getIsOnline, notifyOutboxChanged } from "~/lib/offline/connectivity";
+import { getIsOnline, notifyOutboxChanged, probeOnlineStatus } from "~/lib/offline/connectivity";
 import { getOfflineDb, type OutboxEntry, recipeDetailKey } from "~/lib/offline/db";
 import {
   getHomeSnapshot,
   type HomeLoaderSnapshot,
   updateHomeSnapshot,
 } from "~/lib/offline/snapshot";
+
+/**
+ * React Router single-fetch posts actions to `path.data` (turbo-stream), not the
+ * document URL. Document POSTs return HTML where `{ error }` is invisible to us —
+ * we used to treat those 200s as success and drop the outbox entry.
+ */
+export function toSingleFetchActionUrl(actionUrl: string): string {
+  const url = new URL(actionUrl, "https://pantri.local");
+  if (url.pathname.endsWith(".data")) {
+    return `${url.pathname}${url.search}`;
+  }
+  url.pathname = url.pathname.endsWith("/")
+    ? `${url.pathname}_.data`
+    : `${url.pathname}.data`;
+  return `${url.pathname}${url.search}`;
+}
 
 export async function enqueueOutbox(options: {
   pantryId: string;
@@ -112,6 +130,12 @@ export function isSuccessfulOutboxResponse(response: Response): boolean {
   return true;
 }
 
+function actionPayloadError(data: unknown): string | null {
+  if (!data || typeof data !== "object") return null;
+  const error = (data as { error?: unknown }).error;
+  return typeof error === "string" && error.length > 0 ? error : null;
+}
+
 /** 200 + `{ error }` still means the mutation did not land — keep the outbox entry. */
 export async function interpretOutboxResponse(response: Response): Promise<{
   ok: boolean;
@@ -127,19 +151,64 @@ export async function interpretOutboxResponse(response: Response): Promise<{
   }
 
   const contentType = response.headers.get("Content-Type") ?? "";
-  if (!contentType.includes("application/json")) {
+
+  // Document HTML hides returned `{ error }` — never treat as a confirmed mutation.
+  if (contentType.includes("text/html")) {
+    return { ok: false, error: "Unexpected HTML response from action" };
+  }
+
+  if (contentType.includes("application/json")) {
+    try {
+      const body = (await response.clone().json()) as unknown;
+      const error = actionPayloadError(body);
+      if (error) return { ok: false, error };
+    } catch {
+      // Non-JSON body with a JSON content-type — treat status as authoritative.
+    }
     return { ok: true };
   }
 
-  try {
-    const body = (await response.clone().json()) as { error?: unknown };
-    if (typeof body?.error === "string" && body.error.length > 0) {
-      return { ok: false, error: body.error };
+  // Single-fetch actions: turbo-stream `{ data: T }`, `{ error }`, or `{ redirect }`.
+  if (contentType.includes("text/x-script") && response.body) {
+    try {
+      const decoded = await decodeViaTurboStream(response.body, globalThis);
+      const value = decoded.value as {
+        data?: unknown;
+        error?: unknown;
+        redirect?: unknown;
+      };
+      if (value && typeof value === "object") {
+        if ("redirect" in value && value.redirect != null) {
+          const location =
+            typeof value.redirect === "string"
+              ? value.redirect
+              : typeof value.redirect === "object" &&
+                  value.redirect &&
+                  "redirect" in value.redirect
+                ? String((value.redirect as { redirect: unknown }).redirect)
+                : String(value.redirect);
+          if (isAuthRedirect(location)) {
+            return { ok: false, error: `HTTP ${response.status} → ${location}` };
+          }
+          return { ok: true };
+        }
+        if ("error" in value && value.error != null) {
+          const err = value.error;
+          return {
+            ok: false,
+            error: err instanceof Error ? err.message : String(err),
+          };
+        }
+        const payloadError = actionPayloadError(value.data);
+        if (payloadError) return { ok: false, error: payloadError };
+      }
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "Could not decode action response" };
     }
-  } catch {
-    // Non-JSON body with a JSON content-type — treat status as authoritative.
   }
 
+  // Unknown success body (e.g. empty 204) — status already passed.
   return { ok: true };
 }
 
@@ -147,6 +216,10 @@ export async function drainOutbox(options?: { pantryId?: string }): Promise<{
   sent: number;
   failed: number;
 }> {
+  // Online event can fire before the probe flips effectiveOnline — wait for it.
+  if (typeof window !== "undefined") {
+    await probeOnlineStatus();
+  }
   if (!getIsOnline() || draining) return { sent: 0, failed: 0 };
   draining = true;
   let sent = 0;
@@ -156,7 +229,7 @@ export async function drainOutbox(options?: { pantryId?: string }): Promise<{
     const pending = await listOutbox(options?.pantryId);
     for (const entry of pending) {
       try {
-        const response = await fetch(entry.actionUrl, {
+        const response = await fetch(toSingleFetchActionUrl(entry.actionUrl), {
           method: "POST",
           body: entriesToFormData(entry.formEntries),
           credentials: "same-origin",
