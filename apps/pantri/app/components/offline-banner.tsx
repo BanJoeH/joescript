@@ -76,7 +76,7 @@ export function OfflineBanner({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "border-b px-3 py-1.5 text-center text-xs font-medium",
+        "sticky top-0 z-20 -mx-0.5 border-b px-3 py-1.5 text-center text-xs font-medium",
         online && failed > 0
           ? "border-destructive/30 bg-destructive/10 text-destructive"
           : online

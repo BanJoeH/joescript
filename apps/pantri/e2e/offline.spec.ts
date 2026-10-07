@@ -9,7 +9,7 @@ test.describe("offline shell", () => {
     const sw = await request.get("/sw.js");
     expect(sw.ok()).toBe(true);
     const swBody = await sw.text();
-    expect(swBody).toContain("pantri-v2");
+    expect(swBody).toContain("pantri-v3");
     expect(swBody).toContain("offline.html");
     expect(swBody).toContain("PRECACHE_SHELLS");
     expect(swBody).toContain("photos");

@@ -1,5 +1,5 @@
 /* Pantri service worker: precache shell assets, network-first documents. */
-const CACHE_VERSION = "pantri-v2";
+const CACHE_VERSION = "pantri-v3";
 const PRECACHE = [
   "/",
   "/offline.html",
@@ -118,11 +118,12 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Bypass API / auth / SSE — always network.
+  // Bypass API / auth / SSE / connectivity probe — always network.
   if (
     url.pathname.startsWith("/api/") ||
     url.pathname.startsWith("/api/auth") ||
-    url.pathname.includes("/api/events")
+    url.pathname.includes("/api/events") ||
+    url.pathname === "/_pantri_online_probe"
   ) {
     return;
   }

@@ -1,42 +1,94 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
+
+type Listener = () => void;
+
+const listeners = new Set<Listener>();
+
+/** Effective connectivity — `navigator.onLine` refined by a real network probe. */
+let effectiveOnline = true;
+let probeInFlight: Promise<void> | null = null;
 
 export function getIsOnline() {
-  if (typeof navigator === "undefined") return true;
-  return navigator.onLine;
+  return effectiveOnline;
 }
 
-function subscribeOnline(onStoreChange: () => void) {
-  if (typeof window === "undefined") return () => {};
+function emit() {
+  for (const listener of listeners) listener();
+}
 
-  window.addEventListener("online", onStoreChange);
-  window.addEventListener("offline", onStoreChange);
-  // bfcache / tab resume often skips online/offline events.
-  window.addEventListener("pageshow", onStoreChange);
-  window.addEventListener("focus", onStoreChange);
+function setEffectiveOnline(next: boolean) {
+  if (effectiveOnline === next) return;
+  effectiveOnline = next;
+  emit();
+}
 
+function subscribeOnline(onStoreChange: Listener) {
+  listeners.add(onStoreChange);
   return () => {
-    window.removeEventListener("online", onStoreChange);
-    window.removeEventListener("offline", onStoreChange);
-    window.removeEventListener("pageshow", onStoreChange);
-    window.removeEventListener("focus", onStoreChange);
+    listeners.delete(onStoreChange);
   };
 }
 
 /**
- * Browser online status. SSR/hydration default to online to match the server
- * HTML, then sync to `navigator.onLine` after mount (offline refresh never
- * fires an "offline" event, so the store must be re-read explicitly).
+ * Confirm reachability. Needed because Chrome's Application → Service worker →
+ * Offline checkbox (and some lie-fi cases) leave `navigator.onLine === true`
+ * while fetches fail — which hid the banner and sent mutations through fetcher.
+ */
+export async function probeOnlineStatus() {
+  if (typeof window === "undefined") return effectiveOnline;
+
+  if (!navigator.onLine) {
+    setEffectiveOnline(false);
+    return false;
+  }
+
+  if (!probeInFlight) {
+    probeInFlight = (async () => {
+      try {
+        // Path is intentionally unhandled by the SW so this hits the network.
+        await fetch(`/_pantri_online_probe?t=${Date.now()}`, {
+          method: "HEAD",
+          cache: "no-store",
+        });
+        setEffectiveOnline(true);
+      } catch {
+        setEffectiveOnline(false);
+      } finally {
+        probeInFlight = null;
+      }
+    })();
+  }
+
+  await probeInFlight;
+  return effectiveOnline;
+}
+
+function startConnectivityMonitoring() {
+  if (typeof window === "undefined") return;
+
+  effectiveOnline = navigator.onLine;
+
+  const sync = () => {
+    void probeOnlineStatus();
+  };
+
+  window.addEventListener("online", sync);
+  window.addEventListener("offline", () => setEffectiveOnline(false));
+  window.addEventListener("pageshow", sync);
+  window.addEventListener("focus", sync);
+  // Catch SW-offline / lie-fi soon after boot and periodically while open.
+  sync();
+  window.setInterval(sync, 10_000);
+}
+
+startConnectivityMonitoring();
+
+/**
+ * Browser online status for UI. SSR defaults to online; the client probe updates
+ * immediately after mount (including offline refresh with no "offline" event).
  */
 export function useOnlineStatus() {
-  const storeOnline = useSyncExternalStore(subscribeOnline, getIsOnline, () => true);
-  const [didMount, setDidMount] = useState(false);
-
-  useEffect(() => {
-    setDidMount(true);
-  }, []);
-
-  if (!didMount) return true;
-  return storeOnline;
+  return useSyncExternalStore(subscribeOnline, getIsOnline, () => true);
 }
 
 export const SNAPSHOT_UPDATED_EVENT = "pantri:snapshot-updated";
