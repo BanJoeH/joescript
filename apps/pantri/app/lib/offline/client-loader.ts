@@ -29,7 +29,14 @@ export async function loadWithOfflineFallback<T>(options: {
   if (snapshot) return snapshot;
 
   // Last resort: try the network even if navigator says offline.
-  const data = await options.serverLoader();
-  const written = await options.writeSnapshot(data);
-  return written ?? data;
+  try {
+    const data = await options.serverLoader();
+    const written = await options.writeSnapshot(data);
+    return written ?? data;
+  } catch {
+    throw new Response("You're offline and this page hasn't been cached on this device yet.", {
+      status: 503,
+      statusText: "Offline",
+    });
+  }
 }

@@ -199,6 +199,20 @@ export function shouldQueueIntent(intent: string) {
   return SHOPPING_OUTBOX_INTENTS.has(intent);
 }
 
+function isNetworkFailure(error: unknown) {
+  if (error instanceof TypeError) return true;
+  if (error instanceof DOMException && error.name === "NetworkError") return true;
+  if (error instanceof Error && /failed to fetch|networkerror|load failed/i.test(error.message)) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Submit a pantry action. Queueable shopping intents go to the outbox when
+ * offline (or when the network request fails) so fetcher.submit never surfaces
+ * a router "Oops" error after an offline refresh.
+ */
 export async function submitOrQueue(options: {
   pantryId: string;
   actionUrl: string;
@@ -206,9 +220,38 @@ export async function submitOrQueue(options: {
   fetcherSubmit?: (formData: FormData, opts: { method: "post"; action: string }) => void;
 }): Promise<"queued" | "sent"> {
   const intent = String(options.formData.get("intent") ?? "");
-  if (!getIsOnline() && shouldQueueIntent(intent)) {
-    await enqueueOutbox(options);
-    return "queued";
+  const queueable = shouldQueueIntent(intent);
+
+  if (queueable) {
+    if (!getIsOnline()) {
+      await enqueueOutbox(options);
+      return "queued";
+    }
+
+    try {
+      const response = await fetch(options.actionUrl, {
+        method: "POST",
+        body: options.formData,
+        credentials: "same-origin",
+        redirect: "manual",
+      });
+      const interpreted = await interpretOutboxResponse(response);
+      if (interpreted.ok) return "sent";
+
+      // Session expired mid-tap — keep the change locally instead of dropping it.
+      if (isAuthRedirect(response.headers.get("Location"))) {
+        await enqueueOutbox(options);
+        return "queued";
+      }
+
+      throw new Error(interpreted.error ?? `Action failed (${response.status})`);
+    } catch (error) {
+      if (isNetworkFailure(error) || !getIsOnline()) {
+        await enqueueOutbox(options);
+        return "queued";
+      }
+      throw error;
+    }
   }
 
   if (options.fetcherSubmit) {

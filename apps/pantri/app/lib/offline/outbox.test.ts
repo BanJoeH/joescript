@@ -12,6 +12,7 @@ import {
   interpretOutboxResponse,
   isSuccessfulOutboxResponse,
   listOutbox,
+  submitOrQueue,
 } from "~/lib/offline/outbox";
 import { saveHomeSnapshot } from "~/lib/offline/snapshot";
 
@@ -182,6 +183,30 @@ describe("outbox", () => {
     const pending = await listOutbox("pantry-1");
     expect(pending).toHaveLength(1);
     expect(pending[0]?.lastError).toContain("/login");
+  });
+
+  it("queues shopping intents when fetch fails while navigator says online", async () => {
+    vi.stubGlobal("navigator", { onLine: true });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+
+    const formData = new FormData();
+    formData.set("intent", "toggle-odd-bit");
+    formData.set("index", "0");
+    formData.set("purchased", "true");
+
+    const result = await submitOrQueue({
+      pantryId: "pantry-1",
+      actionUrl: "/pantry-1/shopping",
+      formData,
+    });
+
+    expect(result).toBe("queued");
+    expect(await listOutbox("pantry-1")).toHaveLength(1);
   });
 
   it("replays pending outbox onto a fresh server snapshot", async () => {

@@ -76,9 +76,15 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : "Error";
+    message = error.status === 404 ? "404" : error.status === 503 ? "Offline" : "Error";
     details =
-      error.status === 404 ? "The requested page could not be found." : error.statusText || details;
+      error.status === 404
+        ? "The requested page could not be found."
+        : error.status === 503
+          ? typeof error.data === "string" && error.data.length > 0
+            ? error.data
+            : "You're offline and this page hasn't been cached on this device yet."
+          : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;
