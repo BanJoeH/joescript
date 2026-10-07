@@ -143,14 +143,15 @@ describe("outbox", () => {
     });
 
     vi.stubGlobal("navigator", { onLine: true });
-    const fetchMock = vi.fn(async () => new Response(null, { status: 200 }));
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
     const result = await drainOutbox({ pantryId: "pantry-1" });
     expect(result.sent).toBe(1);
-    const actionCalls = fetchMock.mock.calls.filter(
-      ([url]) => typeof url === "string" && url.includes("shopping.data"),
-    );
+    const actionCalls = fetchMock.mock.calls.filter((call) => {
+      const url = call[0];
+      return typeof url === "string" && url.includes("shopping.data");
+    });
     expect(actionCalls).toHaveLength(1);
     expect(await listOutbox("pantry-1")).toHaveLength(0);
   });
