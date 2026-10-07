@@ -1,10 +1,7 @@
 import { useEffect } from "react";
 import { useRevalidator } from "react-router";
 
-import {
-  OUTBOX_CHANGED_EVENT,
-  type OutboxChangedDetail,
-} from "~/lib/offline/connectivity";
+import { OUTBOX_CHANGED_EVENT, type OutboxChangedDetail } from "~/lib/offline/connectivity";
 import { startOutboxDrainLoop } from "~/lib/offline/outbox";
 
 /** Drains the offline mutation outbox when the app is online. */

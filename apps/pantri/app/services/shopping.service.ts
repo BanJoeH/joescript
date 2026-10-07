@@ -41,8 +41,7 @@ function toRecord(row: typeof shoppingRecipes.$inferSelect): ShoppingRecipeRecor
   };
 }
 
-const CLIENT_ID =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const CLIENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export function createShoppingService({ db, userId, pantryId }: PantriContext) {
   const scope = and(eq(shoppingRecipes.pantryId, pantryId), isNull(shoppingRecipes.deletedAt));

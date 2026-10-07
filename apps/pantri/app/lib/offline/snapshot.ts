@@ -1,3 +1,4 @@
+import type { IngredientCategoryOverrides } from "~/lib/ingredient-sections";
 import { notifySnapshotUpdated } from "~/lib/offline/connectivity";
 import {
   getOfflineDb,
@@ -12,7 +13,6 @@ import {
   serializeRecipe,
   serializeShoppingRecipe,
 } from "~/lib/offline/serialize";
-import type { IngredientCategoryOverrides } from "~/lib/ingredient-sections";
 import type { ShoppingIngredient } from "~/lib/recipe-schema";
 import type { RecipeRecord } from "~/services/recipes.service";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";

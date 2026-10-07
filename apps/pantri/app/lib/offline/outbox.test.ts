@@ -63,12 +63,16 @@ describe("applyShoppingFormToSnapshot", () => {
   });
 
   it("toggles sorted names with canonical matching", () => {
+    const shoppingRecipe = baseSnapshot().shoppingRecipes[0];
+    expect(shoppingRecipe).toBeDefined();
+    if (!shoppingRecipe) return;
+
     const next = applyShoppingFormToSnapshot(
       {
         ...baseSnapshot(),
         shoppingRecipes: [
           {
-            ...baseSnapshot().shoppingRecipes[0]!,
+            ...shoppingRecipe,
             ingredients: [{ name: "onions", amount: 2, unit: null, purchased: false }],
           },
         ],

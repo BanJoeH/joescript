@@ -21,10 +21,7 @@ export function registerPantriServiceWorker() {
  * Ask the service worker to cache document shells for offline cold opens.
  * Safe to call repeatedly; failures are ignored in the worker.
  */
-export function prefetchPantryOfflineShells(
-  pantryId: string,
-  options?: { recipeIds?: string[] },
-) {
+export function prefetchPantryOfflineShells(pantryId: string, options?: { recipeIds?: string[] }) {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
   if (!navigator.onLine) return;
 

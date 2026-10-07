@@ -8,7 +8,7 @@ export async function loadWithOfflineFallback<T>(options: {
   serverLoader: () => Promise<T>;
   readSnapshot: () => Promise<T | null>;
   /** May return merged data (e.g. server snapshot + pending outbox) for the UI. */
-  writeSnapshot: (data: T) => Promise<T | void>;
+  writeSnapshot: (data: T) => Promise<T | undefined>;
   offline?: boolean;
 }): Promise<T> {
   const preferOffline = options.offline ?? !getIsOnline();

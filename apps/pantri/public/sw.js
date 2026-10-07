@@ -35,7 +35,7 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("message", (event) => {
   const data = event.data;
-  if (!data || data.type !== "PRECACHE_SHELLS" || !Array.isArray(data.urls)) return;
+  if (data?.type !== "PRECACHE_SHELLS" || !Array.isArray(data.urls)) return;
 
   event.waitUntil(
     caches.open(CACHE_VERSION).then(async (cache) => {

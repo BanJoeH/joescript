@@ -1,10 +1,10 @@
-import type { PantrySnapshotRow } from "~/lib/offline/db";
 import { getCanonicalIngredientName, ingredientNamesMatch } from "~/lib/ingredient-name";
 import {
   type IngredientCategoryOverrides,
-  type ShoppingSection,
   SHOPPING_SECTIONS,
+  type ShoppingSection,
 } from "~/lib/ingredient-sections";
+import type { PantrySnapshotRow } from "~/lib/offline/db";
 import type { ShoppingIngredient } from "~/lib/recipe-schema";
 
 function entriesToMap(entries: Array<[string, string]>) {
