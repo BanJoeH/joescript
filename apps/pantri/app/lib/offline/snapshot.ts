@@ -172,6 +172,23 @@ export async function removeRecipeFromSnapshot(pantryId: string, recipeId: strin
   await getOfflineDb().recipeDetails.delete(recipeDetailKey(pantryId, recipeId));
 }
 
+function layoutBackupKey(pantryId: string) {
+  return `pantri:layout-backup:${pantryId}`;
+}
+
+function layoutFromRow(row: PantryLayoutRow) {
+  return {
+    user: {
+      ...row.payload.user,
+      createdAt: new Date(row.payload.user.createdAt),
+      updatedAt: new Date(row.payload.user.updatedAt),
+    },
+    pantryId: row.payload.pantryId,
+    pantryName: row.payload.pantryName,
+    pantries: row.payload.pantries,
+  };
+}
+
 export async function savePantryLayoutSnapshot(data: {
   pantryId: string;
   user: {
@@ -207,20 +224,26 @@ export async function savePantryLayoutSnapshot(data: {
     },
   };
   await getOfflineDb().pantryLayouts.put(row);
+  try {
+    sessionStorage.setItem(layoutBackupKey(data.pantryId), JSON.stringify(row));
+  } catch {
+    // Private mode / quota — Dexie remains the primary store.
+  }
   return row;
 }
 
 export async function getPantryLayoutSnapshot(pantryId: string) {
   const row = await getOfflineDb().pantryLayouts.get(pantryId);
-  if (!row) return null;
-  return {
-    user: {
-      ...row.payload.user,
-      createdAt: new Date(row.payload.user.createdAt),
-      updatedAt: new Date(row.payload.user.updatedAt),
-    },
-    pantryId: row.payload.pantryId,
-    pantryName: row.payload.pantryName,
-    pantries: row.payload.pantries,
-  };
+  if (row) return layoutFromRow(row);
+
+  // Fallback when IndexedDB was cleared but this tab still has a backup.
+  try {
+    const raw = sessionStorage.getItem(layoutBackupKey(pantryId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as PantryLayoutRow;
+    await getOfflineDb().pantryLayouts.put(parsed);
+    return layoutFromRow(parsed);
+  } catch {
+    return null;
+  }
 }

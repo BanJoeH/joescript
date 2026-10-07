@@ -46,8 +46,9 @@ export async function probeOnlineStatus() {
     probeInFlight = (async () => {
       try {
         // Path is intentionally unhandled by the SW so this hits the network.
+        // Any HTTP response (including 404) means we reached the origin.
         await fetch(`/_pantri_online_probe?t=${Date.now()}`, {
-          method: "HEAD",
+          method: "GET",
           cache: "no-store",
         });
         setEffectiveOnline(true);

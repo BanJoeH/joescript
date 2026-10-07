@@ -48,6 +48,19 @@ describe("loadWithOfflineFallback", () => {
     expect(result).toEqual(snapshot);
   });
 
+  it("maps session/network failures without a snapshot to a 503 offline response", async () => {
+    await expect(
+      loadWithOfflineFallback({
+        offline: false,
+        serverLoader: async () => {
+          throw new Error("Failed to get session");
+        },
+        readSnapshot: async () => null,
+        writeSnapshot: async () => undefined,
+      }),
+    ).rejects.toMatchObject({ status: 503 });
+  });
+
   it("returns snapshot when offline without hitting the network first", async () => {
     const snapshot = { pantryId: "p1", recipes: [{ id: "cached" }] };
     const serverLoader = vi.fn(async () => ({ pantryId: "p1", recipes: [] }));
