@@ -6,7 +6,7 @@ import {
   Trash2,
   UtensilsCrossed,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
 
 import { Link } from "~/components/link";
@@ -21,6 +21,7 @@ import { markOptimisticShoppingActionSubmitted } from "~/lib/pantry-revalidate";
 import type { ShoppingIngredient } from "~/lib/recipe-schema";
 import { applyShoppingListOptimistic, type OptimisticOddBit } from "~/lib/shopping-optimistic";
 import {
+  reconcileShoppingPurchasedOverrides,
   resetOddBitPurchasedOverrides,
   resetRecipePurchasedOverrides,
   setIngredientPurchasedOverride,
@@ -217,6 +218,11 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
   const clearOddBitsFetcher = useFetcher({ key: "shopping-clear-odd-bits" });
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
 
+  // Reconcile after loader updates — never while computing optimistic props during render.
+  useEffect(() => {
+    reconcileShoppingPurchasedOverrides(recipes, oddBits);
+  }, [recipes, oddBits]);
+
   const { recipes: optimisticRecipes, oddBits: optimisticOddBits } = useMemo(
     () => applyShoppingListOptimistic(recipes, oddBits, fetchers),
     [recipes, oddBits, fetchers],
@@ -269,7 +275,7 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                         key={
                           bit.pendingAdd
                             ? `odd-bit-pending-${bit.name}`
-                            : `odd-bit-${bit.sourceIndex}-${bit.name}`
+                            : `odd-bit-${bit.sourceIndex}`
                         }
                       />
                     ))}
@@ -294,7 +300,8 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                       <OddBitRow
                         action={action}
                         bit={bit}
-                        key={`odd-bit-got-${bit.sourceIndex}-${bit.name}`}
+                        // Same key as to-buy so the row does not remount on toggle.
+                        key={`odd-bit-${bit.sourceIndex}`}
                       />
                     ))}
                   </ShoppingGotItSection>
