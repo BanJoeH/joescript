@@ -18,7 +18,7 @@ import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
 import { pantryPath } from "~/lib/pantry-path";
 import { markOptimisticShoppingActionSubmitted } from "~/lib/pantry-revalidate";
-import type { ShoppingIngredient } from "~/lib/recipe-schema";
+import type { OddBit, ShoppingIngredient } from "~/lib/recipe-schema";
 import { applyShoppingListOptimistic, type OptimisticOddBit } from "~/lib/shopping-optimistic";
 import {
   reconcileShoppingPurchasedOverrides,
@@ -156,16 +156,15 @@ function AddOddBitForm({ action }: { action: string }) {
 }
 
 function OddBitRow({ action, bit }: { action: string; bit: OptimisticOddBit }) {
-  const index = bit.sourceIndex;
   const toggleFetcher = useFetcher({
     key: bit.pendingAdd
       ? `shopping-toggle-odd-bit:pending:${bit.name}`
-      : `shopping-toggle-odd-bit:${index}`,
+      : `shopping-toggle-odd-bit:${bit.id}`,
   });
   const removeFetcher = useFetcher({
     key: bit.pendingAdd
       ? `shopping-remove-odd-bit:pending:${bit.name}`
-      : `shopping-remove-odd-bit:${index}`,
+      : `shopping-remove-odd-bit:${bit.id}`,
   });
   const checked =
     toggleFetcher.formData?.get("intent") === "toggle-odd-bit"
@@ -180,12 +179,12 @@ function OddBitRow({ action, bit }: { action: string; bit: OptimisticOddBit }) {
           label={formatIngredientLabel(bit)}
           onToggle={(next) => {
             if (bit.pendingAdd) return;
-            setOddBitPurchasedOverride(index, next);
+            setOddBitPurchasedOverride(bit.id, next);
             markOptimisticShoppingActionSubmitted();
             toggleFetcher.submit(
               {
                 intent: "toggle-odd-bit",
-                index: String(index),
+                id: bit.id,
                 purchased: String(next),
               },
               { method: "post", action },
@@ -196,7 +195,7 @@ function OddBitRow({ action, bit }: { action: string; bit: OptimisticOddBit }) {
       {bit.pendingAdd ? null : (
         <removeFetcher.Form action={action} method="post">
           <input name="intent" type="hidden" value="remove-odd-bit" />
-          <input name="index" type="hidden" value={index} />
+          <input name="id" type="hidden" value={bit.id} />
           <Button aria-label="Remove odd bit" size="icon" type="submit" variant="ghost">
             <Trash2 className="size-4" />
           </Button>
@@ -208,7 +207,7 @@ function OddBitRow({ action, bit }: { action: string; bit: OptimisticOddBit }) {
 
 export type ShoppingListViewProps = {
   recipes: ShoppingRecipeRecord[];
-  oddBits: ShoppingIngredient[];
+  oddBits: OddBit[];
   pantryId: string;
 };
 
@@ -272,11 +271,7 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                       <OddBitRow
                         action={action}
                         bit={bit}
-                        key={
-                          bit.pendingAdd
-                            ? `odd-bit-pending-${bit.name}`
-                            : `odd-bit-${bit.sourceIndex}`
-                        }
+                        key={bit.pendingAdd ? `odd-bit-pending-${bit.name}` : `odd-bit-${bit.id}`}
                       />
                     ))}
                   </div>
@@ -301,7 +296,7 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                         action={action}
                         bit={bit}
                         // Same key as to-buy so the row does not remount on toggle.
-                        key={`odd-bit-${bit.sourceIndex}`}
+                        key={`odd-bit-${bit.id}`}
                       />
                     ))}
                   </ShoppingGotItSection>

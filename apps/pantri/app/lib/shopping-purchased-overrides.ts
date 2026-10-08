@@ -1,8 +1,8 @@
-import type { ShoppingIngredient } from "~/lib/recipe-schema";
+import type { OddBit } from "~/lib/recipe-schema";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
 
 const ingredientOverrides = new Map<string, boolean>();
-const oddBitOverrides = new Map<number, boolean>();
+const oddBitOverrides = new Map<string, boolean>();
 const sortedPurchasedOverrides = new Map<string, boolean>();
 
 function ingredientKey(recipeId: string, index: number) {
@@ -17,8 +17,8 @@ export function setIngredientPurchasedOverride(
   ingredientOverrides.set(ingredientKey(recipeId, index), purchased);
 }
 
-export function setOddBitPurchasedOverride(index: number, purchased: boolean) {
-  oddBitOverrides.set(index, purchased);
+export function setOddBitPurchasedOverride(id: string, purchased: boolean) {
+  oddBitOverrides.set(id, purchased);
 }
 
 export function resetRecipePurchasedOverrides(recipe: ShoppingRecipeRecord) {
@@ -29,23 +29,18 @@ export function resetRecipePurchasedOverrides(recipe: ShoppingRecipeRecord) {
   });
 }
 
-export function resetOddBitPurchasedOverrides(oddBits: ShoppingIngredient[]) {
-  // Key by the same source indexes the toggle API uses — not the display array order.
-  oddBits.forEach((bit, index) => {
-    const sourceIndex =
-      "sourceIndex" in bit && typeof (bit as { sourceIndex?: unknown }).sourceIndex === "number"
-        ? (bit as { sourceIndex: number }).sourceIndex
-        : index;
+export function resetOddBitPurchasedOverrides(oddBits: OddBit[]) {
+  for (const bit of oddBits) {
     if (bit.purchased) {
-      oddBitOverrides.set(sourceIndex, false);
+      oddBitOverrides.set(bit.id, false);
     }
-  });
+  }
 }
 
 export function applyShoppingPurchasedOverrides(
   recipes: ShoppingRecipeRecord[],
-  oddBits: ShoppingIngredient[],
-): { recipes: ShoppingRecipeRecord[]; oddBits: ShoppingIngredient[] } {
+  oddBits: OddBit[],
+): { recipes: ShoppingRecipeRecord[]; oddBits: OddBit[] } {
   if (ingredientOverrides.size === 0 && oddBitOverrides.size === 0) {
     return { recipes, oddBits };
   }
@@ -69,8 +64,8 @@ export function applyShoppingPurchasedOverrides(
   const nextOddBits =
     oddBitOverrides.size === 0
       ? oddBits
-      : oddBits.map((bit, index) => {
-          const override = oddBitOverrides.get(index);
+      : oddBits.map((bit) => {
+          const override = oddBitOverrides.get(bit.id);
           if (override === undefined) {
             return bit;
           }
@@ -83,7 +78,7 @@ export function applyShoppingPurchasedOverrides(
 /** Drop overrides that already match loader data. Call from an effect, not render. */
 export function reconcileShoppingPurchasedOverrides(
   recipes: ShoppingRecipeRecord[],
-  oddBits: ShoppingIngredient[],
+  oddBits: OddBit[],
 ) {
   for (const recipe of recipes) {
     recipe.ingredients.forEach((ingredient, index) => {
@@ -94,12 +89,12 @@ export function reconcileShoppingPurchasedOverrides(
       }
     });
   }
-  oddBits.forEach((bit, index) => {
-    const override = oddBitOverrides.get(index);
+  for (const bit of oddBits) {
+    const override = oddBitOverrides.get(bit.id);
     if (override !== undefined && bit.purchased === override) {
-      oddBitOverrides.delete(index);
+      oddBitOverrides.delete(bit.id);
     }
-  });
+  }
 }
 
 export function clearShoppingPurchasedOverrides() {

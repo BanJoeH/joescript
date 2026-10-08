@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+import { index, integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 import { user } from "./auth";
 import { createdAtColumn, deletedAtColumn, idColumn, updatedAtColumn } from "./columns";
@@ -12,6 +12,8 @@ import { pantries } from "./domain";
  * RecipeIngredient = { name, amount: number|null, unit: string|null, notes?: string }
  * ShoppingIngredient = RecipeIngredient & { purchased: boolean }
  * RecipeStep = { order: number, text: string }
+ *
+ * Odd bits are relational rows (`odd_bit_items`), not JSON — see OddBit in recipe-schema.
  */
 
 export const recipes = sqliteTable(
@@ -55,16 +57,24 @@ export const shoppingRecipes = sqliteTable("shopping_recipes", {
   deletedAt: deletedAtColumn(),
 });
 
-export const oddBits = sqliteTable("odd_bits", {
-  id: idColumn(),
-  pantryId: text("pantry_id")
-    .notNull()
-    .references(() => pantries.id, { onDelete: "cascade" })
-    .unique(),
-  ingredients: text("ingredients").notNull().default("[]"),
-  createdAt: createdAtColumn(),
-  updatedAt: updatedAtColumn(),
-});
+/** One ad-hoc shopping item (not from a recipe). Replaces the old `odd_bits` JSON blob. */
+export const oddBitItems = sqliteTable(
+  "odd_bit_items",
+  {
+    id: idColumn(),
+    pantryId: text("pantry_id")
+      .notNull()
+      .references(() => pantries.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    amount: real("amount"),
+    unit: text("unit"),
+    notes: text("notes"),
+    purchased: integer("purchased", { mode: "boolean" }).notNull().default(false),
+    createdAt: createdAtColumn(),
+    updatedAt: updatedAtColumn(),
+  },
+  (table) => [index("odd_bit_items_pantry_id_idx").on(table.pantryId)],
+);
 
 export const ingredientCategories = sqliteTable(
   "ingredient_categories",

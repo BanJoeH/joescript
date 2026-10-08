@@ -13,6 +13,9 @@ export type RecipeIngredient = {
 /** A recipe ingredient once it has been added to a shopping list. */
 export type ShoppingIngredient = RecipeIngredient & { purchased: boolean };
 
+/** Ad-hoc shopping item stored as its own `odd_bit_items` row. */
+export type OddBit = ShoppingIngredient & { id: string };
+
 /** One step of a recipe's method. `order` is 1-indexed and drives display order. */
 export type RecipeStep = {
   order: number;

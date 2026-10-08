@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import {
   ingredientCategories,
-  oddBits,
+  oddBitItems,
   pantries,
   pantryMembers,
   recipePhotos,
@@ -256,7 +256,7 @@ export function createPantriesService({
         .set({ deletedAt: now, updatedAt: now })
         .where(and(eq(shoppingRecipes.pantryId, pantryId), isNull(shoppingRecipes.deletedAt)));
 
-      await db.delete(oddBits).where(eq(oddBits.pantryId, pantryId));
+      await db.delete(oddBitItems).where(eq(oddBitItems.pantryId, pantryId));
       await db.delete(ingredientCategories).where(eq(ingredientCategories.pantryId, pantryId));
       await db.delete(recipePhotos).where(eq(recipePhotos.pantryId, pantryId));
 

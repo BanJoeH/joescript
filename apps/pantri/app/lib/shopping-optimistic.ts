@@ -1,5 +1,5 @@
 import type { ShoppingSection } from "~/lib/ingredient-sections";
-import type { ShoppingIngredient } from "~/lib/recipe-schema";
+import type { OddBit } from "~/lib/recipe-schema";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
 import {
   applyShoppingPurchasedOverrides,
@@ -17,23 +17,18 @@ function readFormData(fetchers: FetcherLike[]): FormData[] {
     .filter((formData): formData is FormData => formData != null);
 }
 
-export type OptimisticOddBit = ShoppingIngredient & {
-  /** Index used by the shopping action API (stable across optimistic removes). */
-  sourceIndex: number;
+export type OptimisticOddBit = OddBit & {
   pendingAdd?: boolean;
 };
 
 export function applyShoppingListOptimistic(
   recipes: ShoppingRecipeRecord[],
-  oddBits: ShoppingIngredient[],
+  oddBits: OddBit[],
   fetchers: FetcherLike[],
 ): { recipes: ShoppingRecipeRecord[]; oddBits: OptimisticOddBit[] } {
   const withOverrides = applyShoppingPurchasedOverrides(recipes, oddBits);
   let nextRecipes = withOverrides.recipes;
-  let nextOddBits: OptimisticOddBit[] = withOverrides.oddBits.map((bit, sourceIndex) => ({
-    ...bit,
-    sourceIndex,
-  }));
+  let nextOddBits: OptimisticOddBit[] = withOverrides.oddBits.map((bit) => ({ ...bit }));
 
   for (const formData of readFormData(fetchers)) {
     const intent = String(formData.get("intent") ?? "");
@@ -64,19 +59,17 @@ export function applyShoppingListOptimistic(
     }
 
     if (intent === "toggle-odd-bit") {
-      const index = Number(formData.get("index"));
+      const id = String(formData.get("id") ?? "");
       const purchased = formData.get("purchased") === "true";
-      if (!Number.isFinite(index)) continue;
-      nextOddBits = nextOddBits.map((bit) =>
-        bit.sourceIndex === index ? { ...bit, purchased } : bit,
-      );
+      if (!id) continue;
+      nextOddBits = nextOddBits.map((bit) => (bit.id === id ? { ...bit, purchased } : bit));
       continue;
     }
 
     if (intent === "remove-odd-bit") {
-      const index = Number(formData.get("index"));
-      if (!Number.isFinite(index)) continue;
-      nextOddBits = nextOddBits.filter((bit) => bit.sourceIndex !== index);
+      const id = String(formData.get("id") ?? "");
+      if (!id) continue;
+      nextOddBits = nextOddBits.filter((bit) => bit.id !== id);
       continue;
     }
 
@@ -90,12 +83,12 @@ export function applyShoppingListOptimistic(
       nextOddBits = [
         ...nextOddBits,
         {
+          id: `pending:${name}`,
           name,
           amount: amount != null && Number.isFinite(amount) ? amount : null,
           unit: unitRaw || null,
           notes: notesRaw || undefined,
           purchased: false,
-          sourceIndex: -1,
           pendingAdd: true,
         },
       ];

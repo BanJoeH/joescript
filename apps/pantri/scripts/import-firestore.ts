@@ -44,7 +44,12 @@ import { and as drizzleAnd, eq as drizzleEq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { user } from "../app/db/schema/auth";
 import { pantries, pantryMembers } from "../app/db/schema/domain";
-import { ingredientCategories, oddBits, recipes, shoppingRecipes } from "../app/db/schema/pantri";
+import {
+  ingredientCategories,
+  oddBitItems,
+  recipes,
+  shoppingRecipes,
+} from "../app/db/schema/pantri";
 import type { RecipeIngredient, ShoppingIngredient } from "../app/lib/recipe-schema";
 import {
   serializeRecipeIngredients,
@@ -298,7 +303,7 @@ async function main() {
   // domain rows for the pantry rather than trying to diff/merge them.
   await db.delete(recipes).where(eq(recipes.pantryId, pantryId));
   await db.delete(shoppingRecipes).where(eq(shoppingRecipes.pantryId, pantryId));
-  await db.delete(oddBits).where(eq(oddBits.pantryId, pantryId));
+  await db.delete(oddBitItems).where(eq(oddBitItems.pantryId, pantryId));
   await db.delete(ingredientCategories).where(eq(ingredientCategories.pantryId, pantryId));
 
   const legacyRecipeIdToNewId = new Map<string, string>();
@@ -336,11 +341,23 @@ async function main() {
   console.log(`Imported ${data.shoppingList?.length ?? 0} shopping-list recipe(s).`);
 
   if (data.oddBits?.length) {
-    const ingredients = data.oddBits.map(parseRawIngredient);
-    await db.insert(oddBits).values({
-      pantryId,
-      ingredients: serializeShoppingIngredients(ingredients),
-    });
+    const now = new Date();
+    await db.insert(oddBitItems).values(
+      data.oddBits.map((raw) => {
+        const ingredient = parseRawIngredient(raw);
+        return {
+          id: randomUUID(),
+          pantryId,
+          name: ingredient.name,
+          amount: ingredient.amount,
+          unit: ingredient.unit,
+          notes: ingredient.notes ?? null,
+          purchased: ingredient.purchased,
+          createdAt: now,
+          updatedAt: now,
+        };
+      }),
+    );
   }
   console.log(`Imported ${data.oddBits?.length ?? 0} odd bit(s).`);
 
