@@ -3,8 +3,7 @@
   "references": [
     { "path": "./tsconfig.node.json" },
     { "path": "./tsconfig.cloudflare.json" },
-    { "path": "./tsconfig.scripts.json" },
-    { "path": "./tsconfig.e2e.json" }
+    { "path": "./tsconfig.scripts.json" }
   ],
   "compilerOptions": {
     "checkJs": true,

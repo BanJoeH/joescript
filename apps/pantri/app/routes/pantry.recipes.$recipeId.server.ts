@@ -27,9 +27,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   if (intent === "add-to-shopping") {
     try {
-      const shoppingRecipe = await pantri.shopping.addFromRecipe(params.recipeId, {
-        id: getOptionalString(formData, "shoppingRecipeId"),
-      });
+      const shoppingRecipe = await pantri.shopping.addFromRecipe(params.recipeId);
       await notifyPantryMutation(context, getWorkerEnv());
       return { added: shoppingRecipe.name };
     } catch (error) {

@@ -41,8 +41,6 @@ function toRecord(row: typeof shoppingRecipes.$inferSelect): ShoppingRecipeRecor
   };
 }
 
-const CLIENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 export function createShoppingService({ db, userId, pantryId }: PantriContext) {
   const scope = and(eq(shoppingRecipes.pantryId, pantryId), isNull(shoppingRecipes.deletedAt));
 
@@ -70,10 +68,7 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
       return row ? toRecord(row) : null;
     },
 
-    async addFromRecipe(
-      recipeId: string,
-      options?: { id?: string },
-    ): Promise<ShoppingRecipeRecord> {
+    async addFromRecipe(recipeId: string): Promise<ShoppingRecipeRecord> {
       const [recipe] = await db
         .select()
         .from(recipes)
@@ -86,14 +81,7 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
         throw new Error("Recipe not found");
       }
 
-      const rawClientId = options?.id?.trim();
-      const clientId = rawClientId && CLIENT_ID.test(rawClientId) ? rawClientId : undefined;
-      if (clientId) {
-        const existing = await this.get(clientId);
-        if (existing) return existing;
-      }
-
-      const id = clientId ?? newId();
+      const id = newId();
       const now = new Date();
       const ingredients = toShoppingIngredients(parseRecipeIngredientsJson(recipe.ingredients));
 
@@ -191,13 +179,6 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
     ): Promise<ShoppingRecipeRecord> {
       const record = await this.get(shoppingRecipeId);
       if (!record) throw new Error("Shopping recipe not found");
-      if (
-        !Number.isInteger(ingredientIndex) ||
-        ingredientIndex < 0 ||
-        ingredientIndex >= record.ingredients.length
-      ) {
-        throw new Error("Ingredient not found");
-      }
 
       const ingredients = record.ingredients.map((ingredient, index) =>
         index === ingredientIndex ? { ...ingredient, purchased } : ingredient,

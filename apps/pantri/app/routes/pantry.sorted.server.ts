@@ -39,7 +39,7 @@ export async function loader({ request, params }: Route.LoaderArgs) {
   const aggregated = aggregateIngredients(lines);
   const sections = groupBySection(aggregated, (item) => item.name, overrides);
 
-  return { sections, pantryId, categoryOverrides: overrides };
+  return { sections, pantryId };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {

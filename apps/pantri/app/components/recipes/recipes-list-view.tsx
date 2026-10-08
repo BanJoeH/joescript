@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { matchSorter } from "match-sorter";
 import { useDeferredValue, useMemo, useState } from "react";
+import { useFetcher } from "react-router";
 
 import { DeleteForm } from "~/components/delete-form";
 import { Link } from "~/components/link";
@@ -20,8 +21,6 @@ import { useFetcherSuccessToast, useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
-import { useOnlineStatus } from "~/lib/offline/connectivity";
-import { usePantryMutation } from "~/lib/offline/use-pantry-mutation";
 import { pantryPath } from "~/lib/pantry-path";
 import { formatIngredientLabel } from "~/lib/units";
 import { cn } from "~/lib/utils";
@@ -56,9 +55,8 @@ function filterRecipes(recipes: RecipeRecord[], query: string) {
 
 export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
   const action = pantryPath(pantryId, "recipes");
-  const online = useOnlineStatus();
   const { toast } = useToast();
-  const { fetcher: addFetcher, submit: addSubmit } = usePantryMutation(pantryId, "recipes-add");
+  const addFetcher = useFetcher<AddToShoppingResult>();
   const [query, setQuery] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const deferredQuery = useDeferredValue(query);
@@ -68,9 +66,8 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
   );
 
   useFetcherSuccessToast(addFetcher, (data) => {
-    const result = data as AddToShoppingResult | undefined;
-    if (result?.added) {
-      toast({ title: result.added, message: "Added to shopping" });
+    if (data.added) {
+      toast({ title: data.added, message: "Added to shopping" });
     }
   });
 
@@ -88,38 +85,15 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
       <PageHeader
         actions={
           <>
-            <Button
-              asChild={online}
-              disabled={!online}
-              size="sm"
-              title={online ? undefined : "Requires a connection"}
-              variant="outline"
-            >
-              {online ? (
-                <Link to={pantryPath(pantryId, "recipes/import-photos")}>
-                  <Camera className="size-4" /> Import
-                </Link>
-              ) : (
-                <>
-                  <Camera className="size-4" /> Import
-                </>
-              )}
+            <Button asChild size="sm" variant="outline">
+              <Link to={pantryPath(pantryId, "recipes/import-photos")}>
+                <Camera className="size-4" /> Import
+              </Link>
             </Button>
-            <Button
-              asChild={online}
-              disabled={!online}
-              size="sm"
-              title={online ? undefined : "Requires a connection"}
-            >
-              {online ? (
-                <Link to={pantryPath(pantryId, "recipes/new")}>
-                  <Plus className="size-4" /> New recipe
-                </Link>
-              ) : (
-                <>
-                  <Plus className="size-4" /> New recipe
-                </>
-              )}
+            <Button asChild size="sm">
+              <Link to={pantryPath(pantryId, "recipes/new")}>
+                <Plus className="size-4" /> New recipe
+              </Link>
             </Button>
           </>
         }
@@ -145,9 +119,9 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
         </div>
       ) : null}
 
-      {(addFetcher.data as AddToShoppingResult | undefined)?.error ? (
+      {addFetcher.data?.error ? (
         <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {(addFetcher.data as AddToShoppingResult).error}
+          {addFetcher.data.error}
         </p>
       ) : null}
 
@@ -214,52 +188,32 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                         <UtensilsCrossed className="size-4" />
                       </Link>
                     </Button>
-                    <Button
-                      aria-label={`Add ${recipe.name} to shopping`}
-                      className="size-8"
-                      onClick={() => {
-                        void addSubmit(
-                          {
-                            intent: "add-to-shopping",
-                            recipeId: recipe.id,
-                            shoppingRecipeId: crypto.randomUUID(),
-                          },
-                          action,
-                        );
-                      }}
-                      size="icon"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <ShoppingCart className="size-4" />
-                    </Button>
+                    <addFetcher.Form action={action} method="post">
+                      <input name="intent" type="hidden" value="add-to-shopping" />
+                      <input name="recipeId" type="hidden" value={recipe.id} />
+                      <Button
+                        aria-label={`Add ${recipe.name} to shopping`}
+                        className="size-8"
+                        size="icon"
+                        type="submit"
+                        variant="ghost"
+                      >
+                        <ShoppingCart className="size-4" />
+                      </Button>
+                    </addFetcher.Form>
                   </div>
                 </div>
                 {expanded ? (
                   <div className="space-y-2 px-4 pb-3" id={panelId}>
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        asChild={online}
-                        disabled={!online}
-                        size="sm"
-                        title={online ? undefined : "Requires a connection"}
-                        variant="outline"
-                      >
-                        {online ? (
-                          <Link to={pantryPath(pantryId, `recipes/${recipe.id}/edit`)}>
-                            <Pencil className="size-4" />
-                            Edit
-                          </Link>
-                        ) : (
-                          <>
-                            <Pencil className="size-4" />
-                            Edit
-                          </>
-                        )}
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={pantryPath(pantryId, `recipes/${recipe.id}/edit`)}>
+                          <Pencil className="size-4" />
+                          Edit
+                        </Link>
                       </Button>
                       <ShareRecipeButton
                         action={action}
-                        disabled={!online}
                         isShared={Boolean(recipe.shareToken)}
                         recipeId={recipe.id}
                         recipeName={recipe.name}
@@ -277,7 +231,6 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                       <DeleteForm
                         action={action}
                         confirmMessage={`Delete "${recipe.name}"?`}
-                        disabled={!online}
                         hiddenFields={{ recipeId: recipe.id }}
                         size="sm"
                         variant="outline"

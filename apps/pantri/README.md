@@ -39,10 +39,6 @@ The same recipe can be shopped twice, each with its own bought ingredients. Edit
 
 Server-sent events notify active clients when the shopping list changes. A normal refetch when the app regains focus restores consistency after a client disconnects.
 
-### Mostly offline
-
-After a signed-in visit, Pantri caches the shell and pantry data for offline browsing. You can check off recipe ingredients, add/remove shopping recipes, and move sorted aisles; those sync when you’re back online. Odd-bit edits while offline are best-effort if someone else changed the list. Create/edit/delete/share/import stay online-only. See `app/lib/offline/`.
-
 ## Setup
 
 **Requires:** Node 24+, pnpm 11.7, a Turso database, Google OAuth client, Cloudflare account with Workers AI + R2.
