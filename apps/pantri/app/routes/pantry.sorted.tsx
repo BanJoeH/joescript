@@ -18,6 +18,7 @@ import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
 import { getSortedQuantityBadge } from "~/lib/shopping-aggregation";
 import { applySortedOptimistic } from "~/lib/shopping-optimistic";
 import {
+  reconcileSortedPurchasedOverrides,
   resetSortedPurchasedOverrides,
   setSortedPurchasedOverride,
 } from "~/lib/shopping-purchased-overrides";
@@ -210,6 +211,11 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
   const { sections, pantryId } = loaderData;
   const fetchers = useFetchers();
   const clearFetcher = useFetcher({ key: "sorted-clear-all-purchased" });
+
+  useEffect(() => {
+    reconcileSortedPurchasedOverrides(sections.flatMap((section) => section.items));
+  }, [sections]);
+
   const optimisticSections = useMemo(
     () => applySortedOptimistic(sections, fetchers),
     [sections, fetchers],
