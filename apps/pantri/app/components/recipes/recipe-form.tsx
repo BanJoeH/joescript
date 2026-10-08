@@ -48,10 +48,12 @@ export function RecipeForm({
   defaultValues,
   submitLabel,
   error,
+  disabled = false,
 }: {
   defaultValues: RecipeFormDefaultValues;
   submitLabel: string;
   error?: string;
+  disabled?: boolean;
 }) {
   const [ingredients, setIngredients] = useState<IngredientRow[]>(() =>
     toIngredientRows(defaultValues.ingredients),
@@ -133,153 +135,163 @@ export function RecipeForm({
         </p>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Details</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor={`${formId}-name`}>Name</Label>
-            <Input
-              defaultValue={defaultValues.name}
-              id={`${formId}-name`}
-              name="name"
-              placeholder="Chicken curry"
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor={`${formId}-description`}>Description (optional)</Label>
-            <Textarea
-              defaultValue={defaultValues.description}
-              id={`${formId}-description`}
-              name="description"
-              placeholder="Weeknight chili mac with a crispy cheddar top."
-              rows={3}
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+      {disabled ? (
+        <p className="rounded-md border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
+          Creating and editing recipes needs a connection.
+        </p>
+      ) : null}
+
+      <fieldset className="contents" disabled={disabled}>
+        <Card>
+          <CardHeader>
+            <CardTitle>Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor={`${formId}-link`}>Link (optional)</Label>
+              <Label htmlFor={`${formId}-name`}>Name</Label>
               <Input
-                defaultValue={defaultValues.link}
-                id={`${formId}-link`}
-                name="link"
-                placeholder="https://..."
-                type="url"
+                defaultValue={defaultValues.name}
+                id={`${formId}-name`}
+                name="name"
+                placeholder="Chicken curry"
+                required
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor={`${formId}-servings`}>Servings (optional)</Label>
-              <Input
-                defaultValue={defaultValues.servings}
-                id={`${formId}-servings`}
-                inputMode="numeric"
-                min={1}
-                name="servings"
-                type="number"
+              <Label htmlFor={`${formId}-description`}>Description (optional)</Label>
+              <Textarea
+                defaultValue={defaultValues.description}
+                id={`${formId}-description`}
+                name="description"
+                placeholder="Weeknight chili mac with a crispy cheddar top."
+                rows={3}
               />
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor={`${formId}-link`}>Link (optional)</Label>
+                <Input
+                  defaultValue={defaultValues.link}
+                  id={`${formId}-link`}
+                  name="link"
+                  placeholder="https://..."
+                  type="url"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor={`${formId}-servings`}>Servings (optional)</Label>
+                <Input
+                  defaultValue={defaultValues.servings}
+                  id={`${formId}-servings`}
+                  inputMode="numeric"
+                  min={1}
+                  name="servings"
+                  type="number"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Ingredients</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="space-y-2">
-            {ingredients.map((row) => (
-              <IngredientEditorRow
-                amount={row.amount}
-                autoFocusQuantity={row.key === focusIngredientKey}
-                key={row.key}
-                name={row.name}
-                nameId={`${formId}-ingredient-${row.key}-name`}
-                notes={row.notes ?? ""}
-                onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
-                onNameChange={(name) => updateIngredient(row.key, { name })}
-                onNotesChange={(notes) => updateIngredient(row.key, { notes })}
-                onQuantityChange={({ amount, unit }) => updateIngredient(row.key, { amount, unit })}
-                onRemove={() => removeIngredient(row.key)}
-                quantityId={`${formId}-ingredient-${row.key}-quantity`}
-                unit={row.unit}
-              />
-            ))}
-          </div>
-          <Button onClick={() => addIngredient()} size="sm" type="button" variant="outline">
-            <Plus className="size-4" /> Add ingredient
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Steps</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {steps.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No steps.</p>
-          ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>Ingredients</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
             <div className="space-y-2">
-              {steps.map((row, index) => (
-                <div className="flex items-start gap-2" key={row.key}>
-                  <div className="mt-2 flex flex-col text-muted-foreground">
-                    <button
-                      aria-label="Move step up"
-                      className="disabled:opacity-30"
-                      disabled={index === 0}
-                      onClick={() => moveStep(row.key, -1)}
-                      type="button"
-                    >
-                      <ChevronUp className="size-4" />
-                    </button>
-                    <button
-                      aria-label="Move step down"
-                      className="disabled:opacity-30"
-                      disabled={index === steps.length - 1}
-                      onClick={() => moveStep(row.key, 1)}
-                      type="button"
-                    >
-                      <ChevronDown className="size-4" />
-                    </button>
-                  </div>
-                  <span className="mt-2 w-5 shrink-0 text-sm font-medium text-muted-foreground">
-                    {index + 1}.
-                  </span>
-                  <Textarea
-                    aria-label={`Step ${index + 1}`}
-                    onChange={(event) => updateStep(row.key, event.target.value)}
-                    placeholder="Step"
-                    rows={2}
-                    value={row.text}
-                  />
-                  <Button
-                    aria-label="Remove step"
-                    onClick={() => removeStep(row.key)}
-                    size="icon"
-                    type="button"
-                    variant="ghost"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
+              {ingredients.map((row) => (
+                <IngredientEditorRow
+                  amount={row.amount}
+                  autoFocusQuantity={row.key === focusIngredientKey}
+                  key={row.key}
+                  name={row.name}
+                  nameId={`${formId}-ingredient-${row.key}-name`}
+                  notes={row.notes ?? ""}
+                  onKeyDown={(event) => onIngredientKeyDown(event, row.key)}
+                  onNameChange={(name) => updateIngredient(row.key, { name })}
+                  onNotesChange={(notes) => updateIngredient(row.key, { notes })}
+                  onQuantityChange={({ amount, unit }) =>
+                    updateIngredient(row.key, { amount, unit })
+                  }
+                  onRemove={() => removeIngredient(row.key)}
+                  quantityId={`${formId}-ingredient-${row.key}-quantity`}
+                  unit={row.unit}
+                />
               ))}
             </div>
-          )}
-          <Button onClick={addStep} size="sm" type="button" variant="outline">
-            <Plus className="size-4" /> Add step
-          </Button>
-        </CardContent>
-      </Card>
+            <Button onClick={() => addIngredient()} size="sm" type="button" variant="outline">
+              <Plus className="size-4" /> Add ingredient
+            </Button>
+          </CardContent>
+        </Card>
 
-      <input name="ingredientsJson" type="hidden" value={JSON.stringify(cleanIngredients)} />
-      <input name="stepsJson" type="hidden" value={JSON.stringify(cleanSteps)} />
+        <Card>
+          <CardHeader>
+            <CardTitle>Steps</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {steps.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No steps.</p>
+            ) : (
+              <div className="space-y-2">
+                {steps.map((row, index) => (
+                  <div className="flex items-start gap-2" key={row.key}>
+                    <div className="mt-2 flex flex-col text-muted-foreground">
+                      <button
+                        aria-label="Move step up"
+                        className="disabled:opacity-30"
+                        disabled={index === 0}
+                        onClick={() => moveStep(row.key, -1)}
+                        type="button"
+                      >
+                        <ChevronUp className="size-4" />
+                      </button>
+                      <button
+                        aria-label="Move step down"
+                        className="disabled:opacity-30"
+                        disabled={index === steps.length - 1}
+                        onClick={() => moveStep(row.key, 1)}
+                        type="button"
+                      >
+                        <ChevronDown className="size-4" />
+                      </button>
+                    </div>
+                    <span className="mt-2 w-5 shrink-0 text-sm font-medium text-muted-foreground">
+                      {index + 1}.
+                    </span>
+                    <Textarea
+                      aria-label={`Step ${index + 1}`}
+                      onChange={(event) => updateStep(row.key, event.target.value)}
+                      placeholder="Step"
+                      rows={2}
+                      value={row.text}
+                    />
+                    <Button
+                      aria-label="Remove step"
+                      onClick={() => removeStep(row.key)}
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Button onClick={addStep} size="sm" type="button" variant="outline">
+              <Plus className="size-4" /> Add step
+            </Button>
+          </CardContent>
+        </Card>
 
-      <Button className="self-start" type="submit">
-        {submitLabel}
-      </Button>
+        <input name="ingredientsJson" type="hidden" value={JSON.stringify(cleanIngredients)} />
+        <input name="stepsJson" type="hidden" value={JSON.stringify(cleanSteps)} />
+
+        <Button className="self-start" type="submit">
+          {submitLabel}
+        </Button>
+      </fieldset>
     </Form>
   );
 }

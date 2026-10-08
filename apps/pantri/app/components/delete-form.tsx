@@ -16,6 +16,7 @@ type DeleteFormProps = {
   className?: string;
   "aria-label"?: string;
   children?: ReactNode;
+  disabled?: boolean;
 };
 
 export function DeleteForm({
@@ -30,6 +31,7 @@ export function DeleteForm({
   className,
   "aria-label": ariaLabel,
   children = "Delete",
+  disabled = false,
 }: DeleteFormProps) {
   const [open, setOpen] = useState(false);
 
@@ -38,8 +40,10 @@ export function DeleteForm({
       <Button
         aria-label={ariaLabel}
         className={cn("text-destructive hover:text-destructive", className)}
+        disabled={disabled}
         onClick={() => setOpen(true)}
         size={size}
+        title={disabled ? "Requires a connection" : undefined}
         type="button"
         variant={variant}
       >

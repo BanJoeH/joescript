@@ -74,11 +74,17 @@ export function createOddBitsService({ db, pantryId }: PantriContext) {
 
     async remove(index: number): Promise<ShoppingIngredient[]> {
       const current = await this.list();
+      if (!Number.isInteger(index) || index < 0 || index >= current.length) {
+        throw new Error("Odd bit not found");
+      }
       return setIngredients(current.filter((_, i) => i !== index));
     },
 
     async togglePurchased(index: number, purchased: boolean): Promise<ShoppingIngredient[]> {
       const current = await this.list();
+      if (!Number.isInteger(index) || index < 0 || index >= current.length) {
+        throw new Error("Odd bit not found");
+      }
       return setIngredients(
         current.map((ingredient, i) => (i === index ? { ...ingredient, purchased } : ingredient)),
       );

@@ -5,6 +5,7 @@ import { applyShoppingListOptimistic, applySortedOptimistic } from "~/lib/shoppi
 import {
   clearShoppingPurchasedOverrides,
   setIngredientPurchasedOverride,
+  setOddBitPurchasedOverride,
   setSortedPurchasedOverride,
 } from "~/lib/shopping-purchased-overrides";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
@@ -86,6 +87,26 @@ describe("applyShoppingListOptimistic", () => {
     const result = applyShoppingListOptimistic([recipe], [], []);
 
     expect(result.recipes[0]?.ingredients[0]?.purchased).toBe(true);
+  });
+
+  it("keeps odd-bit uncheck override even when loader data already matches", () => {
+    clearShoppingPurchasedOverrides();
+    setOddBitPurchasedOverride(0, false);
+
+    const first = applyShoppingListOptimistic(
+      [],
+      [{ name: "milk", amount: null, unit: null, purchased: false }],
+      [],
+    );
+    expect(first.oddBits[0]?.purchased).toBe(false);
+
+    // Matching loader data must not drop the override while sync may still be pending.
+    const second = applyShoppingListOptimistic(
+      [],
+      [{ name: "milk", amount: null, unit: null, purchased: true }],
+      [],
+    );
+    expect(second.oddBits[0]?.purchased).toBe(false);
   });
 
   it("adds and removes odd bits", () => {

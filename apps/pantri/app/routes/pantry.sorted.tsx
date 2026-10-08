@@ -1,6 +1,6 @@
 import { ArrowLeft, ChevronDown, MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useFetcher, useFetchers } from "react-router";
+import { useFetchers } from "react-router";
 
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
@@ -11,13 +11,22 @@ import {
   celebrateSortedComplete,
   shouldCelebrateSortedComplete,
 } from "~/lib/celebrate-sorted-complete";
-import { getIngredientSection, SHOPPING_SECTIONS } from "~/lib/ingredient-sections";
+import { getIngredientSection, groupBySection, SHOPPING_SECTIONS } from "~/lib/ingredient-sections";
+import { loadWithOfflineFallback } from "~/lib/offline/client-loader";
+import { applyPendingOutboxToHomeSnapshot, listOutbox } from "~/lib/offline/outbox";
+import { getHomeSnapshot, saveCategoryOverrides } from "~/lib/offline/snapshot";
+import { usePantryMutation } from "~/lib/offline/use-pantry-mutation";
 import { pantryPath } from "~/lib/pantry-path";
 import { markOptimisticShoppingActionSubmitted } from "~/lib/pantry-revalidate";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
-import { getSortedQuantityBadge } from "~/lib/shopping-aggregation";
+import {
+  aggregateIngredients,
+  getSortedQuantityBadge,
+  type ShoppingLine,
+} from "~/lib/shopping-aggregation";
 import { applySortedOptimistic } from "~/lib/shopping-optimistic";
 import {
+  reconcileSortedPurchasedOverrides,
   resetSortedPurchasedOverrides,
   setSortedPurchasedOverride,
 } from "~/lib/shopping-purchased-overrides";
@@ -27,13 +36,79 @@ import type { Route } from "./+types/pantry.sorted";
 
 export { action, loader } from "./pantry.sorted.server";
 
+async function sortedLoaderFromSnapshot(pantryId: string) {
+  const snapshot = await getHomeSnapshot(pantryId);
+  if (!snapshot) return null;
+  const lines: ShoppingLine[] = [
+    ...snapshot.shoppingRecipes.flatMap((recipe) =>
+      recipe.ingredients.map((ingredient) => ({
+        name: ingredient.name,
+        amount: ingredient.amount,
+        unit: ingredient.unit,
+        purchased: ingredient.purchased,
+        source: recipe.name,
+      })),
+    ),
+    ...snapshot.oddBits
+      .filter((bit) => bit.name)
+      .map((bit) => ({
+        name: bit.name,
+        amount: bit.amount,
+        unit: bit.unit,
+        purchased: bit.purchased,
+        source: "Odd Bits",
+      })),
+  ];
+  const aggregated = aggregateIngredients(lines);
+  const sections = groupBySection(aggregated, (item) => item.name, snapshot.categoryOverrides);
+  return {
+    sections,
+    pantryId,
+    categoryOverrides: snapshot.categoryOverrides,
+  };
+}
+
+export async function clientLoader({ params, serverLoader }: Route.ClientLoaderArgs) {
+  return loadWithOfflineFallback({
+    serverLoader,
+    readSnapshot: () => sortedLoaderFromSnapshot(params.pantryId),
+    writeSnapshot: async (data) => {
+      await saveCategoryOverrides(params.pantryId, data.categoryOverrides ?? {});
+      await applyPendingOutboxToHomeSnapshot(params.pantryId);
+      const next = (await sortedLoaderFromSnapshot(params.pantryId)) ?? data;
+      const pending = await listOutbox(params.pantryId);
+      if (pending.length === 0) {
+        reconcileSortedPurchasedOverrides(next.sections.flatMap((section) => section.items));
+      }
+      return next;
+    },
+  });
+}
+
+clientLoader.hydrate = true as const;
+
 export function meta(_args: Route.MetaArgs) {
   return [{ title: "Sorted · Pantri" }];
 }
 
-function SortedItemRow({ item, section }: { item: AggregatedIngredient; section: string }) {
-  const toggleFetcher = useFetcher({ key: `sorted-toggle:${item.canonicalName}` });
-  const categoryFetcher = useFetcher({ key: `sorted-category:${item.canonicalName}` });
+function SortedItemRow({
+  item,
+  section,
+  pantryId,
+}: {
+  item: AggregatedIngredient;
+  section: string;
+  pantryId: string;
+}) {
+  const action = pantryPath(pantryId, "shopping/sorted");
+  const { fetcher: toggleFetcher, submit: toggleSubmit } = usePantryMutation(
+    pantryId,
+    `sorted-toggle:${item.canonicalName}`,
+  );
+  const { fetcher: categoryFetcher, submit: categorySubmit } = usePantryMutation(
+    pantryId,
+    `sorted-category:${item.canonicalName}`,
+  );
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSources, setShowSources] = useState(false);
@@ -80,13 +155,13 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
   function moveToSection(nextSection: string) {
     setMenuOpen(false);
     if (nextSection === section) return;
-    categoryFetcher.submit(
+    void categorySubmit(
       {
         intent: "set-category",
         name: item.name,
         section: nextSection,
       },
-      { method: "post" },
+      action,
     );
   }
 
@@ -107,13 +182,13 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
             const next = event.target.checked;
             setSortedPurchasedOverride(item.canonicalName, next);
             markOptimisticShoppingActionSubmitted();
-            toggleFetcher.submit(
+            void toggleSubmit(
               {
                 intent: "toggle",
                 name: item.name,
                 purchased: String(next),
               },
-              { method: "post" },
+              action,
             );
           }}
           type="checkbox"
@@ -209,7 +284,8 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
 export default function SortedPage({ loaderData }: Route.ComponentProps) {
   const { sections, pantryId } = loaderData;
   const fetchers = useFetchers();
-  const clearFetcher = useFetcher({ key: "sorted-clear-all-purchased" });
+  const action = pantryPath(pantryId, "shopping/sorted");
+  const { submit: clearSubmit } = usePantryMutation(pantryId, "sorted-clear-all-purchased");
   const optimisticSections = useMemo(
     () => applySortedOptimistic(sections, fetchers),
     [sections, fetchers],
@@ -289,7 +365,12 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
                 </CardHeader>
                 <CardContent className="space-y-0">
                   {items.map((item) => (
-                    <SortedItemRow item={item} key={item.canonicalName} section={section} />
+                    <SortedItemRow
+                      item={item}
+                      key={item.canonicalName}
+                      pantryId={pantryId}
+                      section={section}
+                    />
                   ))}
                 </CardContent>
               </Card>
@@ -308,13 +389,14 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
                   onResetAll={() => {
                     resetSortedPurchasedOverrides(gotIt.map((item) => item.canonicalName));
                     markOptimisticShoppingActionSubmitted();
-                    clearFetcher.submit({ intent: "clear-all-purchased" }, { method: "post" });
+                    void clearSubmit({ intent: "clear-all-purchased" }, action);
                   }}
                 >
                   {gotIt.map((item) => (
                     <SortedItemRow
                       item={item}
                       key={item.canonicalName}
+                      pantryId={pantryId}
                       section={item.section || getIngredientSection(item.name)}
                     />
                   ))}

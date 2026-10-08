@@ -28,6 +28,8 @@ import { newId } from "~/services/types";
 export { RECIPE_DESCRIPTION_MAX_LENGTH };
 
 const recipeInput = z.object({
+  /** Optional client-generated id for offline create → online sync. */
+  id: z.string().uuid().optional(),
   name: z.string().trim().min(1),
   description: z.string().trim().max(RECIPE_DESCRIPTION_MAX_LENGTH).optional(),
   link: z.string().trim().min(1).optional(),
@@ -107,8 +109,13 @@ export function createRecipesService({ db, userId, pantryId, recipeShares }: Pan
 
     async create(input: RecipeInput): Promise<RecipeRecord> {
       const data = recipeInput.parse(input);
-      const id = newId();
+      const id = data.id ?? newId();
       const now = new Date();
+
+      const existing = data.id ? await this.get(id) : null;
+      if (existing) {
+        return this.update(id, data);
+      }
 
       await db.insert(recipes).values({
         id,
