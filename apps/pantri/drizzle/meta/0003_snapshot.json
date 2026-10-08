@@ -107,12 +107,8 @@
           "name": "account_user_id_user_id_fk",
           "tableFrom": "account",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -186,9 +182,7 @@
       "indexes": {
         "session_token_unique": {
           "name": "session_token_unique",
-          "columns": [
-            "token"
-          ],
+          "columns": ["token"],
           "isUnique": true
         }
       },
@@ -197,12 +191,8 @@
           "name": "session_user_id_user_id_fk",
           "tableFrom": "session",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -270,9 +260,7 @@
       "indexes": {
         "user_email_unique": {
           "name": "user_email_unique",
-          "columns": [
-            "email"
-          ],
+          "columns": ["email"],
           "isUnique": true
         }
       },
@@ -394,9 +382,7 @@
       "indexes": {
         "pantries_legacy_firebase_uid_unique": {
           "name": "pantries_legacy_firebase_uid_unique",
-          "columns": [
-            "legacy_firebase_uid"
-          ],
+          "columns": ["legacy_firebase_uid"],
           "isUnique": true
         }
       },
@@ -463,19 +449,13 @@
       "indexes": {
         "pantry_members_pantry_user_unique": {
           "name": "pantry_members_pantry_user_unique",
-          "columns": [
-            "pantry_id",
-            "user_id"
-          ],
+          "columns": ["pantry_id", "user_id"],
           "isUnique": true,
           "where": "\"pantry_members\".\"user_id\" is not null"
         },
         "pantry_members_pantry_email_unique": {
           "name": "pantry_members_pantry_email_unique",
-          "columns": [
-            "pantry_id",
-            "email"
-          ],
+          "columns": ["pantry_id", "email"],
           "isUnique": true,
           "where": "\"pantry_members\".\"email\" is not null"
         }
@@ -485,12 +465,8 @@
           "name": "pantry_members_pantry_id_pantries_id_fk",
           "tableFrom": "pantry_members",
           "tableTo": "pantries",
-          "columnsFrom": [
-            "pantry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pantry_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -498,12 +474,8 @@
           "name": "pantry_members_user_id_user_id_fk",
           "tableFrom": "pantry_members",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -544,12 +516,8 @@
           "name": "user_preferences_user_id_user_id_fk",
           "tableFrom": "user_preferences",
           "tableTo": "user",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -557,12 +525,8 @@
           "name": "user_preferences_favorite_pantry_id_pantries_id_fk",
           "tableFrom": "user_preferences",
           "tableTo": "pantries",
-          "columnsFrom": [
-            "favorite_pantry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["favorite_pantry_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -622,10 +586,7 @@
       "indexes": {
         "ingredient_categories_pantry_canonical_unique": {
           "name": "ingredient_categories_pantry_canonical_unique",
-          "columns": [
-            "pantry_id",
-            "canonical_name"
-          ],
+          "columns": ["pantry_id", "canonical_name"],
           "isUnique": true
         }
       },
@@ -634,12 +595,8 @@
           "name": "ingredient_categories_pantry_id_pantries_id_fk",
           "tableFrom": "ingredient_categories",
           "tableTo": "pantries",
-          "columnsFrom": [
-            "pantry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pantry_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -709,12 +666,8 @@
           "name": "recipe_photos_pantry_id_pantries_id_fk",
           "tableFrom": "recipe_photos",
           "tableTo": "pantries",
-          "columnsFrom": [
-            "pantry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pantry_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -722,12 +675,8 @@
           "name": "recipe_photos_recipe_id_recipes_id_fk",
           "tableFrom": "recipe_photos",
           "tableTo": "recipes",
-          "columnsFrom": [
-            "recipe_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["recipe_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -735,12 +684,8 @@
           "name": "recipe_photos_created_by_user_id_user_id_fk",
           "tableFrom": "recipe_photos",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -851,9 +796,7 @@
       "indexes": {
         "recipes_share_token_unique": {
           "name": "recipes_share_token_unique",
-          "columns": [
-            "share_token"
-          ],
+          "columns": ["share_token"],
           "isUnique": true
         }
       },
@@ -862,12 +805,8 @@
           "name": "recipes_pantry_id_pantries_id_fk",
           "tableFrom": "recipes",
           "tableTo": "pantries",
-          "columnsFrom": [
-            "pantry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pantry_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -875,12 +814,8 @@
           "name": "recipes_created_by_user_id_user_id_fk",
           "tableFrom": "recipes",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -987,12 +922,8 @@
           "name": "shopping_recipes_pantry_id_pantries_id_fk",
           "tableFrom": "shopping_recipes",
           "tableTo": "pantries",
-          "columnsFrom": [
-            "pantry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pantry_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1000,12 +931,8 @@
           "name": "shopping_recipes_source_recipe_id_recipes_id_fk",
           "tableFrom": "shopping_recipes",
           "tableTo": "recipes",
-          "columnsFrom": [
-            "source_recipe_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["source_recipe_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1013,12 +940,8 @@
           "name": "shopping_recipes_created_by_user_id_user_id_fk",
           "tableFrom": "shopping_recipes",
           "tableTo": "user",
-          "columnsFrom": [
-            "created_by_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1100,9 +1023,7 @@
       "indexes": {
         "odd_bit_items_pantry_id_idx": {
           "name": "odd_bit_items_pantry_id_idx",
-          "columns": [
-            "pantry_id"
-          ],
+          "columns": ["pantry_id"],
           "isUnique": false
         }
       },
@@ -1111,12 +1032,8 @@
           "name": "odd_bit_items_pantry_id_pantries_id_fk",
           "tableFrom": "odd_bit_items",
           "tableTo": "pantries",
-          "columnsFrom": [
-            "pantry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["pantry_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
