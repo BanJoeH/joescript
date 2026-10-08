@@ -10,7 +10,7 @@ import { pantries } from "./domain";
  * validated at the service boundary via `~/lib/recipe-schema`.
  *
  * RecipeIngredient = { name, amount: number|null, unit: string|null, notes?: string }
- * ShoppingIngredient = RecipeIngredient & { purchased: boolean }
+ * ShoppingIngredient = RecipeIngredient & { purchased: boolean; id: string }
  * RecipeStep = { order: number, text: string }
  *
  * Odd bits are relational rows (`odd_bit_items`), not JSON — see OddBit in recipe-schema.

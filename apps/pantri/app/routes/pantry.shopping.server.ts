@@ -25,7 +25,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     if (intent === "toggle-ingredient") {
       await pantri.shopping.toggleIngredientPurchased(
         getString(formData, "shoppingRecipeId"),
-        Number(getString(formData, "ingredientIndex")),
+        getString(formData, "ingredientId"),
         getString(formData, "purchased") === "true",
       );
       await notify();
