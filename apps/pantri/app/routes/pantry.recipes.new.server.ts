@@ -15,9 +15,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
   try {
     const servingsRaw = getOptionalString(formData, "servings");
-    const clientId = getOptionalString(formData, "clientId");
     const recipe = await pantri.recipes.create({
-      id: clientId,
       name: getString(formData, "name"),
       description: getOptionalString(formData, "description"),
       link: getOptionalString(formData, "link"),

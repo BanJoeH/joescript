@@ -8,9 +8,6 @@ import { Button } from "~/components/ui/button";
 import { Label } from "~/components/ui/label";
 import { Select } from "~/components/ui/select";
 import { CookFocusProvider } from "~/lib/cook-focus";
-import { loadWithOfflineFallback } from "~/lib/offline/client-loader";
-import { useOnlineStatus } from "~/lib/offline/connectivity";
-import { cacheSharePayload, getCachedSharePayload } from "~/lib/offline/outbox";
 import { pantryPath } from "~/lib/pantry-path";
 import {
   SHARE_OG_IMAGE_HEIGHT,
@@ -22,24 +19,6 @@ import {
 import type { Route } from "./+types/share.$token";
 
 export { action, loader } from "./share.$token.server";
-
-export async function clientLoader({ params, serverLoader }: Route.ClientLoaderArgs) {
-  return loadWithOfflineFallback({
-    serverLoader,
-    readSnapshot: async () => {
-      const cached = await getCachedSharePayload(params.token);
-      if (!cached) return null;
-      return cached.payload as Awaited<ReturnType<typeof serverLoader>>;
-    },
-    writeSnapshot: async (data) => {
-      if (data?.recipe) {
-        await cacheSharePayload(params.token, data);
-      }
-    },
-  });
-}
-
-clientLoader.hydrate = true as const;
 
 /** Short browser hint only — do not edge-cache HTML so unshare is immediate. */
 const SHARE_CACHE_CONTROL = "private, no-cache";
@@ -154,8 +133,6 @@ function ShareImportDock({
   sharePath: string;
   error?: string;
 }) {
-  const online = useOnlineStatus();
-
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-xl flex-col gap-2 px-4 py-3 sm:px-6">
@@ -176,24 +153,11 @@ function ShareImportDock({
             <p className="text-xs text-muted-foreground">
               Copy this recipe into your pantry to cook and shop from it.
             </p>
-            <Button
-              asChild={online}
-              className="w-full justify-between"
-              disabled={!online}
-              size="lg"
-              title={online ? undefined : "Requires a connection"}
-            >
-              {online ? (
-                <Link to={`/login?next=${encodeURIComponent(sharePath)}`}>
-                  Sign in to add
-                  <ArrowRight className="size-4" />
-                </Link>
-              ) : (
-                <>
-                  Sign in to add
-                  <ArrowRight className="size-4" />
-                </>
-              )}
+            <Button asChild className="w-full justify-between" size="lg">
+              <Link to={`/login?next=${encodeURIComponent(sharePath)}`}>
+                Sign in to add
+                <ArrowRight className="size-4" />
+              </Link>
             </Button>
           </>
         ) : null}
@@ -230,7 +194,6 @@ function ShareImportDock({
                   </Label>
                   <Select
                     defaultValue={defaultPantryId}
-                    disabled={!online}
                     id="import-pantry"
                     name="pantryId"
                     required
@@ -242,32 +205,17 @@ function ShareImportDock({
                     ))}
                   </Select>
                 </div>
-                <Button
-                  className="shrink-0"
-                  disabled={!online}
-                  size="lg"
-                  title={online ? undefined : "Requires a connection"}
-                  type="submit"
-                >
+                <Button className="shrink-0" size="lg" type="submit">
                   <BookPlus className="size-4" />
                   Add
                 </Button>
               </div>
             )}
             {pantries.length === 1 ? (
-              <Button
-                className="w-full justify-between"
-                disabled={!online}
-                size="lg"
-                title={online ? undefined : "Requires a connection"}
-                type="submit"
-              >
+              <Button className="w-full justify-between" size="lg" type="submit">
                 Add to my pantry
                 <BookPlus className="size-4" />
               </Button>
-            ) : null}
-            {!online ? (
-              <p className="text-xs text-muted-foreground">Import needs a connection.</p>
             ) : null}
             {error ? (
               <p className="text-sm text-destructive" role="alert">

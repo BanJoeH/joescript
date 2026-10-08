@@ -25,7 +25,6 @@ type ShareRecipeButtonProps = {
   shareUpdatedAt?: Date | string | null;
   size?: "sm" | "default";
   variant?: "outline" | "ghost";
-  disabled?: boolean;
 };
 
 function usePrefetchImage(url: string | null) {
@@ -73,7 +72,6 @@ export function ShareRecipeButton({
   shareUpdatedAt = null,
   size = "sm",
   variant = "outline",
-  disabled = false,
 }: ShareRecipeButtonProps) {
   const { toast } = useToast();
   const shareFetcher = useFetcher<ShareActionData>({ key: `recipe-share:${recipeId}` });
@@ -129,13 +127,7 @@ export function ShareRecipeButton({
       <shareFetcher.Form action={action} method="post">
         <input name="intent" type="hidden" value="ensure-share" />
         <input name="recipeId" type="hidden" value={recipeId} />
-        <Button
-          disabled={busy || disabled}
-          size={size}
-          title={disabled ? "Requires a connection" : undefined}
-          type="submit"
-          variant={variant}
-        >
+        <Button disabled={busy} size={size} type="submit" variant={variant}>
           <Share2 className="size-4" />
           {busy ? "Sharing…" : shared ? "Share link" : "Share"}
         </Button>

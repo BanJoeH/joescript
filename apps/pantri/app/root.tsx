@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -10,7 +9,6 @@ import {
 
 import { ThemeProvider } from "~/components/theme-provider";
 import { ToastProvider } from "~/components/toast";
-import { registerPantriServiceWorker } from "~/lib/offline/register-sw";
 import { themeInitScript } from "~/lib/theme";
 
 import type { Route } from "./+types/root";
@@ -57,10 +55,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  useEffect(() => {
-    registerPantriServiceWorker();
-  }, []);
-
   return (
     <ThemeProvider>
       <ToastProvider>
@@ -76,15 +70,9 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
   let stack: string | undefined;
 
   if (isRouteErrorResponse(error)) {
-    message = error.status === 404 ? "404" : error.status === 503 ? "Offline" : "Error";
+    message = error.status === 404 ? "404" : "Error";
     details =
-      error.status === 404
-        ? "The requested page could not be found."
-        : error.status === 503
-          ? typeof error.data === "string" && error.data.length > 0
-            ? error.data
-            : "You're offline and this page hasn't been cached on this device yet."
-          : error.statusText || details;
+      error.status === 404 ? "The requested page could not be found." : error.statusText || details;
   } else if (import.meta.env.DEV && error && error instanceof Error) {
     details = error.message;
     stack = error.stack;

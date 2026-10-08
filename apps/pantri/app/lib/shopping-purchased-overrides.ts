@@ -44,8 +44,6 @@ export function applyShoppingPurchasedOverrides(
     return { recipes, oddBits };
   }
 
-  // Keep overrides until reconcile* — clearing on match dropped optimism while the
-  // outbox was still pending, so a stale online revalidate could flash the old state.
   const nextRecipes =
     ingredientOverrides.size === 0
       ? recipes
@@ -54,6 +52,10 @@ export function applyShoppingPurchasedOverrides(
           ingredients: recipe.ingredients.map((ingredient, index) => {
             const override = ingredientOverrides.get(ingredientKey(recipe.id, index));
             if (override === undefined) {
+              return ingredient;
+            }
+            if (ingredient.purchased === override) {
+              ingredientOverrides.delete(ingredientKey(recipe.id, index));
               return ingredient;
             }
             return { ...ingredient, purchased: override };
@@ -68,32 +70,14 @@ export function applyShoppingPurchasedOverrides(
           if (override === undefined) {
             return bit;
           }
+          if (bit.purchased === override) {
+            oddBitOverrides.delete(index);
+            return bit;
+          }
           return { ...bit, purchased: override };
         });
 
   return { recipes: nextRecipes, oddBits: nextOddBits };
-}
-
-/** Drop overrides that already match loader/server data (call when outbox is empty). */
-export function reconcileShoppingPurchasedOverrides(
-  recipes: ShoppingRecipeRecord[],
-  oddBits: ShoppingIngredient[],
-) {
-  for (const recipe of recipes) {
-    recipe.ingredients.forEach((ingredient, index) => {
-      const key = ingredientKey(recipe.id, index);
-      const override = ingredientOverrides.get(key);
-      if (override !== undefined && ingredient.purchased === override) {
-        ingredientOverrides.delete(key);
-      }
-    });
-  }
-  oddBits.forEach((bit, index) => {
-    const override = oddBitOverrides.get(index);
-    if (override !== undefined && bit.purchased === override) {
-      oddBitOverrides.delete(index);
-    }
-  });
 }
 
 export function clearShoppingPurchasedOverrides() {
@@ -126,18 +110,10 @@ export function applySortedPurchasedOverrides<
     if (override === undefined) {
       return item;
     }
+    if (item.purchased === override) {
+      sortedPurchasedOverrides.delete(item.canonicalName);
+      return item;
+    }
     return { ...item, purchased: override };
   });
-}
-
-/** Drop sorted overrides that already match loader data (call when outbox is empty). */
-export function reconcileSortedPurchasedOverrides<
-  T extends { canonicalName: string; purchased: boolean },
->(items: T[]) {
-  for (const item of items) {
-    const override = sortedPurchasedOverrides.get(item.canonicalName);
-    if (override !== undefined && item.purchased === override) {
-      sortedPurchasedOverrides.delete(item.canonicalName);
-    }
-  }
 }

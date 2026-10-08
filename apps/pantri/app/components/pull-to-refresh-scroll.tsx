@@ -1,8 +1,5 @@
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef } from "react";
-import { useRevalidator } from "react-router";
-
-import { getIsOnline } from "~/lib/offline/connectivity";
 import { cn } from "~/lib/utils";
 
 const PULL_THRESHOLD = 72;
@@ -26,7 +23,6 @@ export function PullToRefreshScroll({ children, className, scrollRef }: PullToRe
   const pullDistanceRef = useRef(0);
   const refreshingRef = useRef(false);
   const rafRef = useRef(0);
-  const revalidator = useRevalidator();
   const touchRef = useRef({
     pullActive: false,
     startX: 0,
@@ -65,18 +61,9 @@ export function PullToRefreshScroll({ children, className, scrollRef }: PullToRe
   );
 
   const refresh = useCallback(async () => {
-    if (!getIsOnline()) {
-      applyIndicatorHeight(0, true);
-      return;
-    }
-
     setRefreshingVisual(true);
-    try {
-      await revalidator.revalidate();
-    } finally {
-      setRefreshingVisual(false);
-    }
-  }, [applyIndicatorHeight, revalidator, setRefreshingVisual]);
+    window.location.reload();
+  }, [setRefreshingVisual]);
 
   const refreshRef = useRef(refresh);
   refreshRef.current = refresh;
