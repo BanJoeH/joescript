@@ -28,8 +28,6 @@ export function shouldFlushOptimisticRevalidation(_now = Date.now()) {
 /** @deprecated Batching off — no-op. */
 export function markOptimisticShoppingActionSubmitted() {}
 
-export function shouldRevalidatePantryRoutes({
-  defaultShouldRevalidate,
-}: RevalidateArgs) {
+export function shouldRevalidatePantryRoutes({ defaultShouldRevalidate }: RevalidateArgs) {
   return defaultShouldRevalidate;
 }
