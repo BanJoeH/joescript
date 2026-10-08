@@ -54,7 +54,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
     if (intent === "toggle-odd-bit") {
       await pantri.oddBits.togglePurchased(
-        Number(getString(formData, "index")),
+        getString(formData, "id"),
         getString(formData, "purchased") === "true",
       );
       await notify();
@@ -62,7 +62,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
 
     if (intent === "remove-odd-bit") {
-      await pantri.oddBits.remove(Number(getString(formData, "index")));
+      await pantri.oddBits.remove(getString(formData, "id"));
       await notify();
       return { ok: true as const };
     }

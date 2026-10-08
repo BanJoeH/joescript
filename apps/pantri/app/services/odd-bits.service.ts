@@ -1,13 +1,9 @@
-import { eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { oddBits } from "~/db/schema";
+import { oddBitItems } from "~/db/schema";
 import { ingredientNamesMatch } from "~/lib/ingredient-name";
-import {
-  parseShoppingIngredientsJson,
-  type ShoppingIngredient,
-  serializeShoppingIngredients,
-} from "~/lib/recipe-schema";
+import type { OddBit } from "~/lib/recipe-schema";
 import type { PantriContext } from "~/services/types";
 
 const addOddBitInput = z.object({
@@ -23,99 +19,94 @@ const addOddBitInput = z.object({
 
 export type AddOddBitInput = z.input<typeof addOddBitInput>;
 
+function rowToOddBit(row: typeof oddBitItems.$inferSelect): OddBit {
+  return {
+    id: row.id,
+    name: row.name,
+    amount: row.amount ?? null,
+    unit: row.unit ?? null,
+    notes: row.notes ?? undefined,
+    purchased: row.purchased,
+  };
+}
+
 export function createOddBitsService({ db, pantryId }: PantriContext) {
-  async function getRow() {
-    const [row] = await db.select().from(oddBits).where(eq(oddBits.pantryId, pantryId)).limit(1);
-    return row ?? null;
-  }
+  return {
+    async list(): Promise<OddBit[]> {
+      const rows = await db
+        .select()
+        .from(oddBitItems)
+        .where(eq(oddBitItems.pantryId, pantryId))
+        .orderBy(asc(oddBitItems.createdAt), asc(oddBitItems.id));
+      return rows.map(rowToOddBit);
+    },
 
-  async function setIngredients(ingredients: ShoppingIngredient[]) {
-    const row = await getRow();
-    const now = new Date();
-    const serialized = serializeShoppingIngredients(ingredients);
-
-    if (row) {
-      await db
-        .update(oddBits)
-        .set({ ingredients: serialized, updatedAt: now })
-        .where(eq(oddBits.id, row.id));
-    } else {
-      await db.insert(oddBits).values({
+    async add(input: AddOddBitInput): Promise<OddBit[]> {
+      const data = addOddBitInput.parse(input);
+      const now = new Date();
+      await db.insert(oddBitItems).values({
         pantryId,
-        ingredients: serialized,
+        name: data.name,
+        amount: data.amount ?? null,
+        unit: data.unit ?? null,
+        notes: data.notes ?? null,
+        purchased: false,
         createdAt: now,
         updatedAt: now,
       });
-    }
-
-    return ingredients;
-  }
-
-  return {
-    async list(): Promise<ShoppingIngredient[]> {
-      const row = await getRow();
-      return parseShoppingIngredientsJson(row?.ingredients);
+      return this.list();
     },
 
-    async add(input: AddOddBitInput): Promise<ShoppingIngredient[]> {
-      const data = addOddBitInput.parse(input);
-      const current = await this.list();
-      return setIngredients([
-        ...current,
-        {
-          name: data.name,
-          amount: data.amount ?? null,
-          unit: data.unit ?? null,
-          notes: data.notes,
-          purchased: false,
-        },
-      ]);
-    },
-
-    async remove(index: number): Promise<ShoppingIngredient[]> {
-      const current = await this.list();
-      if (!Number.isInteger(index) || index < 0 || index >= current.length) {
+    async remove(id: string): Promise<OddBit[]> {
+      const result = await db
+        .delete(oddBitItems)
+        .where(and(eq(oddBitItems.id, id), eq(oddBitItems.pantryId, pantryId)))
+        .returning({ id: oddBitItems.id });
+      if (result.length === 0) {
         throw new Error("Odd bit not found");
       }
-      return setIngredients(current.filter((_, i) => i !== index));
+      return this.list();
     },
 
-    async togglePurchased(index: number, purchased: boolean): Promise<ShoppingIngredient[]> {
-      const current = await this.list();
-      if (!Number.isInteger(index) || index < 0 || index >= current.length) {
+    async togglePurchased(id: string, purchased: boolean): Promise<OddBit[]> {
+      const result = await db
+        .update(oddBitItems)
+        .set({ purchased, updatedAt: new Date() })
+        .where(and(eq(oddBitItems.id, id), eq(oddBitItems.pantryId, pantryId)))
+        .returning({ id: oddBitItems.id });
+      if (result.length === 0) {
         throw new Error("Odd bit not found");
       }
-      return setIngredients(
-        current.map((ingredient, i) => (i === index ? { ...ingredient, purchased } : ingredient)),
-      );
+      return this.list();
     },
 
     /** Fan a purchased toggle out across every odd bit with a matching canonical name. Used by the sorted view. */
     async setPurchasedByName(ingredientName: string, purchased: boolean): Promise<boolean> {
       const current = await this.list();
-      if (!current.some((ingredient) => ingredientNamesMatch(ingredient.name, ingredientName))) {
+      const matches = current.filter((bit) => ingredientNamesMatch(bit.name, ingredientName));
+      if (matches.length === 0) {
         return false;
       }
 
-      await setIngredients(
-        current.map((ingredient) =>
-          ingredientNamesMatch(ingredient.name, ingredientName)
-            ? { ...ingredient, purchased }
-            : ingredient,
+      const now = new Date();
+      await Promise.all(
+        matches.map((bit) =>
+          db
+            .update(oddBitItems)
+            .set({ purchased, updatedAt: now })
+            .where(and(eq(oddBitItems.id, bit.id), eq(oddBitItems.pantryId, pantryId))),
         ),
       );
       return true;
     },
 
     async clearAllPurchased(): Promise<boolean> {
-      const current = await this.list();
-      if (!current.some((ingredient) => ingredient.purchased)) return false;
-      await setIngredients(
-        current.map((ingredient) =>
-          ingredient.purchased ? { ...ingredient, purchased: false } : ingredient,
-        ),
-      );
-      return true;
+      const result = await db
+        .update(oddBitItems)
+        .set({ purchased: false, updatedAt: new Date() })
+        .where(and(eq(oddBitItems.pantryId, pantryId), eq(oddBitItems.purchased, true)))
+        .returning({ id: oddBitItems.id });
+      return result.length > 0;
     },
   };
 }

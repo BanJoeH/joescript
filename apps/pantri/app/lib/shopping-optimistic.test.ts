@@ -61,7 +61,7 @@ describe("applyShoppingListOptimistic", () => {
   it("toggles recipe ingredients and odd bits", () => {
     const result = applyShoppingListOptimistic(
       [recipe],
-      [{ name: "foil", amount: null, unit: null, purchased: false }],
+      [{ id: "ob1", name: "foil", amount: null, unit: null, purchased: false }],
       [
         {
           formData: formData({
@@ -71,7 +71,7 @@ describe("applyShoppingListOptimistic", () => {
             purchased: "true",
           }),
         },
-        { formData: formData({ intent: "toggle-odd-bit", index: "0", purchased: "true" }) },
+        { formData: formData({ intent: "toggle-odd-bit", id: "ob1", purchased: "true" }) },
       ],
     );
 
@@ -92,8 +92,8 @@ describe("applyShoppingListOptimistic", () => {
     const result = applyShoppingListOptimistic(
       [],
       [
-        { name: "foil", amount: null, unit: null, purchased: false },
-        { name: "bags", amount: null, unit: null, purchased: false },
+        { id: "ob-foil", name: "foil", amount: null, unit: null, purchased: false },
+        { id: "ob-bags", name: "bags", amount: null, unit: null, purchased: false },
       ],
       [
         {
@@ -104,19 +104,19 @@ describe("applyShoppingListOptimistic", () => {
             unit: "pk",
           }),
         },
-        { formData: formData({ intent: "remove-odd-bit", index: "0" }) },
+        { formData: formData({ intent: "remove-odd-bit", id: "ob-foil" }) },
       ],
     );
 
     expect(result.oddBits).toEqual([
-      { name: "bags", amount: null, unit: null, purchased: false, sourceIndex: 1 },
+      { id: "ob-bags", name: "bags", amount: null, unit: null, purchased: false },
       {
+        id: "pending:paper towels",
         name: "paper towels",
         amount: 2,
         unit: "pk",
         notes: undefined,
         purchased: false,
-        sourceIndex: -1,
         pendingAdd: true,
       },
     ]);
