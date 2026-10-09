@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { Outlet, type ShouldRevalidateFunctionArgs, useLocation, useNavigate } from "react-router";
+import { Outlet, useLocation, useNavigate } from "react-router";
 import type { Swiper as SwiperClass } from "swiper";
 import { Swiper, SwiperSlide } from "swiper/react";
 
@@ -9,15 +9,10 @@ import { ShoppingListView } from "~/components/shopping/shopping-list-view";
 import { resolveHomeRecipes } from "~/lib/home-recipes-cache";
 import { type HomeTab, useHomeTabPaneRef } from "~/lib/home-tab-scroll";
 import { getHomeTabIndex, pantryPath } from "~/lib/pantry-path";
-import { shouldRevalidatePantryRoutes } from "~/lib/pantry-revalidate";
 
 import type { Route } from "./+types/pantry.home";
 
 export { loader } from "./pantry.home.server";
-
-export function shouldRevalidate(args: ShouldRevalidateFunctionArgs) {
-  return shouldRevalidatePantryRoutes(args);
-}
 
 function HomeTabPane({ tab, children }: { tab: HomeTab; children: React.ReactNode }) {
   const paneRef = useHomeTabPaneRef(tab);

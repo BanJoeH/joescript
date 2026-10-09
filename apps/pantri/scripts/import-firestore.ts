@@ -180,9 +180,13 @@ export function parseLegacyIngredientLine(raw: string): RecipeIngredient {
 
 function parseRawIngredient(raw: RawIngredient): ShoppingIngredient {
   if (typeof raw === "string") {
-    return { ...parseLegacyIngredientLine(raw), purchased: false };
+    return { ...parseLegacyIngredientLine(raw), purchased: false, id: randomUUID() };
   }
-  return { ...parseLegacyIngredientLine(raw.name), purchased: raw.purchased ?? false };
+  return {
+    ...parseLegacyIngredientLine(raw.name),
+    purchased: raw.purchased ?? false,
+    id: randomUUID(),
+  };
 }
 
 function loadEnvFile(path: string) {

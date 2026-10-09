@@ -11,17 +11,20 @@ import {
   celebrateSortedComplete,
   shouldCelebrateSortedComplete,
 } from "~/lib/celebrate-sorted-complete";
-import { getIngredientSection, SHOPPING_SECTIONS } from "~/lib/ingredient-sections";
+import {
+  getIngredientSection,
+  SHOPPING_SECTIONS,
+  type ShoppingSection,
+} from "~/lib/ingredient-sections";
 import { pantryPath } from "~/lib/pantry-path";
-import { markOptimisticShoppingActionSubmitted } from "~/lib/pantry-revalidate";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
 import { getSortedQuantityBadge } from "~/lib/shopping-aggregation";
-import { applySortedOptimistic } from "~/lib/shopping-optimistic";
 import {
-  reconcileSortedPurchasedOverrides,
-  resetSortedPurchasedOverrides,
-  setSortedPurchasedOverride,
-} from "~/lib/shopping-purchased-overrides";
+  mergeSortedSections,
+  type SortedSectionState,
+  sortedBusyFromFetchers,
+} from "~/lib/shopping-local-merge";
+import { useRevalidateOnFetcherError } from "~/lib/use-revalidate-on-fetcher-error";
 import { cn } from "~/lib/utils";
 
 import type { Route } from "./+types/pantry.sorted";
@@ -32,22 +35,24 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Sorted · Pantri" }];
 }
 
-function SortedItemRow({ item, section }: { item: AggregatedIngredient; section: string }) {
+type SortedSection = SortedSectionState;
+
+function SortedItemRow({
+  item,
+  section,
+  onPurchased,
+  onMoveSection,
+}: {
+  item: AggregatedIngredient;
+  section: ShoppingSection | string;
+  onPurchased: (canonicalName: string, purchased: boolean) => void;
+  onMoveSection: (canonicalName: string, name: string, nextSection: ShoppingSection) => void;
+}) {
   const toggleFetcher = useFetcher({ key: `sorted-toggle:${item.canonicalName}` });
   const categoryFetcher = useFetcher({ key: `sorted-category:${item.canonicalName}` });
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSources, setShowSources] = useState(false);
-
-  const purchased =
-    toggleFetcher.formData?.get("intent") === "toggle"
-      ? toggleFetcher.formData.get("purchased") === "true"
-      : item.purchased;
-
-  const pendingSection =
-    categoryFetcher.formData?.get("intent") === "set-category"
-      ? String(categoryFetcher.formData.get("section") ?? section)
-      : section;
 
   const quantityBadge = getSortedQuantityBadge(item);
   const panelId = `sorted-item-${item.canonicalName}-sources`;
@@ -73,14 +78,10 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
     };
   }, [menuOpen]);
 
-  // While moving aisle from a to-buy section, hide the source row (target section renders it).
-  if (!purchased && pendingSection !== section) {
-    return null;
-  }
-
-  function moveToSection(nextSection: string) {
+  function moveToSection(nextSection: ShoppingSection) {
     setMenuOpen(false);
     if (nextSection === section) return;
+    onMoveSection(item.canonicalName, item.name, nextSection);
     categoryFetcher.submit(
       {
         intent: "set-category",
@@ -100,14 +101,13 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
     >
       <div className="flex items-center gap-1.5">
         <input
-          aria-label={`Mark ${item.name} as ${purchased ? "to buy" : "got it"}`}
-          checked={purchased}
+          aria-label={`Mark ${item.name} as ${item.purchased ? "to buy" : "got it"}`}
+          checked={item.purchased}
           className="size-4 shrink-0 accent-foreground cursor-pointer"
           id={`sorted-item-${item.canonicalName}-checkbox`}
           onChange={(event) => {
             const next = event.target.checked;
-            setSortedPurchasedOverride(item.canonicalName, next);
-            markOptimisticShoppingActionSubmitted();
+            onPurchased(item.canonicalName, next);
             toggleFetcher.submit(
               {
                 intent: "toggle",
@@ -123,7 +123,7 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
           htmlFor={`sorted-item-${item.canonicalName}-checkbox`}
           className={cn(
             "min-w-0 flex-1 py-0.5 text-sm capitalize leading-snug cursor-pointer",
-            purchased && "text-muted-foreground line-through",
+            item.purchased && "text-muted-foreground line-through",
           )}
         >
           {item.name}
@@ -207,23 +207,41 @@ function SortedItemRow({ item, section }: { item: AggregatedIngredient; section:
   );
 }
 
+function sortedSectionsLookEqual(a: SortedSection[], b: SortedSection[]) {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i]!.section !== b[i]!.section || a[i]!.items.length !== b[i]!.items.length) return false;
+    for (let j = 0; j < a[i]!.items.length; j++) {
+      const left = a[i]!.items[j]!;
+      const right = b[i]!.items[j]!;
+      if (left.canonicalName !== right.canonicalName || left.purchased !== right.purchased) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 export default function SortedPage({ loaderData }: Route.ComponentProps) {
   const { sections, pantryId } = loaderData;
   const fetchers = useFetchers();
   const clearFetcher = useFetcher({ key: "sorted-clear-all-purchased" });
+  const [localSections, setLocalSections] = useState(sections);
+
+  useRevalidateOnFetcherError();
 
   useEffect(() => {
-    reconcileSortedPurchasedOverrides(sections.flatMap((section) => section.items));
-  }, [sections]);
-
-  const optimisticSections = useMemo(
-    () => applySortedOptimistic(sections, fetchers),
-    [sections, fetchers],
-  );
+    const busy = sortedBusyFromFetchers(fetchers);
+    setLocalSections((current) => {
+      const next = mergeSortedSections(sections, current, busy);
+      return sortedSectionsLookEqual(current, next) ? current : next;
+    });
+  }, [sections, fetchers]);
 
   const { toBuySections, gotIt } = useMemo(() => {
     const purchased: Array<AggregatedIngredient & { section: string }> = [];
-    const toBuy = optimisticSections
+    const toBuy = localSections
       .map((section) => {
         const items = section.items.filter((item) => {
           if (item.purchased) {
@@ -238,7 +256,7 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
 
     purchased.sort((a, b) => a.name.localeCompare(b.name));
     return { toBuySections: toBuy, gotIt: purchased };
-  }, [optimisticSections]);
+  }, [localSections]);
 
   const remainingCount = useMemo(
     () => toBuySections.reduce((count, section) => count + section.items.length, 0),
@@ -261,6 +279,55 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
     prevRemainingRef.current = remainingCount;
     celebrationReadyRef.current = true;
   }, [remainingCount]);
+
+  function setItemPurchased(canonicalName: string, purchased: boolean) {
+    setLocalSections((current) =>
+      current.map((section) => ({
+        ...section,
+        items: section.items.map((item) =>
+          item.canonicalName === canonicalName ? { ...item, purchased } : item,
+        ),
+      })),
+    );
+  }
+
+  function moveItem(canonicalName: string, name: string, nextSection: ShoppingSection) {
+    setLocalSections((current) => {
+      let moved: AggregatedIngredient | null = null;
+      const without = current.map((section) => {
+        const remaining = section.items.filter((item) => {
+          const match = item.canonicalName === canonicalName || item.name === name;
+          if (match) moved = item;
+          return !match;
+        });
+        return { ...section, items: remaining };
+      });
+
+      if (!moved) return current;
+
+      const existing = without.find((section) => section.section === nextSection);
+      let next: SortedSection[];
+      if (existing) {
+        next = without.map((section) =>
+          section.section === nextSection
+            ? { ...section, items: [...section.items, moved as AggregatedIngredient] }
+            : section,
+        );
+      } else {
+        next = [...without, { section: nextSection, items: [moved] }];
+      }
+      return next.filter((section) => section.items.length > 0);
+    });
+  }
+
+  function clearAllPurchased() {
+    setLocalSections((current) =>
+      current.map((section) => ({
+        ...section,
+        items: section.items.map((item) => (item.purchased ? { ...item, purchased: false } : item)),
+      })),
+    );
+  }
 
   const isEmpty = toBuySections.length === 0 && gotIt.length === 0;
 
@@ -295,7 +362,13 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
                 </CardHeader>
                 <CardContent className="space-y-0">
                   {items.map((item) => (
-                    <SortedItemRow item={item} key={item.canonicalName} section={section} />
+                    <SortedItemRow
+                      item={item}
+                      key={item.canonicalName}
+                      onMoveSection={moveItem}
+                      onPurchased={setItemPurchased}
+                      section={section}
+                    />
                   ))}
                 </CardContent>
               </Card>
@@ -312,8 +385,7 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
                 <ShoppingGotItSection
                   count={gotIt.length}
                   onResetAll={() => {
-                    resetSortedPurchasedOverrides(gotIt.map((item) => item.canonicalName));
-                    markOptimisticShoppingActionSubmitted();
+                    clearAllPurchased();
                     clearFetcher.submit({ intent: "clear-all-purchased" }, { method: "post" });
                   }}
                 >
@@ -321,6 +393,8 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
                     <SortedItemRow
                       item={item}
                       key={item.canonicalName}
+                      onMoveSection={moveItem}
+                      onPurchased={setItemPurchased}
                       section={item.section || getIngredientSection(item.name)}
                     />
                   ))}

@@ -11,10 +11,10 @@ export type RecipeIngredient = {
 };
 
 /** A recipe ingredient once it has been added to a shopping list. */
-export type ShoppingIngredient = RecipeIngredient & { purchased: boolean };
+export type ShoppingIngredient = RecipeIngredient & { purchased: boolean; id: string };
 
 /** Ad-hoc shopping item stored as its own `odd_bit_items` row. */
-export type OddBit = ShoppingIngredient & { id: string };
+export type OddBit = ShoppingIngredient;
 
 /** One step of a recipe's method. `order` is 1-indexed and drives display order. */
 export type RecipeStep = {
@@ -38,6 +38,7 @@ const recipeIngredientSchema = z.object({
 
 const shoppingIngredientSchema = recipeIngredientSchema.extend({
   purchased: z.boolean(),
+  id: z.string().trim().min(1).optional(),
 });
 
 const recipeStepSchema = z.object({
@@ -49,11 +50,13 @@ export const recipeIngredientsSchema = z.array(recipeIngredientSchema);
 export const shoppingIngredientsSchema = z.array(shoppingIngredientSchema);
 export const recipeStepsSchema = z.array(recipeStepSchema);
 
+type ParsedShoppingIngredient = RecipeIngredient & { purchased: boolean; id?: string };
+
 export function parseRecipeIngredients(value: unknown): RecipeIngredient[] {
   return recipeIngredientsSchema.parse(value);
 }
 
-export function parseShoppingIngredients(value: unknown): ShoppingIngredient[] {
+export function parseShoppingIngredients(value: unknown): ParsedShoppingIngredient[] {
   return shoppingIngredientsSchema.parse(value);
 }
 
@@ -66,7 +69,9 @@ export function serializeRecipeIngredients(ingredients: RecipeIngredient[]): str
 }
 
 export function serializeShoppingIngredients(ingredients: ShoppingIngredient[]): string {
-  return JSON.stringify(shoppingIngredientsSchema.parse(ingredients));
+  return JSON.stringify(
+    ingredients.map((ingredient) => shoppingIngredientSchema.parse(ingredient)),
+  );
 }
 
 export function serializeRecipeSteps(steps: RecipeStep[]): string {
@@ -86,13 +91,29 @@ export function parseRecipeIngredientsJson(json: string | null | undefined): Rec
 
 export function parseShoppingIngredientsJson(
   json: string | null | undefined,
-): ShoppingIngredient[] {
+): ParsedShoppingIngredient[] {
   if (!json) return [];
   try {
     return parseShoppingIngredients(JSON.parse(json));
   } catch {
     return [];
   }
+}
+
+/** Ensure every shopping ingredient has a stable id. Returns whether any were minted. */
+export function ensureShoppingIngredientIds(ingredients: ParsedShoppingIngredient[]): {
+  ingredients: ShoppingIngredient[];
+  changed: boolean;
+} {
+  let changed = false;
+  const next = ingredients.map((ingredient) => {
+    if (ingredient.id) {
+      return ingredient as ShoppingIngredient;
+    }
+    changed = true;
+    return { ...ingredient, id: crypto.randomUUID() };
+  });
+  return { ingredients: next, changed };
 }
 
 export function parseRecipeStepsJson(json: string | null | undefined): RecipeStep[] {
@@ -105,32 +126,38 @@ export function parseRecipeStepsJson(json: string | null | undefined): RecipeSte
 }
 
 export function toShoppingIngredients(ingredients: RecipeIngredient[]): ShoppingIngredient[] {
-  return ingredients.map((ingredient) => ({ ...ingredient, purchased: false }));
+  return ingredients.map((ingredient) => ({
+    ...ingredient,
+    purchased: false,
+    id: crypto.randomUUID(),
+  }));
 }
 
 /**
  * Rebuild shopping ingredients from a recipe snapshot while preserving purchased
- * flags by canonical name. Each purchased prior line contributes one token that
+ * flags and ids by canonical name. Each prior line contributes one token that
  * the first matching next line can consume.
  */
 export function mergeShoppingIngredients(
   previous: ShoppingIngredient[],
   next: RecipeIngredient[],
 ): ShoppingIngredient[] {
-  const purchasedTokens = new Map<string, number>();
+  const priorByCanonical = new Map<string, ShoppingIngredient[]>();
   for (const ingredient of previous) {
-    if (!ingredient.purchased) continue;
     const key = getCanonicalIngredientName(ingredient.name);
-    purchasedTokens.set(key, (purchasedTokens.get(key) ?? 0) + 1);
+    const queue = priorByCanonical.get(key);
+    if (queue) queue.push(ingredient);
+    else priorByCanonical.set(key, [ingredient]);
   }
 
   return next.map((ingredient) => {
     const key = getCanonicalIngredientName(ingredient.name);
-    const remaining = purchasedTokens.get(key) ?? 0;
-    const purchased = remaining > 0;
-    if (purchased) {
-      purchasedTokens.set(key, remaining - 1);
-    }
-    return { ...ingredient, purchased };
+    const queue = priorByCanonical.get(key);
+    const prior = queue?.shift();
+    return {
+      ...ingredient,
+      id: prior?.id ?? crypto.randomUUID(),
+      purchased: prior?.purchased ?? false,
+    };
   });
 }

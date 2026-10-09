@@ -42,4 +42,6 @@ apps/pantri/local.db-*
 apps/pantri/worker-configuration.d.ts
 apps/pantri/.dev.vars
 !apps/pantri/.dev.vars.example
+apps/pantri/test-results
+apps/pantri/playwright-report
 *.tsbuildinfo

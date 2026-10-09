@@ -3,6 +3,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { recipes, shoppingRecipes } from "~/db/schema";
 import { ingredientNamesMatch } from "~/lib/ingredient-name";
 import {
+  ensureShoppingIngredientIds,
   mergeShoppingIngredients,
   parseRecipeIngredientsJson,
   parseRecipeStepsJson,
@@ -27,7 +28,10 @@ export type ShoppingRecipeRecord = {
   updatedAt: Date;
 };
 
-function toRecord(row: typeof shoppingRecipes.$inferSelect): ShoppingRecipeRecord {
+function toRecord(
+  row: typeof shoppingRecipes.$inferSelect,
+  ingredients: ShoppingIngredient[],
+): ShoppingRecipeRecord {
   return {
     id: row.id,
     pantryId: row.pantryId,
@@ -35,7 +39,7 @@ function toRecord(row: typeof shoppingRecipes.$inferSelect): ShoppingRecipeRecor
     name: row.name,
     link: row.link,
     servings: row.servings,
-    ingredients: parseShoppingIngredientsJson(row.ingredients),
+    ingredients,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -44,6 +48,19 @@ function toRecord(row: typeof shoppingRecipes.$inferSelect): ShoppingRecipeRecor
 export function createShoppingService({ db, userId, pantryId }: PantriContext) {
   const scope = and(eq(shoppingRecipes.pantryId, pantryId), isNull(shoppingRecipes.deletedAt));
 
+  async function hydrate(row: typeof shoppingRecipes.$inferSelect): Promise<ShoppingRecipeRecord> {
+    const { ingredients, changed } = ensureShoppingIngredientIds(
+      parseShoppingIngredientsJson(row.ingredients),
+    );
+    if (changed) {
+      await db
+        .update(shoppingRecipes)
+        .set({ ingredients: serializeShoppingIngredients(ingredients), updatedAt: new Date() })
+        .where(eq(shoppingRecipes.id, row.id));
+    }
+    return toRecord(row, ingredients);
+  }
+
   return {
     async list(): Promise<ShoppingRecipeRecord[]> {
       const rows = await db
@@ -51,7 +68,8 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
         .from(shoppingRecipes)
         .where(scope)
         .orderBy(asc(shoppingRecipes.name), asc(shoppingRecipes.createdAt));
-      return rows.map(toRecord).sort((a, b) => {
+      const records = await Promise.all(rows.map((row) => hydrate(row)));
+      return records.sort((a, b) => {
         const byName = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
         if (byName !== 0) return byName;
         return a.createdAt.getTime() - b.createdAt.getTime();
@@ -65,7 +83,7 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
         .where(and(eq(shoppingRecipes.id, shoppingRecipeId), scope))
         .limit(1);
 
-      return row ? toRecord(row) : null;
+      return row ? hydrate(row) : null;
     },
 
     async addFromRecipe(recipeId: string): Promise<ShoppingRecipeRecord> {
@@ -139,10 +157,10 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
       const updatedAt = new Date();
 
       for (const row of linked) {
-        const ingredients = mergeShoppingIngredients(
+        const { ingredients: previous } = ensureShoppingIngredientIds(
           parseShoppingIngredientsJson(row.ingredients),
-          nextIngredients,
         );
+        const ingredients = mergeShoppingIngredients(previous, nextIngredients);
 
         await db
           .update(shoppingRecipes)
@@ -174,14 +192,17 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
 
     async toggleIngredientPurchased(
       shoppingRecipeId: string,
-      ingredientIndex: number,
+      ingredientId: string,
       purchased: boolean,
     ): Promise<ShoppingRecipeRecord> {
       const record = await this.get(shoppingRecipeId);
       if (!record) throw new Error("Shopping recipe not found");
 
-      const ingredients = record.ingredients.map((ingredient, index) =>
-        index === ingredientIndex ? { ...ingredient, purchased } : ingredient,
+      const match = record.ingredients.some((ingredient) => ingredient.id === ingredientId);
+      if (!match) throw new Error("Ingredient not found");
+
+      const ingredients = record.ingredients.map((ingredient) =>
+        ingredient.id === ingredientId ? { ...ingredient, purchased } : ingredient,
       );
 
       const updatedAt = new Date();
