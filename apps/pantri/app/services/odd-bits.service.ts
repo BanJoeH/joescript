@@ -41,20 +41,24 @@ export function createOddBitsService({ db, pantryId }: PantriContext) {
       return rows.map(rowToOddBit);
     },
 
-    async add(input: AddOddBitInput): Promise<OddBit[]> {
+    async add(input: AddOddBitInput): Promise<OddBit> {
       const data = addOddBitInput.parse(input);
       const now = new Date();
-      await db.insert(oddBitItems).values({
-        pantryId,
-        name: data.name,
-        amount: data.amount ?? null,
-        unit: data.unit ?? null,
-        notes: data.notes ?? null,
-        purchased: false,
-        createdAt: now,
-        updatedAt: now,
-      });
-      return this.list();
+      const [row] = await db
+        .insert(oddBitItems)
+        .values({
+          pantryId,
+          name: data.name,
+          amount: data.amount ?? null,
+          unit: data.unit ?? null,
+          notes: data.notes ?? null,
+          purchased: false,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .returning();
+      if (!row) throw new Error("Failed to add odd bit");
+      return rowToOddBit(row);
     },
 
     async remove(id: string): Promise<OddBit[]> {

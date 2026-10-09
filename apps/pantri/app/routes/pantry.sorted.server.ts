@@ -53,6 +53,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         name: getString(formData, "name"),
         section: getString(formData, "section") as ShoppingSection,
       });
+      await notifyPantryMutation(context, getWorkerEnv());
     } catch (error) {
       return { error: error instanceof Error ? error.message : "Could not update category." };
     }

@@ -1,6 +1,6 @@
 import { ArrowLeft, ChevronDown, MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useFetcher } from "react-router";
+import { useFetcher, useFetchers } from "react-router";
 
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
@@ -19,6 +19,12 @@ import {
 import { pantryPath } from "~/lib/pantry-path";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
 import { getSortedQuantityBadge } from "~/lib/shopping-aggregation";
+import {
+  mergeSortedSections,
+  type SortedSectionState,
+  sortedBusyFromFetchers,
+} from "~/lib/shopping-local-merge";
+import { useRevalidateOnFetcherError } from "~/lib/use-revalidate-on-fetcher-error";
 import { cn } from "~/lib/utils";
 
 import type { Route } from "./+types/pantry.sorted";
@@ -29,7 +35,7 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Sorted · Pantri" }];
 }
 
-type SortedSection = Route.ComponentProps["loaderData"]["sections"][number];
+type SortedSection = SortedSectionState;
 
 function SortedItemRow({
   item,
@@ -201,14 +207,37 @@ function SortedItemRow({
   );
 }
 
+function sortedSectionsLookEqual(a: SortedSection[], b: SortedSection[]) {
+  if (a === b) return true;
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i]!.section !== b[i]!.section || a[i]!.items.length !== b[i]!.items.length) return false;
+    for (let j = 0; j < a[i]!.items.length; j++) {
+      const left = a[i]!.items[j]!;
+      const right = b[i]!.items[j]!;
+      if (left.canonicalName !== right.canonicalName || left.purchased !== right.purchased) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 export default function SortedPage({ loaderData }: Route.ComponentProps) {
   const { sections, pantryId } = loaderData;
+  const fetchers = useFetchers();
   const clearFetcher = useFetcher({ key: "sorted-clear-all-purchased" });
   const [localSections, setLocalSections] = useState(sections);
 
+  useRevalidateOnFetcherError();
+
   useEffect(() => {
-    setLocalSections(sections);
-  }, [sections]);
+    const busy = sortedBusyFromFetchers(fetchers);
+    setLocalSections((current) => {
+      const next = mergeSortedSections(sections, current, busy);
+      return sortedSectionsLookEqual(current, next) ? current : next;
+    });
+  }, [sections, fetchers]);
 
   const { toBuySections, gotIt } = useMemo(() => {
     const purchased: Array<AggregatedIngredient & { section: string }> = [];

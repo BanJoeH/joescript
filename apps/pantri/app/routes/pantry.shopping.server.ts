@@ -5,13 +5,6 @@ import { notifyPantryMutation } from "~/services/realtime.server";
 
 import type { Route } from "./+types/pantry.shopping";
 
-export async function loader({ request, params }: Route.LoaderArgs) {
-  const { pantri, pantryId } = await requirePantriService(request, getPantriEnv(), params.pantryId);
-  const [recipes, oddBits] = await Promise.all([pantri.shopping.list(), pantri.oddBits.list()]);
-
-  return { recipes, oddBits, pantryId };
-}
-
 export async function action({ request, params }: Route.ActionArgs) {
   const { pantri, context } = await requirePantriService(request, getPantriEnv(), params.pantryId);
   const formData = await request.formData();
@@ -39,7 +32,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
 
     if (intent === "add-odd-bit") {
-      await pantri.oddBits.add({
+      const oddBit = await pantri.oddBits.add({
         name: getString(formData, "name"),
         amount: (() => {
           const raw = getOptionalString(formData, "amount");
@@ -49,7 +42,11 @@ export async function action({ request, params }: Route.ActionArgs) {
         notes: getOptionalString(formData, "notes"),
       });
       await notify();
-      return { ok: true as const };
+      return {
+        ok: true as const,
+        oddBit,
+        clientPendingId: getOptionalString(formData, "clientPendingId") ?? null,
+      };
     }
 
     if (intent === "toggle-odd-bit") {
