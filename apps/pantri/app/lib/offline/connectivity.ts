@@ -8,6 +8,10 @@ const listeners = new Set<Listener>();
 let effectiveOnline = true;
 let probeInFlight: Promise<void> | null = null;
 let monitoringStarted = false;
+/** Only while offline — catches reconnect when `online` never fires (SW Offline toggle). */
+let offlinePollId: ReturnType<typeof setInterval> | null = null;
+
+const OFFLINE_POLL_MS = 10_000;
 
 export function getIsOnline() {
   return effectiveOnline;
@@ -22,9 +26,29 @@ function emit() {
   for (const listener of listeners) listener();
 }
 
+function stopOfflinePoll() {
+  if (offlinePollId == null) return;
+  clearInterval(offlinePollId);
+  offlinePollId = null;
+}
+
+function startOfflinePoll() {
+  if (offlinePollId != null) return;
+  offlinePollId = setInterval(() => {
+    void probeOnlineStatus();
+  }, OFFLINE_POLL_MS);
+}
+
 function setEffectiveOnline(next: boolean) {
-  if (effectiveOnline === next) return;
+  if (effectiveOnline === next) {
+    // Still ensure poll matches state (e.g. first probe confirms offline).
+    if (next) stopOfflinePoll();
+    else startOfflinePoll();
+    return;
+  }
   effectiveOnline = next;
+  if (next) stopOfflinePoll();
+  else startOfflinePoll();
   emit();
 }
 
@@ -85,9 +109,11 @@ function startConnectivityMonitoring() {
   window.addEventListener("offline", () => setEffectiveOnline(false));
   window.addEventListener("pageshow", sync);
   window.addEventListener("focus", sync);
-  // Catch SW-offline / lie-fi soon after boot and periodically while open.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") sync();
+  });
+  // Immediate probe on boot (offline hard-refresh / SW Offline with onLine===true).
   sync();
-  window.setInterval(sync, 10_000);
 }
 
 // Vitest imports this module widely — don't start timers/probes during unit tests.
@@ -107,6 +133,7 @@ export function useOnlineStatus() {
 
 /** Test helper — reset probe state between cases. */
 export function resetConnectivityForTests(online = true) {
+  stopOfflinePoll();
   effectiveOnline = online;
   probeInFlight = null;
 }

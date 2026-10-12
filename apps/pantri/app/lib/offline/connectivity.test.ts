@@ -49,4 +49,31 @@ describe("probeOnlineStatus", () => {
     await expect(probeOnlineStatus()).resolves.toBe(true);
     expect(getIsOnline()).toBe(true);
   });
+
+  it("stops offline polling once the probe succeeds again", async () => {
+    vi.stubGlobal("navigator", { onLine: true });
+    const setIntervalSpy = vi.spyOn(globalThis, "setInterval");
+    const clearIntervalSpy = vi.spyOn(globalThis, "clearInterval");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    await probeOnlineStatus();
+    expect(getIsOnline()).toBe(false);
+    expect(setIntervalSpy).toHaveBeenCalled();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 204 })),
+    );
+    await probeOnlineStatus();
+    expect(getIsOnline()).toBe(true);
+    expect(clearIntervalSpy).toHaveBeenCalled();
+
+    setIntervalSpy.mockRestore();
+    clearIntervalSpy.mockRestore();
+  });
 });
