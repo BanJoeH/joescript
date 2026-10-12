@@ -8,7 +8,7 @@ import {
   setActiveDrainEntry,
 } from "~/lib/offline/drain-active";
 import { decideOutboxDrainStep } from "~/lib/offline/drain-decision";
-import { subscribeShoppingOfflineChange } from "~/lib/offline/events";
+import { subscribeShoppingOfflineChange, subscribeShoppingTrySync } from "~/lib/offline/events";
 import { listOutbox, markOutboxFailed, peekOutbox } from "~/lib/offline/outbox";
 import { scheduleDeferredWork } from "~/lib/offline/schedule-deferred";
 import {
@@ -45,11 +45,16 @@ export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
     const bump = () => setKick((value) => value + 1);
     window.addEventListener("focus", bump);
     window.addEventListener("online", bump);
-    const unsubscribe = subscribeShoppingOfflineChange(() => bump());
+    const unsubscribeChange = subscribeShoppingOfflineChange(() => bump());
+    const unsubscribeTrySync = subscribeShoppingTrySync(() => {
+      pullAfterReconnectRef.current = true;
+      bump();
+    });
     return () => {
       window.removeEventListener("focus", bump);
       window.removeEventListener("online", bump);
-      unsubscribe();
+      unsubscribeChange();
+      unsubscribeTrySync();
     };
   }, []);
 

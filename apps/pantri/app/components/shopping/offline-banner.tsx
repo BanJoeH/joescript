@@ -1,6 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { type MouseEvent, useEffect, useRef, useState } from "react";
 
-import { useConnectivitySettled, useOnlineStatus } from "~/lib/offline/connectivity";
+import {
+  probeOnlineStatus,
+  useConnectivitySettled,
+  useOnlineStatus,
+} from "~/lib/offline/connectivity";
+import { requestShoppingOutboxSync } from "~/lib/offline/events";
+import { retryFailedOutbox } from "~/lib/offline/outbox";
 import { outboxEntryLabel } from "~/lib/offline/outbox-entry-label";
 import type { OutboxEntry } from "~/lib/offline/types";
 import { useShoppingOutbox } from "~/lib/offline/use-shopping-outbox";
@@ -61,11 +67,12 @@ function OutboxQueueInspector({ entries }: { entries: OutboxEntry[] }) {
 export function ShoppingOfflineBanner({ pantryId }: { pantryId: string }) {
   const online = useOnlineStatus();
   const settled = useConnectivitySettled();
-  const { entries, pending, failed } = useShoppingOutbox(pantryId);
+  const { entries, pending, failed, refresh } = useShoppingOutbox(pantryId);
   const wasOfflineRef = useRef(false);
   const clickTimesRef = useRef<number[]>([]);
   const [syncingAfterReconnect, setSyncingAfterReconnect] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
+  const [syncBusy, setSyncBusy] = useState(false);
 
   useEffect(() => {
     setDebugOpen(readDebugOutboxFlag());
@@ -85,10 +92,11 @@ export function ShoppingOfflineBanner({ pantryId }: { pantryId: string }) {
   }, [settled, online, pending]);
 
   useEffect(() => {
-    if (pending === 0) setSyncingAfterReconnect(false);
-  }, [pending]);
+    if (pending === 0 && failed === 0) setSyncingAfterReconnect(false);
+  }, [pending, failed]);
 
   const showReconnectSync = online && syncingAfterReconnect && pending > 0;
+  const hasQueuedWork = pending > 0 || failed > 0;
 
   // Avoid a false "online" banner state before the boot probe finishes.
   if (!settled) return null;
@@ -123,6 +131,22 @@ export function ShoppingOfflineBanner({ pantryId }: { pantryId: string }) {
     });
   };
 
+  const onTrySync = async (event: MouseEvent) => {
+    event.stopPropagation();
+    if (syncBusy) return;
+    setSyncBusy(true);
+    try {
+      await retryFailedOutbox(pantryId);
+      await refresh();
+      const reachable = await probeOnlineStatus();
+      if (!reachable) return;
+      setSyncingAfterReconnect(true);
+      requestShoppingOutboxSync();
+    } finally {
+      setSyncBusy(false);
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -137,7 +161,19 @@ export function ShoppingOfflineBanner({ pantryId }: { pantryId: string }) {
       }}
       role="status"
     >
-      <p>{message}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="min-w-0 flex-1">{message}</p>
+        {hasQueuedWork ? (
+          <button
+            className="shrink-0 rounded-md border border-border/80 bg-background/70 px-2 py-1 text-xs font-medium text-foreground hover:bg-background disabled:opacity-60"
+            disabled={syncBusy}
+            onClick={onTrySync}
+            type="button"
+          >
+            {syncBusy ? "Trying…" : "Try syncing now"}
+          </button>
+        ) : null}
+      </div>
       {debugOpen ? <OutboxQueueInspector entries={entries} /> : null}
     </div>
   );
