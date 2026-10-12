@@ -1,4 +1,4 @@
-import { useEffect, useRef, type MutableRefObject, type RefObject } from "react";
+import { type MutableRefObject, type RefObject, useEffect, useRef } from "react";
 import { useRevalidator } from "react-router";
 
 import { canUseNetwork, useNetworkOnline } from "~/lib/offline/connectivity";
