@@ -7,7 +7,6 @@ import { PullToRefreshScroll } from "~/components/pull-to-refresh-scroll";
 import { RecipesListView } from "~/components/recipes/recipes-list-view";
 import { ShoppingOfflineBanner } from "~/components/shopping/offline-banner";
 import { ShoppingListView } from "~/components/shopping/shopping-list-view";
-import { ShoppingOutboxDrain } from "~/components/shopping/shopping-outbox-drain";
 import { resolveHomeRecipes } from "~/lib/home-recipes-cache";
 import { type HomeTab, useHomeTabPaneRef } from "~/lib/home-tab-scroll";
 import {
@@ -76,7 +75,6 @@ function ShoppingTab({ oddBits, pantryId, shoppingRecipes }: HomeTabData) {
         <ShoppingOfflineBanner pantryId={pantryId} />
         <ShoppingListView oddBits={oddBits} pantryId={pantryId} recipes={shoppingRecipes} />
       </div>
-      <ShoppingOutboxDrain pantryId={pantryId} />
     </HomeTabPane>
   );
 }

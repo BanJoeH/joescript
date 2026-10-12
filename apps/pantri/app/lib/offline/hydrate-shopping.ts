@@ -1,9 +1,14 @@
 import type { IngredientCategoryOverrides } from "~/lib/ingredient-sections";
 import { groupBySection } from "~/lib/ingredient-sections";
 import { applyOutboxToSnapshot } from "~/lib/offline/apply-outbox";
-import { listOutbox } from "~/lib/offline/outbox";
-import { readShoppingSnapshot, writeShoppingSnapshot } from "~/lib/offline/snapshot";
-import { deserializeShoppingRecipes, type ShoppingSnapshot } from "~/lib/offline/types";
+import { mergeServerSnapshotWithLocal } from "~/lib/offline/merge-server-snapshot";
+import { enqueueOutbox, listOutbox } from "~/lib/offline/outbox";
+import { putShoppingSnapshot, readShoppingSnapshot, writeShoppingSnapshot } from "~/lib/offline/snapshot";
+import {
+  deserializeShoppingRecipes,
+  serializeShoppingRecipes,
+  type ShoppingSnapshot,
+} from "~/lib/offline/types";
 import type { OddBit } from "~/lib/recipe-schema";
 import { aggregateIngredients, type ShoppingLine } from "~/lib/shopping-aggregation";
 import type { SortedSectionState } from "~/lib/shopping-local-merge";
@@ -28,8 +33,30 @@ export async function writeSnapshotBaseAndApply(
     categoryOverrides?: IngredientCategoryOverrides;
   },
 ): Promise<ShoppingSnapshot> {
+  const previous = await readShoppingSnapshot(pantryId);
+  const serverBase: ShoppingSnapshot = {
+    pantryId,
+    updatedAt: Date.now(),
+    shoppingRecipes: serializeShoppingRecipes(input.shoppingRecipes),
+    oddBits: input.oddBits,
+    categoryOverrides:
+      input.categoryOverrides ?? previous?.categoryOverrides ?? {},
+  };
+
+  const { merged, repairs } = mergeServerSnapshotWithLocal(pantryId, serverBase, previous);
+
   // Server pull — notify UI as a transition so toggles stay urgent.
-  await writeShoppingSnapshot(pantryId, input, { priority: "transition" });
+  await putShoppingSnapshot(merged, { priority: "transition" });
+
+  // Re-push any purchased flags the server pull disagreed with (lost drain writes).
+  for (const repair of repairs) {
+    await enqueueOutbox({
+      pantryId,
+      actionPath: repair.actionPath,
+      fields: repair.fields,
+    });
+  }
+
   const snapshot = await readShoppingSnapshot(pantryId);
   if (!snapshot) {
     throw new Error("Failed to persist shopping snapshot");
@@ -63,3 +90,6 @@ export function sectionsFromSnapshot(snapshot: ShoppingSnapshot): SortedSectionS
   const aggregated = aggregateIngredients(lines);
   return groupBySection(aggregated, (item) => item.name, snapshot.categoryOverrides);
 }
+
+// Re-export for callers that only need a raw write without merge (tests/seed).
+export { writeShoppingSnapshot };

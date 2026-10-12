@@ -5,7 +5,6 @@ import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
 import { ShoppingOfflineBanner } from "~/components/shopping/offline-banner";
 import { ShoppingGotItSection } from "~/components/shopping/shopping-got-it-section";
-import { ShoppingOutboxDrain } from "~/components/shopping/shopping-outbox-drain";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -307,7 +306,6 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="flex flex-col gap-5">
-      <ShoppingOutboxDrain pantryId={pantryId} />
       <PageHeader
         actions={
           <Button asChild size="sm" variant="outline">

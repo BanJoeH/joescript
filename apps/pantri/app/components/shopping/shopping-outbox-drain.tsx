@@ -21,21 +21,22 @@ function drainFields(fields: Record<string, string>) {
   return { ...fields, [CLIENT_OUTBOX_DRAIN_FIELD]: "1" };
 }
 
+type DrainPhase = "idle" | "awaiting" | "handling";
+
 /**
- * FIFO-drains the shopping outbox via a React Router fetcher so success is
- * judged from action JSON (`{ ok: true }` / `{ error }`), not HTTP/HTML.
+ * FIFO-drains the shopping outbox via a React Router fetcher.
  *
- * Mid-queue drain posts skip loader revalidation. Each success is folded into
- * the snapshot base before outbox remove. When the queue empties, a server pull
- * is scheduled as deferred/idle work (coalesced across rapid toggles) so online
- * interactions stay as snappy as offline.
+ * Phase machine avoids a critical race: after submit(next), the fetcher can
+ * still be idle with the *previous* `{ ok: true }` for a moment — treating that
+ * as success for the next entry would commit/remove it without the server write.
+ * We only consume fetcher.data when phase === "awaiting" (post-submit settle).
  */
 export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
   const online = useOnlineStatus();
   const revalidator = useRevalidator();
   const fetcher = useFetcher({ key: `${SHOPPING_OUTBOX_DRAIN_FETCHER_PREFIX}${pantryId}` });
   const activeIdRef = useRef<string | null>(getActiveDrainEntry(pantryId));
-  const lastHandledRef = useRef<unknown>(null);
+  const phaseRef = useRef<DrainPhase>(getActiveDrainEntry(pantryId) ? "awaiting" : "idle");
   const wasOfflineRef = useRef(!online);
   const pullAfterReconnectRef = useRef(false);
   const [kick, setKick] = useState(0);
@@ -68,42 +69,41 @@ export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
     if (!online || fetcher.state !== "idle") return;
 
     const activeId = activeIdRef.current ?? getActiveDrainEntry(pantryId);
-    if (activeId) activeIdRef.current = activeId;
 
-    if (activeId && fetcher.data !== undefined && fetcher.data !== lastHandledRef.current) {
-      lastHandledRef.current = fetcher.data;
-      const entryId = activeId;
+    if (phaseRef.current === "awaiting" && activeId && fetcher.data !== undefined) {
+      phaseRef.current = "handling";
+      activeIdRef.current = activeId;
 
       void (async () => {
         const all = await listOutbox(pantryId);
-        const active = all.find((entry) => entry.id === entryId) ?? null;
-        const pending = all.filter((entry) => entry.status === "pending" && entry.id !== entryId);
-        const decision = decideOutboxDrainStep(fetcher.data, entryId, pending[0] ?? null);
+        const active = all.find((entry) => entry.id === activeId) ?? null;
+        const pending = all.filter((entry) => entry.status === "pending" && entry.id !== activeId);
+        const decision = decideOutboxDrainStep(fetcher.data, activeId, pending[0] ?? null);
 
         if (decision.remove && active) {
           await commitDrainedOutboxEntry(active);
         } else if (decision.remove) {
-          // Entry already gone (remount race) — nothing to fold.
+          // Entry already gone (remount race).
         } else if (active) {
           await markOutboxFailed(decision.entryId, decision.failReason ?? "Sync failed.");
         }
-        activeIdRef.current = null;
-        clearActiveDrainEntry(pantryId, entryId);
 
         const next = decision.next;
-
         if (!next) {
+          activeIdRef.current = null;
+          clearActiveDrainEntry(pantryId, activeId);
+          phaseRef.current = "idle";
           const afterReconnect = pullAfterReconnectRef.current;
           if (afterReconnect) pullAfterReconnectRef.current = false;
-          // Reconnect: pull sooner. Quiet online drains: idle/deferred + coalesce.
           scheduleDeferredWork(() => revalidator.revalidate(), {
             timeoutMs: afterReconnect ? 500 : 2000,
           });
           return;
         }
+
         activeIdRef.current = next.id;
         setActiveDrainEntry(pantryId, next.id);
-        lastHandledRef.current = null;
+        phaseRef.current = "awaiting";
         fetcher.submit(drainFields(next.fields), {
           method: "post",
           action: next.actionPath,
@@ -112,13 +112,15 @@ export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
       return;
     }
 
+    if (phaseRef.current !== "idle") return;
     if (activeIdRef.current ?? getActiveDrainEntry(pantryId)) return;
 
     void peekOutbox(pantryId).then((next) => {
-      if (!next || activeIdRef.current || getActiveDrainEntry(pantryId)) return;
+      if (!next || phaseRef.current !== "idle") return;
+      if (activeIdRef.current || getActiveDrainEntry(pantryId)) return;
       activeIdRef.current = next.id;
       setActiveDrainEntry(pantryId, next.id);
-      lastHandledRef.current = null;
+      phaseRef.current = "awaiting";
       fetcher.submit(drainFields(next.fields), { method: "post", action: next.actionPath });
     });
   }, [online, fetcher, fetcher.state, fetcher.data, kick, pantryId, revalidator]);
