@@ -135,9 +135,13 @@ export function mergeOddBits(server: OddBit[], local: OddBit[], busy: ShoppingBu
       return serverBit;
     });
 
-  // Local-only rows (e.g. overlays) that have not landed in loader data yet.
+  // Local-only rows that have not landed in loader data yet.
+  // Never keep client `pending:*` ids here — those come only from in-flight
+  // add fetchers / outbox. Persisting them via local state after hydrate leaves
+  // ghost rows (no remove control) once the real server id syncs in.
   const localOnly = local.filter(
-    (bit) => !serverIds.has(bit.id) && !busy.oddBitRemoves.has(bit.id),
+    (bit) =>
+      !serverIds.has(bit.id) && !busy.oddBitRemoves.has(bit.id) && !isPendingOddBitId(bit.id),
   );
 
   return [...mergedServer, ...localOnly];

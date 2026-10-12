@@ -173,7 +173,7 @@ describe("mergeShoppingRecipes", () => {
 });
 
 describe("mergeOddBits", () => {
-  it("preserves pending adds and busy toggles", () => {
+  it("preserves busy toggles from local", () => {
     const server = [bit({ id: "ob1", name: "foil", purchased: false })];
     const local = [
       bit({ id: "ob1", name: "foil", purchased: true }),
@@ -183,15 +183,27 @@ describe("mergeOddBits", () => {
       { formData: formData({ intent: "toggle-odd-bit", id: "ob1", purchased: "true" }) },
     ]);
 
+    // pending:* must not be kept via localOnly — add fetchers/outbox own those rows.
     expect(mergeOddBits(server, local, busy)).toEqual([
       bit({ id: "ob1", name: "foil", purchased: true }),
-      bit({ id: "pending:1", name: "bags" }),
     ]);
   });
 
   it("keeps reconciled local-only bits until the loader includes them", () => {
     const server = [bit({ id: "ob1", name: "foil" })];
     const local = [bit({ id: "ob1", name: "foil" }), bit({ id: "ob2", name: "bags" })];
+    const busy = shoppingBusyFromFetchers([]);
+
+    expect(mergeOddBits(server, local, busy).map((row) => row.id)).toEqual(["ob1", "ob2"]);
+  });
+
+  it("does not keep stale pending:* ids from local after the real row syncs", () => {
+    const server = [bit({ id: "ob1", name: "foil" }), bit({ id: "ob2", name: "bags" })];
+    const local = [
+      bit({ id: "ob1", name: "foil" }),
+      bit({ id: "pending:1", name: "bags" }),
+      bit({ id: "ob2", name: "bags" }),
+    ];
     const busy = shoppingBusyFromFetchers([]);
 
     expect(mergeOddBits(server, local, busy).map((row) => row.id)).toEqual(["ob1", "ob2"]);
