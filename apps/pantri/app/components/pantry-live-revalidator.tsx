@@ -7,6 +7,15 @@ import { pantryPath } from "~/lib/pantry-path";
 /** Coalesce visibility + window focus from the same tab return. */
 const FOCUS_REVALIDATE_COOLDOWN_MS = 750;
 
+/** Always-on while debugging focus refetch; filter console by this prefix. */
+const logFocus = (message: string, detail?: Record<string, unknown>) => {
+  if (detail) {
+    console.info(`[pantri:focus-revalidate] ${message}`, detail);
+    return;
+  }
+  console.info(`[pantri:focus-revalidate] ${message}`);
+};
+
 /**
  * Keeps pantry loaders fresh while the tab is in use:
  * - SSE invalidate from other members
@@ -50,41 +59,76 @@ export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; 
   }, [online, pantryId, userId]);
 
   useEffect(() => {
-    if (!online) return;
+    if (!online) {
+      logFocus("skip: offline");
+      return;
+    }
 
-    const maybeRevalidate = () => {
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
-      if (revalidatorRef.current.state !== "idle") return;
-      const now = Date.now();
-      if (now - lastFocusRevalidateAt.current < FOCUS_REVALIDATE_COOLDOWN_MS) return;
-      lastFocusRevalidateAt.current = now;
+    const maybeRevalidate = (reason: string) => {
+      const visibility = typeof document !== "undefined" ? document.visibilityState : "n/a";
+      const state = revalidatorRef.current.state;
+      const sinceLast = Date.now() - lastFocusRevalidateAt.current;
+
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+        logFocus("skip: hidden", { reason, visibility, state });
+        return;
+      }
+      if (state !== "idle") {
+        logFocus("skip: revalidator busy", { reason, visibility, state });
+        return;
+      }
+      if (sinceLast < FOCUS_REVALIDATE_COOLDOWN_MS) {
+        logFocus("skip: cooldown", { reason, visibility, state, sinceLastMs: sinceLast });
+        return;
+      }
+
+      lastFocusRevalidateAt.current = Date.now();
+      logFocus("revalidate", { reason, visibility, state });
       void revalidatorRef.current.revalidate();
     };
 
     // Probe often settles *after* the focus/pageshow that woke us — refetch then,
     // and again whenever the tab becomes visible or the window is focused.
-    maybeRevalidate();
+    logFocus("effect: online settled", { visibility: document.visibilityState });
+    maybeRevalidate("online-settle");
 
     let wasHidden = document.visibilityState === "hidden";
 
     const onVisibility = () => {
       const hidden = document.visibilityState === "hidden";
-      if (wasHidden && !hidden) maybeRevalidate();
+      logFocus("visibilitychange", {
+        wasHidden,
+        now: document.visibilityState,
+        willRevalidate: wasHidden && !hidden,
+      });
+      if (wasHidden && !hidden) maybeRevalidate("visibility-visible");
       wasHidden = hidden;
+    };
+
+    const onFocus = () => {
+      logFocus("window focus", { visibility: document.visibilityState });
+      maybeRevalidate("window-focus");
     };
 
     const onPageShow = (event: PageTransitionEvent) => {
       // bfcache restore or normal pageshow while visible
-      if (event.persisted || document.visibilityState === "visible") maybeRevalidate();
+      const willRevalidate = event.persisted || document.visibilityState === "visible";
+      logFocus("pageshow", {
+        persisted: event.persisted,
+        visibility: document.visibilityState,
+        willRevalidate,
+      });
+      if (willRevalidate) maybeRevalidate("pageshow");
     };
 
     document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("focus", maybeRevalidate);
+    window.addEventListener("focus", onFocus);
     window.addEventListener("pageshow", onPageShow);
 
     return () => {
+      logFocus("effect: cleanup");
       document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("focus", maybeRevalidate);
+      window.removeEventListener("focus", onFocus);
       window.removeEventListener("pageshow", onPageShow);
     };
   }, [online]);
