@@ -39,8 +39,12 @@ export async function enqueueOutbox(input: {
   return entry;
 }
 
-export async function removeOutboxEntry(id: string): Promise<void> {
+export async function removeOutboxEntry(
+  id: string,
+  options?: { emit?: boolean },
+): Promise<void> {
   await withStore(OUTBOX_STORE, "readwrite", (store) => store.delete(id));
+  if (options?.emit === false) return;
   emitShoppingOfflineChange();
 }
 
@@ -68,31 +72,45 @@ export async function countOutbox(pantryId: string) {
   };
 }
 
-function isPendingAdd(entry: OutboxEntry, clientPendingId: string) {
+function oddBitIdFromEntry(entry: OutboxEntry): string | null {
+  const intent = entry.fields.intent ?? "";
+  if (intent === "add-odd-bit") {
+    const id = (entry.fields.id ?? entry.fields.clientPendingId ?? "").trim();
+    return id || null;
+  }
+  if (intent === "toggle-odd-bit" || intent === "remove-odd-bit") {
+    const id = (entry.fields.id ?? "").trim();
+    return id || null;
+  }
+  return null;
+}
+
+function isPendingAdd(entry: OutboxEntry, oddBitId: string) {
   return (
     entry.fields.intent === "add-odd-bit" &&
-    entry.fields.clientPendingId === clientPendingId &&
+    oddBitIdFromEntry(entry) === oddBitId &&
     entry.status === "pending"
   );
 }
 
-/** Cancel an offline odd-bit add that has not drained yet. */
-export async function cancelPendingOddBitAdd(pantryId: string, clientPendingId: string) {
-  const matches = (await listOutbox(pantryId)).filter((entry) =>
-    isPendingAdd(entry, clientPendingId),
-  );
+/** Cancel a queued odd-bit add and any follow-up toggle/remove for the same id. */
+export async function cancelPendingOddBitAdd(pantryId: string, oddBitId: string) {
+  const matches = (await listOutbox(pantryId)).filter((entry) => {
+    if (entry.status !== "pending") return false;
+    return oddBitIdFromEntry(entry) === oddBitId;
+  });
   for (const entry of matches) {
     await removeOutboxEntry(entry.id);
   }
 }
 
-/** Update purchased on a queued add so offline toggles survive until drain. */
+/** @deprecated Prefer enqueueing a toggle-odd-bit outbox row with the client id. */
 export async function patchPendingOddBitAdd(
   pantryId: string,
-  clientPendingId: string,
+  oddBitId: string,
   purchased: boolean,
 ) {
-  const entry = (await listOutbox(pantryId)).find((row) => isPendingAdd(row, clientPendingId));
+  const entry = (await listOutbox(pantryId)).find((row) => isPendingAdd(row, oddBitId));
   if (!entry) return;
   await withStore(OUTBOX_STORE, "readwrite", (store) =>
     store.put({
@@ -101,4 +119,15 @@ export async function patchPendingOddBitAdd(
     }),
   );
   emitShoppingOfflineChange();
+}
+
+/** Pending add-odd-bit outbox ids (client UUIDs) still waiting to sync. */
+export function queuedOddBitAddIds(entries: OutboxEntry[]): Set<string> {
+  const ids = new Set<string>();
+  for (const entry of entries) {
+    if (entry.status !== "pending" || entry.fields.intent !== "add-odd-bit") continue;
+    const id = oddBitIdFromEntry(entry);
+    if (id) ids.add(id);
+  }
+  return ids;
 }

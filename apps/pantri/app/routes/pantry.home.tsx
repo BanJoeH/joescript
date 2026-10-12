@@ -10,24 +10,35 @@ import { ShoppingListView } from "~/components/shopping/shopping-list-view";
 import { ShoppingOutboxDrain } from "~/components/shopping/shopping-outbox-drain";
 import { resolveHomeRecipes } from "~/lib/home-recipes-cache";
 import { type HomeTab, useHomeTabPaneRef } from "~/lib/home-tab-scroll";
-import { loadOfflineShoppingSnapshot } from "~/lib/offline/hydrate-shopping";
-import { writeShoppingSnapshot } from "~/lib/offline/snapshot";
+import {
+  loadOfflineShoppingSnapshot,
+  writeSnapshotBaseAndApply,
+} from "~/lib/offline/hydrate-shopping";
 import { deserializeShoppingRecipes } from "~/lib/offline/types";
 import { getHomeTabIndex, pantryPath } from "~/lib/pantry-path";
+import { shouldRevalidateShoppingLoaders } from "~/lib/shopping-local-merge";
 
 import type { Route } from "./+types/pantry.home";
 
 export { loader } from "./pantry.home.server";
 
+export function shouldRevalidate(args: Route.ShouldRevalidateFunctionArgs) {
+  return shouldRevalidateShoppingLoaders(args);
+}
+
 export async function clientLoader({ serverLoader, params }: Route.ClientLoaderArgs) {
   const pantryId = params.pantryId;
   try {
     const data = await serverLoader();
-    void writeShoppingSnapshot(pantryId, {
+    const applied = await writeSnapshotBaseAndApply(pantryId, {
       shoppingRecipes: data.shoppingRecipes,
       oddBits: data.oddBits,
     });
-    return data;
+    return {
+      ...data,
+      shoppingRecipes: deserializeShoppingRecipes(applied.shoppingRecipes),
+      oddBits: applied.oddBits,
+    };
   } catch (error) {
     const offline = await loadOfflineShoppingSnapshot(pantryId);
     if (!offline) throw error;

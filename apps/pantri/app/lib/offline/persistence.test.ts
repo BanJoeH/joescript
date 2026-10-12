@@ -5,21 +5,25 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { applyOutboxToSnapshot } from "~/lib/offline/apply-outbox";
 import { resetShoppingOfflineDbForTests } from "~/lib/offline/db";
 import { decideOutboxDrainStep } from "~/lib/offline/drain-decision";
-import { loadOfflineShoppingSnapshot } from "~/lib/offline/hydrate-shopping";
+import {
+  loadOfflineShoppingSnapshot,
+  writeSnapshotBaseAndApply,
+} from "~/lib/offline/hydrate-shopping";
 import { oddBitsFromOutbox } from "~/lib/offline/odd-bits-from-outbox";
 import {
   cancelPendingOddBitAdd,
   enqueueOutbox,
   listOutbox,
   markOutboxFailed,
-  patchPendingOddBitAdd,
   peekOutbox,
+  queuedOddBitAddIds,
   removeOutboxEntry,
 } from "~/lib/offline/outbox";
 import { readShoppingSnapshot, writeShoppingSnapshot } from "~/lib/offline/snapshot";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
 
 const pantryId = "pantry-test";
+const clientId = "33333333-3333-4333-8333-333333333333";
 
 const recipes: ShoppingRecipeRecord[] = [
   {
@@ -101,34 +105,66 @@ describe("shopping offline persistence", () => {
       actionPath: `/${pantryId}/shopping`,
       fields: {
         intent: "add-odd-bit",
-        clientPendingId: "pending:1",
+        id: clientId,
         name: "bags",
       },
     });
 
     const hydrated = await loadOfflineShoppingSnapshot(pantryId);
     expect(hydrated?.applied.shoppingRecipes[0]?.ingredients[0]?.purchased).toBe(true);
-    expect(hydrated?.applied.oddBits.map((bit) => bit.id)).toEqual(["ob1", "pending:1"]);
-    // Raw snapshot stays server-truth until the next online loader write.
+    expect(hydrated?.applied.oddBits.map((bit) => bit.id)).toEqual(["ob1", clientId]);
     expect(hydrated?.snapshot.shoppingRecipes[0]?.ingredients[0]?.purchased).toBe(false);
   });
 
-  it("cancels and patches queued odd-bit adds while offline", async () => {
+  it("cancels a queued add and follow-up toggles for the same client id", async () => {
     await enqueueOutbox({
       pantryId,
       actionPath: `/${pantryId}/shopping`,
       fields: {
         intent: "add-odd-bit",
-        clientPendingId: "pending:1",
+        id: clientId,
         name: "bags",
       },
     });
-    await patchPendingOddBitAdd(pantryId, "pending:1", true);
-    expect(oddBitsFromOutbox(await listOutbox(pantryId), [])[0]?.purchased).toBe(true);
+    await enqueueOutbox({
+      pantryId,
+      actionPath: `/${pantryId}/shopping`,
+      fields: {
+        intent: "toggle-odd-bit",
+        id: clientId,
+        purchased: "true",
+      },
+    });
+    expect([...queuedOddBitAddIds(await listOutbox(pantryId))]).toEqual([clientId]);
 
-    await cancelPendingOddBitAdd(pantryId, "pending:1");
+    await cancelPendingOddBitAdd(pantryId, clientId);
     expect(await listOutbox(pantryId)).toEqual([]);
     expect(oddBitsFromOutbox(await listOutbox(pantryId), [])).toEqual([]);
+  });
+
+  it("pull-merge keeps undrained client-id adds when rewriting snapshot base", async () => {
+    await enqueueOutbox({
+      pantryId,
+      actionPath: `/${pantryId}/shopping`,
+      fields: { intent: "add-odd-bit", id: clientId, name: "bags" },
+    });
+    await enqueueOutbox({
+      pantryId,
+      actionPath: `/${pantryId}/shopping`,
+      fields: { intent: "toggle-odd-bit", id: clientId, purchased: "true" },
+    });
+
+    const applied = await writeSnapshotBaseAndApply(pantryId, {
+      shoppingRecipes: recipes,
+      oddBits: [{ id: "ob1", name: "foil", amount: null, unit: null, purchased: false }],
+    });
+
+    expect(applied.oddBits.map((bit) => bit.id)).toEqual(["ob1", clientId]);
+    expect(applied.oddBits.find((bit) => bit.id === clientId)?.purchased).toBe(true);
+
+    // Base snapshot must not already include the pending add (would double on apply).
+    const base = await readShoppingSnapshot(pantryId);
+    expect(base?.oddBits.map((bit) => bit.id)).toEqual(["ob1"]);
   });
 
   it("drain decision against a real queue does not drop failed entries", async () => {
@@ -144,7 +180,7 @@ describe("shopping offline persistence", () => {
     const b = await enqueueOutbox({
       pantryId,
       actionPath: `/${pantryId}/shopping`,
-      fields: { intent: "add-odd-bit", clientPendingId: "pending:1", name: "bags" },
+      fields: { intent: "add-odd-bit", id: clientId, name: "bags" },
     });
 
     const remaining = (await listOutbox(pantryId)).filter(
@@ -171,8 +207,7 @@ describe("shopping offline persistence", () => {
     const snap = await readShoppingSnapshot(pantryId);
     if (!snap) throw new Error("expected snapshot");
     const applied = applyOutboxToSnapshot(snap, after);
-    // Failed toggle is skipped; pending add still applies.
     expect(applied.shoppingRecipes[0]?.ingredients[0]?.purchased).toBe(false);
-    expect(applied.oddBits.map((bit) => bit.id)).toEqual(["ob1", "pending:1"]);
+    expect(applied.oddBits.map((bit) => bit.id)).toEqual(["ob1", clientId]);
   });
 });

@@ -29,6 +29,17 @@ type FetcherLike = {
 /** Outbox drain posts the same intents; never treat it as UI busy for merges. */
 export const SHOPPING_OUTBOX_DRAIN_FETCHER_PREFIX = "shopping-outbox-drain:";
 
+/** Hidden field on drain posts so route shouldRevalidate can skip mid-queue loader churn. */
+export const CLIENT_OUTBOX_DRAIN_FIELD = "clientOutboxDrain";
+
+export function shouldRevalidateShoppingLoaders(args: {
+  formData?: FormData | null;
+  defaultShouldRevalidate: boolean;
+}) {
+  if (args.formData?.get(CLIENT_OUTBOX_DRAIN_FIELD) === "1") return false;
+  return args.defaultShouldRevalidate;
+}
+
 /** Collect entity keys that currently have an in-flight shopping mutation. */
 export function shoppingBusyFromFetchers(fetchers: FetcherLike[]): ShoppingBusySets {
   const ingredientKeys = new Set<string>();
@@ -151,9 +162,8 @@ export function mergeOddBits(server: OddBit[], local: OddBit[], busy: ShoppingBu
 }
 
 /**
- * Derive in-flight / just-settled odd-bit adds from **add** fetchers only
- * (`shopping-add-odd-bit:*`). Prefer `collectPendingOddBitAdds` when outbox is
- * involved — it also suppresses drain-fetcher duplicates and revalidate races.
+ * @deprecated Local-first shopping reads snapshot+outbox instead of add fetchers.
+ * Kept for unit coverage of keyed add-fetcher parsing.
  */
 export function oddBitsFromAddFetchers(fetchers: FetcherLike[], server: OddBit[]): OddBit[] {
   const serverIds = new Set(server.map((bit) => bit.id));
@@ -165,7 +175,7 @@ export function oddBitsFromAddFetchers(fetchers: FetcherLike[], server: OddBit[]
     const formData = fetcher.formData;
     if (formData && String(formData.get("intent") ?? "") === "add-odd-bit") {
       const name = String(formData.get("name") ?? "").trim();
-      const id = String(formData.get("clientPendingId") ?? "").trim();
+      const id = String(formData.get("id") ?? formData.get("clientPendingId") ?? "").trim();
       if (!name || !id) continue;
       const amountRaw = String(formData.get("amount") ?? "").trim();
       const unitRaw = String(formData.get("unit") ?? "").trim();

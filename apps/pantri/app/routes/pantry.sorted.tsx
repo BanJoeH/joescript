@@ -1,6 +1,5 @@
 import { ArrowLeft, ChevronDown, MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useFetcher, useFetchers } from "react-router";
 
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
@@ -18,37 +17,44 @@ import {
   SHOPPING_SECTIONS,
   type ShoppingSection,
 } from "~/lib/ingredient-sections";
-import { sortedBusyFromOutbox, unionSortedBusy } from "~/lib/offline/busy-from-outbox";
-import { loadOfflineShoppingSnapshot, sectionsFromSnapshot } from "~/lib/offline/hydrate-shopping";
-import { writeShoppingSnapshot } from "~/lib/offline/snapshot";
+import {
+  loadOfflineShoppingSnapshot,
+  sectionsFromSnapshot,
+  writeSnapshotBaseAndApply,
+} from "~/lib/offline/hydrate-shopping";
 import { submitShoppingMutation } from "~/lib/offline/submit-shopping-mutation";
-import { deserializeShoppingRecipes } from "~/lib/offline/types";
-import { useShoppingOutbox } from "~/lib/offline/use-shopping-outbox";
+import { deserializeShoppingRecipes, serializeShoppingRecipes } from "~/lib/offline/types";
+import { useShoppingLocalState } from "~/lib/offline/use-shopping-local";
 import { pantryPath } from "~/lib/pantry-path";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
 import { getSortedQuantityBadge } from "~/lib/shopping-aggregation";
-import {
-  mergeSortedSections,
-  type SortedSectionState,
-  sortedBusyFromFetchers,
-} from "~/lib/shopping-local-merge";
-import { useRevalidateOnFetcherError } from "~/lib/use-revalidate-on-fetcher-error";
+import { shouldRevalidateShoppingLoaders } from "~/lib/shopping-local-merge";
 import { cn } from "~/lib/utils";
 
 import type { Route } from "./+types/pantry.sorted";
 
 export { action, loader } from "./pantry.sorted.server";
 
+export function shouldRevalidate(args: Route.ShouldRevalidateFunctionArgs) {
+  return shouldRevalidateShoppingLoaders(args);
+}
+
 export async function clientLoader({ serverLoader, params }: Route.ClientLoaderArgs) {
   const pantryId = params.pantryId;
   try {
     const data = await serverLoader();
-    void writeShoppingSnapshot(pantryId, {
+    const applied = await writeSnapshotBaseAndApply(pantryId, {
       shoppingRecipes: data.shoppingRecipes,
       oddBits: data.oddBits,
       categoryOverrides: data.categoryOverrides,
     });
-    return data;
+    return {
+      sections: sectionsFromSnapshot(applied),
+      pantryId,
+      shoppingRecipes: deserializeShoppingRecipes(applied.shoppingRecipes),
+      oddBits: applied.oddBits,
+      categoryOverrides: applied.categoryOverrides,
+    };
   } catch (error) {
     const offline = await loadOfflineShoppingSnapshot(pantryId);
     if (!offline) throw error;
@@ -67,25 +73,17 @@ export function meta(_args: Route.MetaArgs) {
   return [{ title: "Sorted · Pantri" }];
 }
 
-type SortedSection = SortedSectionState;
-
 function SortedItemRow({
   action,
   pantryId,
   item,
   section,
-  onPurchased,
-  onMoveSection,
 }: {
   action: string;
   pantryId: string;
   item: AggregatedIngredient;
   section: ShoppingSection | string;
-  onPurchased: (canonicalName: string, purchased: boolean) => void;
-  onMoveSection: (canonicalName: string, name: string, nextSection: ShoppingSection) => void;
 }) {
-  const toggleFetcher = useFetcher({ key: `sorted-toggle:${item.canonicalName}` });
-  const categoryFetcher = useFetcher({ key: `sorted-category:${item.canonicalName}` });
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showSources, setShowSources] = useState(false);
@@ -117,7 +115,6 @@ function SortedItemRow({
   function moveToSection(nextSection: ShoppingSection) {
     setMenuOpen(false);
     if (nextSection === section) return;
-    onMoveSection(item.canonicalName, item.name, nextSection);
     void submitShoppingMutation({
       pantryId,
       action,
@@ -126,7 +123,6 @@ function SortedItemRow({
         name: item.name,
         section: nextSection,
       },
-      onlineSubmit: (fields) => categoryFetcher.submit(fields, { method: "post", action }),
     });
   }
 
@@ -145,7 +141,6 @@ function SortedItemRow({
           id={`sorted-item-${item.canonicalName}-checkbox`}
           onChange={(event) => {
             const next = event.target.checked;
-            onPurchased(item.canonicalName, next);
             void submitShoppingMutation({
               pantryId,
               action,
@@ -154,7 +149,6 @@ function SortedItemRow({
                 name: item.name,
                 purchased: String(next),
               },
-              onlineSubmit: (fields) => toggleFetcher.submit(fields, { method: "post", action }),
             });
           }}
           type="checkbox"
@@ -247,36 +241,25 @@ function SortedItemRow({
   );
 }
 
-function withSortedBase(
-  sections: SortedSection[],
-  local: SortedSection[],
-  update: (base: SortedSection[]) => SortedSection[],
-) {
-  const base = mergeSortedSections(sections, local, {
-    toggles: new Set(),
-    moves: new Set(),
-    clearAll: false,
-  });
-  return update(base);
-}
-
 export default function SortedPage({ loaderData }: Route.ComponentProps) {
-  const { sections, pantryId } = loaderData;
+  const { pantryId, shoppingRecipes, oddBits, categoryOverrides } = loaderData;
   const action = pantryPath(pantryId, "shopping/sorted");
-  const fetchers = useFetchers();
-  const clearFetcher = useFetcher({ key: "sorted-clear-all-purchased" });
-  const { entries: outboxEntries } = useShoppingOutbox(pantryId);
-  const [localSections, setLocalSections] = useState(sections);
+  const local = useShoppingLocalState(pantryId, {
+    recipes: shoppingRecipes,
+    oddBits,
+    categoryOverrides,
+  });
 
-  useRevalidateOnFetcherError();
-
-  const busy = useMemo(
-    () => unionSortedBusy(sortedBusyFromFetchers(fetchers), sortedBusyFromOutbox(outboxEntries)),
-    [fetchers, outboxEntries],
-  );
   const viewSections = useMemo(
-    () => mergeSortedSections(sections, localSections, busy),
-    [sections, localSections, busy],
+    () =>
+      sectionsFromSnapshot({
+        pantryId,
+        updatedAt: 0,
+        shoppingRecipes: serializeShoppingRecipes(local.recipes),
+        oddBits: local.oddBits,
+        categoryOverrides: local.categoryOverrides,
+      }),
+    [pantryId, local.recipes, local.oddBits, local.categoryOverrides],
   );
 
   const { toBuySections, gotIt } = useMemo(() => {
@@ -320,63 +303,6 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
     celebrationReadyRef.current = true;
   }, [remainingCount]);
 
-  function setItemPurchased(canonicalName: string, purchased: boolean) {
-    setLocalSections((current) =>
-      withSortedBase(sections, current, (base) =>
-        base.map((section) => ({
-          ...section,
-          items: section.items.map((item) =>
-            item.canonicalName === canonicalName ? { ...item, purchased } : item,
-          ),
-        })),
-      ),
-    );
-  }
-
-  function moveItem(canonicalName: string, name: string, nextSection: ShoppingSection) {
-    setLocalSections((current) =>
-      withSortedBase(sections, current, (base) => {
-        let moved: AggregatedIngredient | null = null;
-        const without = base.map((section) => {
-          const remaining = section.items.filter((item) => {
-            const match = item.canonicalName === canonicalName || item.name === name;
-            if (match) moved = item;
-            return !match;
-          });
-          return { ...section, items: remaining };
-        });
-
-        if (!moved) return current;
-
-        const existing = without.find((section) => section.section === nextSection);
-        let next: SortedSection[];
-        if (existing) {
-          next = without.map((section) =>
-            section.section === nextSection
-              ? { ...section, items: [...section.items, moved as AggregatedIngredient] }
-              : section,
-          );
-        } else {
-          next = [...without, { section: nextSection, items: [moved] }];
-        }
-        return next.filter((section) => section.items.length > 0);
-      }),
-    );
-  }
-
-  function clearAllPurchased() {
-    setLocalSections((current) =>
-      withSortedBase(sections, current, (base) =>
-        base.map((section) => ({
-          ...section,
-          items: section.items.map((item) =>
-            item.purchased ? { ...item, purchased: false } : item,
-          ),
-        })),
-      ),
-    );
-  }
-
   const isEmpty = toBuySections.length === 0 && gotIt.length === 0;
 
   return (
@@ -416,8 +342,6 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
                       action={action}
                       item={item}
                       key={item.canonicalName}
-                      onMoveSection={moveItem}
-                      onPurchased={setItemPurchased}
                       pantryId={pantryId}
                       section={section}
                     />
@@ -437,13 +361,10 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
                 <ShoppingGotItSection
                   count={gotIt.length}
                   onResetAll={() => {
-                    clearAllPurchased();
                     void submitShoppingMutation({
                       pantryId,
                       action,
                       fields: { intent: "clear-all-purchased" },
-                      onlineSubmit: (fields) =>
-                        clearFetcher.submit(fields, { method: "post", action }),
                     });
                   }}
                 >
@@ -452,8 +373,6 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
                       action={action}
                       item={item}
                       key={item.canonicalName}
-                      onMoveSection={moveItem}
-                      onPurchased={setItemPurchased}
                       pantryId={pantryId}
                       section={item.section || getIngredientSection(item.name)}
                     />

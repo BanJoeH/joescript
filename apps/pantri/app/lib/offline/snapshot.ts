@@ -1,6 +1,9 @@
 import type { IngredientCategoryOverrides } from "~/lib/ingredient-sections";
 import { SNAPSHOT_STORE, withStore } from "~/lib/offline/db";
-import { emitShoppingOfflineChange } from "~/lib/offline/events";
+import {
+  emitShoppingOfflineChange,
+  type ShoppingOfflineChangeDetail,
+} from "~/lib/offline/events";
 import type { ShoppingSnapshot } from "~/lib/offline/types";
 import { serializeShoppingRecipes } from "~/lib/offline/types";
 import type { OddBit } from "~/lib/recipe-schema";
@@ -21,6 +24,7 @@ export async function writeShoppingSnapshot(
     oddBits: OddBit[];
     categoryOverrides?: IngredientCategoryOverrides;
   },
+  options?: { priority?: ShoppingOfflineChangeDetail["priority"]; emit?: boolean },
 ): Promise<void> {
   const previous = await readShoppingSnapshot(pantryId);
   const snapshot: ShoppingSnapshot = {
@@ -31,12 +35,17 @@ export async function writeShoppingSnapshot(
     categoryOverrides: input.categoryOverrides ?? previous?.categoryOverrides ?? {},
   };
   await withStore(SNAPSHOT_STORE, "readwrite", (store) => store.put(snapshot));
-  emitShoppingOfflineChange();
+  if (options?.emit === false) return;
+  emitShoppingOfflineChange({ priority: options?.priority ?? "urgent" });
 }
 
-export async function putShoppingSnapshot(snapshot: ShoppingSnapshot): Promise<void> {
+export async function putShoppingSnapshot(
+  snapshot: ShoppingSnapshot,
+  options?: { emit?: boolean; priority?: ShoppingOfflineChangeDetail["priority"] },
+): Promise<void> {
   await withStore(SNAPSHOT_STORE, "readwrite", (store) =>
     store.put({ ...snapshot, updatedAt: Date.now() }),
   );
-  emitShoppingOfflineChange();
+  if (options?.emit === false) return;
+  emitShoppingOfflineChange({ priority: options?.priority ?? "urgent" });
 }

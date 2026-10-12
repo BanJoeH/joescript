@@ -80,7 +80,7 @@ export function applyOutboxToSnapshot(
     }
 
     if (intent === "add-odd-bit") {
-      const id = (entry.fields.clientPendingId ?? "").trim();
+      const id = (entry.fields.id ?? entry.fields.clientPendingId ?? "").trim();
       const name = (entry.fields.name ?? "").trim();
       if (!id || !name) continue;
       if (oddBits.some((bit) => bit.id === id)) continue;

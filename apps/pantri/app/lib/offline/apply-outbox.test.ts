@@ -80,7 +80,7 @@ describe("applyOutboxToSnapshot", () => {
       entry({ intent: "remove-odd-bit", id: "ob1" }),
       entry({
         intent: "add-odd-bit",
-        clientPendingId: "pending:1",
+        id: "11111111-1111-4111-8111-111111111111",
         name: "tape",
         amount: "2",
         unit: "rolls",
@@ -88,7 +88,10 @@ describe("applyOutboxToSnapshot", () => {
     ]);
 
     expect(next.shoppingRecipes[0]?.ingredients[0]?.purchased).toBe(true);
-    expect(next.oddBits.map((bit) => bit.id)).toEqual(["ob2", "pending:1"]);
+    expect(next.oddBits.map((bit) => bit.id)).toEqual([
+      "ob2",
+      "11111111-1111-4111-8111-111111111111",
+    ]);
     expect(next.oddBits[1]).toMatchObject({ name: "tape", amount: 2, unit: "rolls" });
   });
 
@@ -152,11 +155,23 @@ describe("applyOutboxToSnapshot", () => {
     const next = applyOutboxToSnapshot(snapshot(), [
       entry({
         intent: "add-odd-bit",
-        clientPendingId: "ob2",
+        id: "ob2",
         name: "bags",
       }),
     ]);
     expect(next.oddBits.filter((bit) => bit.id === "ob2")).toHaveLength(1);
+  });
+
+  it("applies add then toggle with the same client id", () => {
+    const id = "22222222-2222-4222-8222-222222222222";
+    const next = applyOutboxToSnapshot(snapshot(), [
+      entry({ intent: "add-odd-bit", id, name: "bags" }),
+      entry({ intent: "toggle-odd-bit", id, purchased: "true" }, { id: "e2", createdAt: 2 }),
+    ]);
+    expect(next.oddBits.find((bit) => bit.id === id)).toMatchObject({
+      name: "bags",
+      purchased: true,
+    });
   });
 });
 
@@ -284,73 +299,35 @@ describe("oddBitsFromOutbox", () => {
       [
         entry({
           intent: "add-odd-bit",
-          clientPendingId: "pending:1",
+          id: "11111111-1111-4111-8111-111111111111",
           name: "bags",
         }),
         entry({
           intent: "add-odd-bit",
-          clientPendingId: "ob1",
+          id: "ob1",
           name: "foil",
         }),
       ],
       [{ id: "ob1", name: "foil", amount: null, unit: null, purchased: false }],
     );
-    expect(bits.map((bit) => bit.id)).toEqual(["pending:1"]);
-  });
-
-  it("honours purchased patched onto a queued add", () => {
-    const bits = oddBitsFromOutbox(
-      [
-        entry({
-          intent: "add-odd-bit",
-          clientPendingId: "pending:1",
-          name: "bags",
-          purchased: "true",
-        }),
-      ],
-      [],
-    );
-    expect(bits[0]?.purchased).toBe(true);
+    expect(bits.map((bit) => bit.id)).toEqual(["11111111-1111-4111-8111-111111111111"]);
   });
 });
 
 describe("submitShoppingMutation", () => {
-  it("submits online without enqueueing", async () => {
-    const submitted: Record<string, string>[] = [];
-    const enqueued: unknown[] = [];
-    const result = await submitShoppingMutation({
-      pantryId: "p1",
-      action: "/p1/shopping",
-      fields: { intent: "toggle-odd-bit", id: "ob1", purchased: "true" },
-      onlineSubmit: (fields) => submitted.push(fields),
-      isOnline: () => true,
-      enqueue: async (input) => {
-        enqueued.push(input);
-        return entry(input.fields);
-      },
-    });
-    expect(result).toBe("online");
-    expect(submitted).toHaveLength(1);
-    expect(enqueued).toHaveLength(0);
-  });
-
-  it("enqueues offline instead of submitting", async () => {
-    const submitted: Record<string, string>[] = [];
+  it("always enqueues (local-first)", async () => {
     const enqueued: unknown[] = [];
     const fields = { intent: "toggle-odd-bit", id: "ob1", purchased: "true" };
     const result = await submitShoppingMutation({
       pantryId: "p1",
       action: "/p1/shopping",
       fields,
-      onlineSubmit: (next) => submitted.push(next),
-      isOnline: () => false,
       enqueue: async (input) => {
         enqueued.push(input);
         return entry(input.fields);
       },
     });
     expect(result).toBe("queued");
-    expect(submitted).toHaveLength(0);
     expect(enqueued).toEqual([{ pantryId: "p1", actionPath: "/p1/shopping", fields }]);
   });
 });
