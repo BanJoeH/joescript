@@ -4,7 +4,9 @@ import { useFetcher, useFetchers } from "react-router";
 
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
+import { ShoppingOfflineBanner } from "~/components/shopping/offline-banner";
 import { ShoppingGotItSection } from "~/components/shopping/shopping-got-it-section";
+import { ShoppingOutboxDrain } from "~/components/shopping/shopping-outbox-drain";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -16,6 +18,12 @@ import {
   SHOPPING_SECTIONS,
   type ShoppingSection,
 } from "~/lib/ingredient-sections";
+import { sortedBusyFromOutbox, unionSortedBusy } from "~/lib/offline/busy-from-outbox";
+import { loadOfflineShoppingSnapshot, sectionsFromSnapshot } from "~/lib/offline/hydrate-shopping";
+import { writeShoppingSnapshot } from "~/lib/offline/snapshot";
+import { submitShoppingMutation } from "~/lib/offline/submit-shopping-mutation";
+import { deserializeShoppingRecipes } from "~/lib/offline/types";
+import { useShoppingOutbox } from "~/lib/offline/use-shopping-outbox";
 import { pantryPath } from "~/lib/pantry-path";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
 import { getSortedQuantityBadge } from "~/lib/shopping-aggregation";
@@ -31,6 +39,30 @@ import type { Route } from "./+types/pantry.sorted";
 
 export { action, loader } from "./pantry.sorted.server";
 
+export async function clientLoader({ serverLoader, params }: Route.ClientLoaderArgs) {
+  const pantryId = params.pantryId;
+  try {
+    const data = await serverLoader();
+    void writeShoppingSnapshot(pantryId, {
+      shoppingRecipes: data.shoppingRecipes,
+      oddBits: data.oddBits,
+      categoryOverrides: data.categoryOverrides,
+    });
+    return data;
+  } catch (error) {
+    const offline = await loadOfflineShoppingSnapshot(pantryId);
+    if (!offline) throw error;
+    return {
+      sections: sectionsFromSnapshot(offline.applied),
+      pantryId,
+      shoppingRecipes: deserializeShoppingRecipes(offline.applied.shoppingRecipes),
+      oddBits: offline.applied.oddBits,
+      categoryOverrides: offline.applied.categoryOverrides,
+    };
+  }
+}
+clientLoader.hydrate = true;
+
 export function meta(_args: Route.MetaArgs) {
   return [{ title: "Sorted · Pantri" }];
 }
@@ -38,11 +70,15 @@ export function meta(_args: Route.MetaArgs) {
 type SortedSection = SortedSectionState;
 
 function SortedItemRow({
+  action,
+  pantryId,
   item,
   section,
   onPurchased,
   onMoveSection,
 }: {
+  action: string;
+  pantryId: string;
   item: AggregatedIngredient;
   section: ShoppingSection | string;
   onPurchased: (canonicalName: string, purchased: boolean) => void;
@@ -82,14 +118,16 @@ function SortedItemRow({
     setMenuOpen(false);
     if (nextSection === section) return;
     onMoveSection(item.canonicalName, item.name, nextSection);
-    categoryFetcher.submit(
-      {
+    void submitShoppingMutation({
+      pantryId,
+      action,
+      fields: {
         intent: "set-category",
         name: item.name,
         section: nextSection,
       },
-      { method: "post" },
-    );
+      onlineSubmit: (fields) => categoryFetcher.submit(fields, { method: "post", action }),
+    });
   }
 
   return (
@@ -108,14 +146,16 @@ function SortedItemRow({
           onChange={(event) => {
             const next = event.target.checked;
             onPurchased(item.canonicalName, next);
-            toggleFetcher.submit(
-              {
+            void submitShoppingMutation({
+              pantryId,
+              action,
+              fields: {
                 intent: "toggle",
                 name: item.name,
                 purchased: String(next),
               },
-              { method: "post" },
-            );
+              onlineSubmit: (fields) => toggleFetcher.submit(fields, { method: "post", action }),
+            });
           }}
           type="checkbox"
         />
@@ -222,13 +262,18 @@ function withSortedBase(
 
 export default function SortedPage({ loaderData }: Route.ComponentProps) {
   const { sections, pantryId } = loaderData;
+  const action = pantryPath(pantryId, "shopping/sorted");
   const fetchers = useFetchers();
   const clearFetcher = useFetcher({ key: "sorted-clear-all-purchased" });
+  const { entries: outboxEntries } = useShoppingOutbox(pantryId);
   const [localSections, setLocalSections] = useState(sections);
 
   useRevalidateOnFetcherError();
 
-  const busy = useMemo(() => sortedBusyFromFetchers(fetchers), [fetchers]);
+  const busy = useMemo(
+    () => unionSortedBusy(sortedBusyFromFetchers(fetchers), sortedBusyFromOutbox(outboxEntries)),
+    [fetchers, outboxEntries],
+  );
   const viewSections = useMemo(
     () => mergeSortedSections(sections, localSections, busy),
     [sections, localSections, busy],
@@ -336,6 +381,7 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="flex flex-col gap-5">
+      <ShoppingOutboxDrain pantryId={pantryId} />
       <PageHeader
         actions={
           <Button asChild size="sm" variant="outline">
@@ -348,6 +394,7 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
         description="By aisle"
         title="Sorted by aisle"
       />
+      <ShoppingOfflineBanner pantryId={pantryId} />
 
       {isEmpty ? (
         <Card>
@@ -366,10 +413,12 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
                 <CardContent className="space-y-0">
                   {items.map((item) => (
                     <SortedItemRow
+                      action={action}
                       item={item}
                       key={item.canonicalName}
                       onMoveSection={moveItem}
                       onPurchased={setItemPurchased}
+                      pantryId={pantryId}
                       section={section}
                     />
                   ))}
@@ -389,15 +438,23 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
                   count={gotIt.length}
                   onResetAll={() => {
                     clearAllPurchased();
-                    clearFetcher.submit({ intent: "clear-all-purchased" }, { method: "post" });
+                    void submitShoppingMutation({
+                      pantryId,
+                      action,
+                      fields: { intent: "clear-all-purchased" },
+                      onlineSubmit: (fields) =>
+                        clearFetcher.submit(fields, { method: "post", action }),
+                    });
                   }}
                 >
                   {gotIt.map((item) => (
                     <SortedItemRow
+                      action={action}
                       item={item}
                       key={item.canonicalName}
                       onMoveSection={moveItem}
                       onPurchased={setItemPurchased}
+                      pantryId={pantryId}
                       section={item.section || getIngredientSection(item.name)}
                     />
                   ))}

@@ -16,6 +16,10 @@ import { ShoppingGotItSection } from "~/components/shopping/shopping-got-it-sect
 import { Button } from "~/components/ui/button";
 import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
+import { shoppingBusyFromOutbox, unionShoppingBusy } from "~/lib/offline/busy-from-outbox";
+import { oddBitsFromOutbox } from "~/lib/offline/odd-bits-from-outbox";
+import { submitShoppingMutation } from "~/lib/offline/submit-shopping-mutation";
+import { useShoppingOutbox } from "~/lib/offline/use-shopping-outbox";
 import { pantryPath } from "~/lib/pantry-path";
 import type { OddBit, ShoppingIngredient } from "~/lib/recipe-schema";
 import {
@@ -58,11 +62,13 @@ function IngredientCheckbox({
 
 function RecipeIngredientRow({
   action,
+  pantryId,
   recipeId,
   ingredient,
   onPurchased,
 }: {
   action: string;
+  pantryId: string;
   recipeId: string;
   ingredient: ShoppingIngredient;
   onPurchased: (ingredientId: string, purchased: boolean) => void;
@@ -75,21 +81,23 @@ function RecipeIngredientRow({
       label={formatIngredientLabel(ingredient)}
       onToggle={(next) => {
         onPurchased(ingredient.id, next);
-        fetcher.submit(
-          {
+        void submitShoppingMutation({
+          pantryId,
+          action,
+          fields: {
             intent: "toggle-ingredient",
             shoppingRecipeId: recipeId,
             ingredientId: ingredient.id,
             purchased: String(next),
           },
-          { method: "post", action },
-        );
+          onlineSubmit: (fields) => fetcher.submit(fields, { method: "post", action }),
+        });
       }}
     />
   );
 }
 
-function AddOddBitForm({ action }: { action: string }) {
+function AddOddBitForm({ action, pantryId }: { action: string; pantryId: string }) {
   const [submitKey, setSubmitKey] = useState(() => crypto.randomUUID());
   const fetcher = useFetcher({ key: `${SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX}${submitKey}` });
   const formRef = useRef<HTMLFormElement>(null);
@@ -113,10 +121,17 @@ function AddOddBitForm({ action }: { action: string }) {
 
         const formData = new FormData(form);
         formData.set("clientPendingId", `pending:${crypto.randomUUID()}`);
-        void fetcher.submit(formData, { method: "post", action });
-        // New key so the next add can start while this fetcher is still in flight;
-        // the list derives pending/settled rows from useFetchers().
-        setSubmitKey(crypto.randomUUID());
+        const fields = Object.fromEntries(formData.entries()) as Record<string, string>;
+        void submitShoppingMutation({
+          pantryId,
+          action,
+          fields,
+          onlineSubmit: (nextFields) => {
+            void fetcher.submit(nextFields, { method: "post", action });
+            // New key so the next add can start while this fetcher is still in flight.
+            setSubmitKey(crypto.randomUUID());
+          },
+        });
         setQuantity({ amount: null, unit: null });
         setAddCycle((cycle) => cycle + 1);
         requestAnimationFrame(() => {
@@ -164,11 +179,13 @@ function AddOddBitForm({ action }: { action: string }) {
 
 function OddBitRow({
   action,
+  pantryId,
   bit,
   onPurchased,
   onRemove,
 }: {
   action: string;
+  pantryId: string;
   bit: OddBit;
   onPurchased: (id: string, purchased: boolean) => void;
   onRemove: (id: string) => void;
@@ -186,14 +203,16 @@ function OddBitRow({
           onToggle={(next) => {
             if (isPending) return;
             onPurchased(bit.id, next);
-            toggleFetcher.submit(
-              {
+            void submitShoppingMutation({
+              pantryId,
+              action,
+              fields: {
                 intent: "toggle-odd-bit",
                 id: bit.id,
                 purchased: String(next),
               },
-              { method: "post", action },
-            );
+              onlineSubmit: (fields) => toggleFetcher.submit(fields, { method: "post", action }),
+            });
           }}
         />
       </div>
@@ -202,10 +221,12 @@ function OddBitRow({
           aria-label="Remove odd bit"
           onClick={() => {
             onRemove(bit.id);
-            removeFetcher.submit(
-              { intent: "remove-odd-bit", id: bit.id },
-              { method: "post", action },
-            );
+            void submitShoppingMutation({
+              pantryId,
+              action,
+              fields: { intent: "remove-odd-bit", id: bit.id },
+              onlineSubmit: (fields) => removeFetcher.submit(fields, { method: "post", action }),
+            });
           }}
           size="icon"
           type="button"
@@ -228,24 +249,32 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
   const action = pantryPath(pantryId, "shopping");
   const fetchers = useFetchers();
   const clearOddBitsFetcher = useFetcher({ key: "shopping-clear-odd-bits" });
+  const { entries: outboxEntries } = useShoppingOutbox(pantryId);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [localRecipes, setLocalRecipes] = useState(recipes);
   const [localOddBits, setLocalOddBits] = useState(oddBits);
 
   useRevalidateOnFetcherError();
 
-  const busy = useMemo(() => shoppingBusyFromFetchers(fetchers), [fetchers]);
+  const busy = useMemo(
+    () =>
+      unionShoppingBusy(shoppingBusyFromFetchers(fetchers), shoppingBusyFromOutbox(outboxEntries)),
+    [fetchers, outboxEntries],
+  );
   const viewRecipes = useMemo(
     () => mergeShoppingRecipes(recipes, localRecipes, busy),
     [recipes, localRecipes, busy],
   );
   const viewOddBits = useMemo(() => {
     const merged = mergeOddBits(oddBits, localOddBits, busy);
-    const fromAdds = oddBitsFromAddFetchers(fetchers, oddBits);
+    const fromAdds = [
+      ...oddBitsFromAddFetchers(fetchers, oddBits),
+      ...oddBitsFromOutbox(outboxEntries, oddBits),
+    ];
     if (fromAdds.length === 0) return merged;
     const seen = new Set(merged.map((bit) => bit.id));
     return [...merged, ...fromAdds.filter((bit) => !seen.has(bit.id))];
-  }, [oddBits, localOddBits, busy, fetchers]);
+  }, [oddBits, localOddBits, busy, fetchers, outboxEntries]);
 
   function toggleExpanded(recipeId: string) {
     setExpandedIds((current) => {
@@ -355,6 +384,7 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                         key={bit.id}
                         onPurchased={setOddBitPurchased}
                         onRemove={removeOddBit}
+                        pantryId={pantryId}
                       />
                     ))}
                   </div>
@@ -367,10 +397,13 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                     count={oddBitsGotIt.length}
                     onResetAll={() => {
                       clearOddBitsPurchased();
-                      clearOddBitsFetcher.submit(
-                        { intent: "clear-odd-bits-purchased" },
-                        { method: "post", action },
-                      );
+                      void submitShoppingMutation({
+                        pantryId,
+                        action,
+                        fields: { intent: "clear-odd-bits-purchased" },
+                        onlineSubmit: (fields) =>
+                          clearOddBitsFetcher.submit(fields, { method: "post", action }),
+                      });
                     }}
                   >
                     {oddBitsGotIt.map(({ item: bit }) => (
@@ -380,6 +413,7 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                         key={bit.id}
                         onPurchased={setOddBitPurchased}
                         onRemove={removeOddBit}
+                        pantryId={pantryId}
                       />
                     ))}
                   </ShoppingGotItSection>
@@ -387,7 +421,7 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
               </>
             )}
 
-            <AddOddBitForm action={action} />
+            <AddOddBitForm action={action} pantryId={pantryId} />
           </div>
         </CardListItem>
 
@@ -487,10 +521,12 @@ function RecipeRow({
             className="size-8"
             onClick={() => {
               onRemove();
-              removeFetcher.submit(
-                { intent: "remove-recipe", shoppingRecipeId: recipe.id },
-                { method: "post", action },
-              );
+              void submitShoppingMutation({
+                pantryId,
+                action,
+                fields: { intent: "remove-recipe", shoppingRecipeId: recipe.id },
+                onlineSubmit: (fields) => removeFetcher.submit(fields, { method: "post", action }),
+              });
             }}
             size="icon"
             type="button"
@@ -524,6 +560,7 @@ function RecipeRow({
                     ingredient={item}
                     key={item.id}
                     onPurchased={onIngredientPurchased}
+                    pantryId={pantryId}
                     recipeId={recipe.id}
                   />
                 ))
@@ -536,10 +573,16 @@ function RecipeRow({
                   count={gotIt.length}
                   onResetAll={() => {
                     onClearPurchased();
-                    clearFetcher.submit(
-                      { intent: "clear-recipe-purchased", shoppingRecipeId: recipe.id },
-                      { method: "post", action },
-                    );
+                    void submitShoppingMutation({
+                      pantryId,
+                      action,
+                      fields: {
+                        intent: "clear-recipe-purchased",
+                        shoppingRecipeId: recipe.id,
+                      },
+                      onlineSubmit: (fields) =>
+                        clearFetcher.submit(fields, { method: "post", action }),
+                    });
                   }}
                 >
                   {gotIt.map(({ item }) => (
@@ -548,6 +591,7 @@ function RecipeRow({
                       ingredient={item}
                       key={item.id}
                       onPurchased={onIngredientPurchased}
+                      pantryId={pantryId}
                       recipeId={recipe.id}
                     />
                   ))}

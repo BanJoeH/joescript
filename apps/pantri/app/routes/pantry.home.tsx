@@ -5,14 +5,41 @@ import { Swiper, SwiperSlide } from "swiper/react";
 
 import { PullToRefreshScroll } from "~/components/pull-to-refresh-scroll";
 import { RecipesListView } from "~/components/recipes/recipes-list-view";
+import { ShoppingOfflineBanner } from "~/components/shopping/offline-banner";
 import { ShoppingListView } from "~/components/shopping/shopping-list-view";
+import { ShoppingOutboxDrain } from "~/components/shopping/shopping-outbox-drain";
 import { resolveHomeRecipes } from "~/lib/home-recipes-cache";
 import { type HomeTab, useHomeTabPaneRef } from "~/lib/home-tab-scroll";
+import { loadOfflineShoppingSnapshot } from "~/lib/offline/hydrate-shopping";
+import { writeShoppingSnapshot } from "~/lib/offline/snapshot";
+import { deserializeShoppingRecipes } from "~/lib/offline/types";
 import { getHomeTabIndex, pantryPath } from "~/lib/pantry-path";
 
 import type { Route } from "./+types/pantry.home";
 
 export { loader } from "./pantry.home.server";
+
+export async function clientLoader({ serverLoader, params }: Route.ClientLoaderArgs) {
+  const pantryId = params.pantryId;
+  try {
+    const data = await serverLoader();
+    void writeShoppingSnapshot(pantryId, {
+      shoppingRecipes: data.shoppingRecipes,
+      oddBits: data.oddBits,
+    });
+    return data;
+  } catch (error) {
+    const offline = await loadOfflineShoppingSnapshot(pantryId);
+    if (!offline) throw error;
+    return {
+      shoppingRecipes: deserializeShoppingRecipes(offline.applied.shoppingRecipes),
+      oddBits: offline.applied.oddBits,
+      recipes: [],
+      pantryId,
+    };
+  }
+}
+clientLoader.hydrate = true;
 
 function HomeTabPane({ tab, children }: { tab: HomeTab; children: React.ReactNode }) {
   const paneRef = useHomeTabPaneRef(tab);
@@ -34,7 +61,11 @@ type HomeTabData = {
 function ShoppingTab({ oddBits, pantryId, shoppingRecipes }: HomeTabData) {
   return (
     <HomeTabPane tab="shopping">
-      <ShoppingListView oddBits={oddBits} pantryId={pantryId} recipes={shoppingRecipes} />
+      <div className="flex flex-col gap-3">
+        <ShoppingOfflineBanner pantryId={pantryId} />
+        <ShoppingListView oddBits={oddBits} pantryId={pantryId} recipes={shoppingRecipes} />
+      </div>
+      <ShoppingOutboxDrain pantryId={pantryId} />
     </HomeTabPane>
   );
 }

@@ -9,6 +9,7 @@ import { ShareRecipeButton } from "~/components/recipes/share-recipe-button";
 import { useFetcherSuccessToast, useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { useCookFocus } from "~/lib/cook-focus";
+import { useOnlineStatus } from "~/lib/offline/connectivity";
 import { pantryPath } from "~/lib/pantry-path";
 import { cn } from "~/lib/utils";
 
@@ -34,6 +35,7 @@ export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
   const focused = cookFocus?.focused ?? false;
   const shopFetcher = useFetcher<ShopActionData>({ key: `recipe-cook-shop:${recipe.id}` });
   const shopping = shopFetcher.state !== "idle";
+  const online = useOnlineStatus();
 
   useFetcherSuccessToast(shopFetcher, (data) => {
     if (data.added) {
@@ -49,9 +51,15 @@ export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
             <>
               <shopFetcher.Form method="post">
                 <input name="intent" type="hidden" value="add-to-shopping" />
-                <Button disabled={shopping} size="sm" type="submit" variant="outline">
+                <Button
+                  disabled={shopping || !online}
+                  size="sm"
+                  title={online ? undefined : "Requires a connection"}
+                  type="submit"
+                  variant="outline"
+                >
                   <ShoppingCart className="size-4" />
-                  {shopping ? "Adding…" : "Shop"}
+                  {!online ? "Offline" : shopping ? "Adding…" : "Shop"}
                 </Button>
               </shopFetcher.Form>
               <ShareRecipeButton
