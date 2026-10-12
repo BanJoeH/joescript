@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type MutableRefObject, type RefObject } from "react";
 import { useRevalidator } from "react-router";
 
-import { useNetworkOnline } from "~/lib/offline/connectivity";
+import { canUseNetwork, useNetworkOnline } from "~/lib/offline/connectivity";
 import { pantryPath } from "~/lib/pantry-path";
 
 /** Coalesce visibility + window focus from the same tab return. */
@@ -58,67 +58,57 @@ export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; 
     };
   }, [online, pantryId, userId]);
 
+  // Probe settle / reconnect — independent of focus listeners so those stay mounted.
   useEffect(() => {
     if (!online) {
-      logFocus("skip: offline");
+      logFocus("skip: offline (canUseNetwork false until probe settles)", {
+        canUseNetwork: canUseNetwork(),
+      });
       return;
     }
 
-    const maybeRevalidate = (reason: string) => {
-      const visibility = typeof document !== "undefined" ? document.visibilityState : "n/a";
-      const state = revalidatorRef.current.state;
-      const sinceLast = Date.now() - lastFocusRevalidateAt.current;
-
-      if (typeof document !== "undefined" && document.visibilityState === "hidden") {
-        logFocus("skip: hidden", { reason, visibility, state });
-        return;
-      }
-      if (state !== "idle") {
-        logFocus("skip: revalidator busy", { reason, visibility, state });
-        return;
-      }
-      if (sinceLast < FOCUS_REVALIDATE_COOLDOWN_MS) {
-        logFocus("skip: cooldown", { reason, visibility, state, sinceLastMs: sinceLast });
-        return;
-      }
-
-      lastFocusRevalidateAt.current = Date.now();
-      logFocus("revalidate", { reason, visibility, state });
-      void revalidatorRef.current.revalidate();
-    };
-
-    // Probe often settles *after* the focus/pageshow that woke us — refetch then,
-    // and again whenever the tab becomes visible or the window is focused.
     logFocus("effect: online settled", { visibility: document.visibilityState });
-    maybeRevalidate("online-settle");
+    maybeRevalidateFromRef(revalidatorRef, lastFocusRevalidateAt, "online-settle");
+  }, [online]);
 
+  // Focus / visibility listeners mount once — do not tear down when online flips.
+  useEffect(() => {
     let wasHidden = document.visibilityState === "hidden";
+    logFocus("effect: focus listeners attached", { visibility: document.visibilityState });
 
     const onVisibility = () => {
       const hidden = document.visibilityState === "hidden";
       logFocus("visibilitychange", {
         wasHidden,
         now: document.visibilityState,
-        willRevalidate: wasHidden && !hidden,
+        canUseNetwork: canUseNetwork(),
+        willRevalidate: wasHidden && !hidden && canUseNetwork(),
       });
-      if (wasHidden && !hidden) maybeRevalidate("visibility-visible");
+      if (wasHidden && !hidden) {
+        maybeRevalidateFromRef(revalidatorRef, lastFocusRevalidateAt, "visibility-visible");
+      }
       wasHidden = hidden;
     };
 
     const onFocus = () => {
-      logFocus("window focus", { visibility: document.visibilityState });
-      maybeRevalidate("window-focus");
+      logFocus("window focus", {
+        visibility: document.visibilityState,
+        canUseNetwork: canUseNetwork(),
+      });
+      maybeRevalidateFromRef(revalidatorRef, lastFocusRevalidateAt, "window-focus");
     };
 
     const onPageShow = (event: PageTransitionEvent) => {
-      // bfcache restore or normal pageshow while visible
       const willRevalidate = event.persisted || document.visibilityState === "visible";
       logFocus("pageshow", {
         persisted: event.persisted,
         visibility: document.visibilityState,
+        canUseNetwork: canUseNetwork(),
         willRevalidate,
       });
-      if (willRevalidate) maybeRevalidate("pageshow");
+      if (willRevalidate) {
+        maybeRevalidateFromRef(revalidatorRef, lastFocusRevalidateAt, "pageshow");
+      }
     };
 
     document.addEventListener("visibilitychange", onVisibility);
@@ -126,12 +116,44 @@ export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; 
     window.addEventListener("pageshow", onPageShow);
 
     return () => {
-      logFocus("effect: cleanup");
+      logFocus("effect: focus listeners cleanup");
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("pageshow", onPageShow);
     };
-  }, [online]);
+  }, []);
 
   return null;
+}
+
+function maybeRevalidateFromRef(
+  revalidatorRef: RefObject<{ state: string; revalidate: () => void }>,
+  lastFocusRevalidateAt: MutableRefObject<number>,
+  reason: string,
+) {
+  const visibility = typeof document !== "undefined" ? document.visibilityState : "n/a";
+  const networkOk = canUseNetwork();
+  const state = revalidatorRef.current?.state ?? "n/a";
+  const sinceLast = Date.now() - lastFocusRevalidateAt.current;
+
+  if (!networkOk) {
+    logFocus("skip: canUseNetwork false", { reason, visibility, state });
+    return;
+  }
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+    logFocus("skip: hidden", { reason, visibility, state });
+    return;
+  }
+  if (state !== "idle") {
+    logFocus("skip: revalidator busy", { reason, visibility, state });
+    return;
+  }
+  if (sinceLast < FOCUS_REVALIDATE_COOLDOWN_MS) {
+    logFocus("skip: cooldown", { reason, visibility, state, sinceLastMs: sinceLast });
+    return;
+  }
+
+  lastFocusRevalidateAt.current = Date.now();
+  logFocus("revalidate", { reason, visibility, state });
+  void revalidatorRef.current?.revalidate();
 }
