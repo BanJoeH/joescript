@@ -6,7 +6,7 @@ import {
   Trash2,
   UtensilsCrossed,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useFetcher, useFetchers } from "react-router";
 
 import { Link } from "~/components/link";
@@ -22,7 +22,8 @@ import {
   isPendingOddBitId,
   mergeOddBits,
   mergeShoppingRecipes,
-  replacePendingOddBit,
+  oddBitsFromAddFetchers,
+  SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX,
   shoppingBusyFromFetchers,
 } from "~/lib/shopping-local-merge";
 import { splitIndexedByPurchased } from "~/lib/split-purchased";
@@ -30,35 +31,6 @@ import { formatIngredientLabel } from "~/lib/units";
 import { useRevalidateOnFetcherError } from "~/lib/use-revalidate-on-fetcher-error";
 import { cn } from "~/lib/utils";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
-
-function shoppingRecipesLookEqual(a: ShoppingRecipeRecord[], b: ShoppingRecipeRecord[]) {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    const left = a[i]!;
-    const right = b[i]!;
-    if (left.id !== right.id || left.ingredients.length !== right.ingredients.length) return false;
-    for (let j = 0; j < left.ingredients.length; j++) {
-      const li = left.ingredients[j]!;
-      const ri = right.ingredients[j]!;
-      if (li.id !== ri.id || li.purchased !== ri.purchased) return false;
-    }
-  }
-  return true;
-}
-
-function oddBitsLookEqual(a: OddBit[], b: OddBit[]) {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    const left = a[i]!;
-    const right = b[i]!;
-    if (left.id !== right.id || left.purchased !== right.purchased || left.name !== right.name) {
-      return false;
-    }
-  }
-  return true;
-}
 
 function IngredientCheckbox({
   checked,
@@ -117,57 +89,16 @@ function RecipeIngredientRow({
   );
 }
 
-type AddOddBitActionData =
-  | { ok: true; oddBit: OddBit; clientPendingId: string | null }
-  | { error: string };
-
-function AddOddBitForm({
-  action,
-  onOptimisticAdd,
-  onReconcileAdd,
-  onAddError,
-}: {
-  action: string;
-  onOptimisticAdd: (bit: OddBit) => void;
-  onReconcileAdd: (clientPendingId: string, oddBit: OddBit) => void;
-  onAddError: (clientPendingId: string) => void;
-}) {
+function AddOddBitForm({ action }: { action: string }) {
   const [submitKey, setSubmitKey] = useState(() => crypto.randomUUID());
-  const [pendingId, setPendingId] = useState(() => `pending:${crypto.randomUUID()}`);
-  const fetcher = useFetcher<AddOddBitActionData>({ key: `shopping-add-odd-bit:${submitKey}` });
+  const fetcher = useFetcher({ key: `${SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX}${submitKey}` });
   const formRef = useRef<HTMLFormElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
-  const onReconcileAddRef = useRef(onReconcileAdd);
-  const onAddErrorRef = useRef(onAddError);
-  onReconcileAddRef.current = onReconcileAdd;
-  onAddErrorRef.current = onAddError;
   const [addCycle, setAddCycle] = useState(0);
   const [quantity, setQuantity] = useState<{ amount: number | null; unit: string | null }>({
     amount: null,
     unit: null,
   });
-  const handledDataRef = useRef<AddOddBitActionData | null>(null);
-
-  useEffect(() => {
-    if (fetcher.state !== "idle" || !fetcher.data || fetcher.data === handledDataRef.current) {
-      return;
-    }
-    handledDataRef.current = fetcher.data;
-
-    if ("oddBit" in fetcher.data && fetcher.data.oddBit) {
-      const clientPendingId = fetcher.data.clientPendingId ?? pendingId;
-      onReconcileAddRef.current(clientPendingId, fetcher.data.oddBit);
-      setSubmitKey(crypto.randomUUID());
-      setPendingId(`pending:${crypto.randomUUID()}`);
-      return;
-    }
-
-    if ("error" in fetcher.data) {
-      onAddErrorRef.current(pendingId);
-      setSubmitKey(crypto.randomUUID());
-      setPendingId(`pending:${crypto.randomUUID()}`);
-    }
-  }, [fetcher.state, fetcher.data, pendingId]);
 
   return (
     <fetcher.Form
@@ -175,17 +106,17 @@ function AddOddBitForm({
       className="flex flex-wrap items-end gap-2"
       method="post"
       onSubmit={(event) => {
+        event.preventDefault();
         const form = event.currentTarget;
         const name = String(new FormData(form).get("name") ?? "").trim();
-        if (name) {
-          onOptimisticAdd({
-            id: pendingId,
-            name,
-            amount: quantity.amount,
-            unit: quantity.unit,
-            purchased: false,
-          });
-        }
+        if (!name) return;
+
+        const formData = new FormData(form);
+        formData.set("clientPendingId", `pending:${crypto.randomUUID()}`);
+        void fetcher.submit(formData, { method: "post", action });
+        // New key so the next add can start while this fetcher is still in flight;
+        // the list derives pending/settled rows from useFetchers().
+        setSubmitKey(crypto.randomUUID());
         setQuantity({ amount: null, unit: null });
         setAddCycle((cycle) => cycle + 1);
         requestAnimationFrame(() => {
@@ -196,7 +127,6 @@ function AddOddBitForm({
       ref={formRef}
     >
       <input name="intent" type="hidden" value="add-odd-bit" />
-      <input name="clientPendingId" type="hidden" value={pendingId} />
       <QuantityInput
         amount={quantity.amount}
         autoFocus={addCycle > 0}
@@ -304,17 +234,18 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
 
   useRevalidateOnFetcherError();
 
-  useEffect(() => {
-    const busy = shoppingBusyFromFetchers(fetchers);
-    setLocalRecipes((current) => {
-      const next = mergeShoppingRecipes(recipes, current, busy);
-      return shoppingRecipesLookEqual(current, next) ? current : next;
-    });
-    setLocalOddBits((current) => {
-      const next = mergeOddBits(oddBits, current, busy);
-      return oddBitsLookEqual(current, next) ? current : next;
-    });
-  }, [recipes, oddBits, fetchers]);
+  const busy = useMemo(() => shoppingBusyFromFetchers(fetchers), [fetchers]);
+  const viewRecipes = useMemo(
+    () => mergeShoppingRecipes(recipes, localRecipes, busy),
+    [recipes, localRecipes, busy],
+  );
+  const viewOddBits = useMemo(() => {
+    const merged = mergeOddBits(oddBits, localOddBits, busy);
+    const fromAdds = oddBitsFromAddFetchers(fetchers, oddBits);
+    if (fromAdds.length === 0) return merged;
+    const seen = new Set(merged.map((bit) => bit.id));
+    return [...merged, ...fromAdds.filter((bit) => !seen.has(bit.id))];
+  }, [oddBits, localOddBits, busy, fetchers]);
 
   function toggleExpanded(recipeId: string) {
     setExpandedIds((current) => {
@@ -326,33 +257,35 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
   }
 
   function setIngredientPurchased(recipeId: string, ingredientId: string, purchased: boolean) {
-    setLocalRecipes((current) =>
-      current.map((recipe) =>
-        recipe.id !== recipeId
-          ? recipe
-          : {
-              ...recipe,
-              ingredients: recipe.ingredients.map((ingredient) =>
-                ingredient.id === ingredientId ? { ...ingredient, purchased } : ingredient,
-              ),
-            },
-      ),
-    );
+    setLocalRecipes((current) => {
+      const patch = (recipe: ShoppingRecipeRecord) => ({
+        ...recipe,
+        ingredients: recipe.ingredients.map((ingredient) =>
+          ingredient.id === ingredientId ? { ...ingredient, purchased } : ingredient,
+        ),
+      });
+      if (current.some((recipe) => recipe.id === recipeId)) {
+        return current.map((recipe) => (recipe.id === recipeId ? patch(recipe) : recipe));
+      }
+      const fromServer = recipes.find((recipe) => recipe.id === recipeId);
+      return fromServer ? [...current, patch(fromServer)] : current;
+    });
   }
 
   function clearRecipePurchased(recipeId: string) {
-    setLocalRecipes((current) =>
-      current.map((recipe) =>
-        recipe.id !== recipeId
-          ? recipe
-          : {
-              ...recipe,
-              ingredients: recipe.ingredients.map((ingredient) =>
-                ingredient.purchased ? { ...ingredient, purchased: false } : ingredient,
-              ),
-            },
-      ),
-    );
+    setLocalRecipes((current) => {
+      const patch = (recipe: ShoppingRecipeRecord) => ({
+        ...recipe,
+        ingredients: recipe.ingredients.map((ingredient) =>
+          ingredient.purchased ? { ...ingredient, purchased: false } : ingredient,
+        ),
+      });
+      if (current.some((recipe) => recipe.id === recipeId)) {
+        return current.map((recipe) => (recipe.id === recipeId ? patch(recipe) : recipe));
+      }
+      const fromServer = recipes.find((recipe) => recipe.id === recipeId);
+      return fromServer ? [...current, patch(fromServer)] : current;
+    });
   }
 
   function removeRecipe(recipeId: string) {
@@ -360,9 +293,13 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
   }
 
   function setOddBitPurchased(id: string, purchased: boolean) {
-    setLocalOddBits((current) =>
-      current.map((bit) => (bit.id === id ? { ...bit, purchased } : bit)),
-    );
+    setLocalOddBits((current) => {
+      if (current.some((bit) => bit.id === id)) {
+        return current.map((bit) => (bit.id === id ? { ...bit, purchased } : bit));
+      }
+      const fromServer = oddBits.find((bit) => bit.id === id);
+      return fromServer ? [...current, { ...fromServer, purchased }] : current;
+    });
   }
 
   function removeOddBit(id: string) {
@@ -370,12 +307,17 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
   }
 
   function clearOddBitsPurchased() {
-    setLocalOddBits((current) =>
-      current.map((bit) => (bit.purchased ? { ...bit, purchased: false } : bit)),
-    );
+    setLocalOddBits((current) => {
+      const base = current.length > 0 ? current : oddBits;
+      const byId = new Map(base.map((bit) => [bit.id, bit]));
+      for (const bit of oddBits) {
+        if (!byId.has(bit.id)) byId.set(bit.id, bit);
+      }
+      return [...byId.values()].map((bit) => (bit.purchased ? { ...bit, purchased: false } : bit));
+    });
   }
 
-  const { toBuy: oddBitsToBuy, gotIt: oddBitsGotIt } = splitIndexedByPurchased(localOddBits);
+  const { toBuy: oddBitsToBuy, gotIt: oddBitsGotIt } = splitIndexedByPurchased(viewOddBits);
 
   return (
     <div className="flex flex-col gap-4">
@@ -396,9 +338,9 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
         <CardListItem className="px-4 py-3">
           <h3 className="mb-2 text-sm font-semibold uppercase tracking-[0.06em]">Odd bits</h3>
           <div className="space-y-2">
-            {localOddBits.length === 0 ? (
+            {viewOddBits.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                {localRecipes.length === 0
+                {viewRecipes.length === 0
                   ? "Empty. Add a recipe or an odd bit below."
                   : "Extras that aren't on a recipe."}
               </p>
@@ -445,20 +387,11 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
               </>
             )}
 
-            <AddOddBitForm
-              action={action}
-              onAddError={(clientPendingId) =>
-                setLocalOddBits((current) => current.filter((bit) => bit.id !== clientPendingId))
-              }
-              onOptimisticAdd={(bit) => setLocalOddBits((current) => [...current, bit])}
-              onReconcileAdd={(clientPendingId, oddBit) =>
-                setLocalOddBits((current) => replacePendingOddBit(current, clientPendingId, oddBit))
-              }
-            />
+            <AddOddBitForm action={action} />
           </div>
         </CardListItem>
 
-        {localRecipes.map((recipe) => {
+        {viewRecipes.map((recipe) => {
           const expanded = expandedIds.has(recipe.id);
           const { toBuy, gotIt } = splitIndexedByPurchased(recipe.ingredients);
           const panelId = `shopping-recipe-${recipe.id}`;

@@ -17,8 +17,13 @@ export function ingredientBusyKey(recipeId: string, ingredientId: string) {
   return `${recipeId}:${ingredientId}`;
 }
 
+export const SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX = "shopping-add-odd-bit:";
+
 type FetcherLike = {
+  key?: string;
+  state?: string;
   formData?: FormData | null;
+  data?: unknown;
 };
 
 /** Collect entity keys that currently have an in-flight shopping mutation. */
@@ -119,7 +124,7 @@ export function isPendingOddBitId(id: string) {
 
 export function mergeOddBits(server: OddBit[], local: OddBit[], busy: ShoppingBusySets): OddBit[] {
   const localById = new Map(local.map((bit) => [bit.id, bit]));
-  const pending = local.filter((bit) => isPendingOddBitId(bit.id));
+  const serverIds = new Set(server.map((bit) => bit.id));
 
   const mergedServer = server
     .filter((bit) => !busy.oddBitRemoves.has(bit.id))
@@ -130,7 +135,54 @@ export function mergeOddBits(server: OddBit[], local: OddBit[], busy: ShoppingBu
       return serverBit;
     });
 
-  return [...mergedServer, ...pending];
+  // Local-only rows (e.g. overlays) that have not landed in loader data yet.
+  const localOnly = local.filter(
+    (bit) => !serverIds.has(bit.id) && !busy.oddBitRemoves.has(bit.id),
+  );
+
+  return [...mergedServer, ...localOnly];
+}
+
+/**
+ * Derive in-flight / just-settled odd-bit adds from fetchers so the UI does not
+ * need to copy pending rows into local state.
+ */
+export function oddBitsFromAddFetchers(fetchers: FetcherLike[], server: OddBit[]): OddBit[] {
+  const serverIds = new Set(server.map((bit) => bit.id));
+  const byId = new Map<string, OddBit>();
+
+  for (const fetcher of fetchers) {
+    const keyedAdd = fetcher.key?.startsWith(SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX) ?? false;
+    const formData = fetcher.formData;
+    const intent = formData ? String(formData.get("intent") ?? "") : "";
+
+    if (formData && intent === "add-odd-bit") {
+      const name = String(formData.get("name") ?? "").trim();
+      const id = String(formData.get("clientPendingId") ?? "").trim();
+      if (!name || !id) continue;
+      const amountRaw = String(formData.get("amount") ?? "").trim();
+      const unitRaw = String(formData.get("unit") ?? "").trim();
+      byId.set(id, {
+        id,
+        name,
+        amount: amountRaw ? Number(amountRaw) : null,
+        unit: unitRaw || null,
+        purchased: false,
+      });
+      continue;
+    }
+
+    if (!keyedAdd && intent !== "add-odd-bit") continue;
+    if (fetcher.state !== "idle" || fetcher.data == null || typeof fetcher.data !== "object") {
+      continue;
+    }
+    if (!("oddBit" in fetcher.data)) continue;
+    const oddBit = (fetcher.data as { oddBit?: OddBit }).oddBit;
+    if (!oddBit || serverIds.has(oddBit.id)) continue;
+    byId.set(oddBit.id, oddBit);
+  }
+
+  return [...byId.values()];
 }
 
 export type SortedBusySets = {
@@ -225,16 +277,4 @@ export function mergeSortedSections(
   }
 
   return next.filter((section) => section.items.length > 0);
-}
-
-export function replacePendingOddBit(
-  oddBits: OddBit[],
-  clientPendingId: string,
-  oddBit: OddBit,
-): OddBit[] {
-  const withoutPending = oddBits.filter((bit) => bit.id !== clientPendingId);
-  if (withoutPending.some((bit) => bit.id === oddBit.id)) {
-    return withoutPending;
-  }
-  return [...withoutPending, oddBit];
 }

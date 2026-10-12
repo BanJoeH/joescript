@@ -207,20 +207,17 @@ function SortedItemRow({
   );
 }
 
-function sortedSectionsLookEqual(a: SortedSection[], b: SortedSection[]) {
-  if (a === b) return true;
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i]!.section !== b[i]!.section || a[i]!.items.length !== b[i]!.items.length) return false;
-    for (let j = 0; j < a[i]!.items.length; j++) {
-      const left = a[i]!.items[j]!;
-      const right = b[i]!.items[j]!;
-      if (left.canonicalName !== right.canonicalName || left.purchased !== right.purchased) {
-        return false;
-      }
-    }
-  }
-  return true;
+function withSortedBase(
+  sections: SortedSection[],
+  local: SortedSection[],
+  update: (base: SortedSection[]) => SortedSection[],
+) {
+  const base = mergeSortedSections(sections, local, {
+    toggles: new Set(),
+    moves: new Set(),
+    clearAll: false,
+  });
+  return update(base);
 }
 
 export default function SortedPage({ loaderData }: Route.ComponentProps) {
@@ -231,17 +228,15 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
 
   useRevalidateOnFetcherError();
 
-  useEffect(() => {
-    const busy = sortedBusyFromFetchers(fetchers);
-    setLocalSections((current) => {
-      const next = mergeSortedSections(sections, current, busy);
-      return sortedSectionsLookEqual(current, next) ? current : next;
-    });
-  }, [sections, fetchers]);
+  const busy = useMemo(() => sortedBusyFromFetchers(fetchers), [fetchers]);
+  const viewSections = useMemo(
+    () => mergeSortedSections(sections, localSections, busy),
+    [sections, localSections, busy],
+  );
 
   const { toBuySections, gotIt } = useMemo(() => {
     const purchased: Array<AggregatedIngredient & { section: string }> = [];
-    const toBuy = localSections
+    const toBuy = viewSections
       .map((section) => {
         const items = section.items.filter((item) => {
           if (item.purchased) {
@@ -256,7 +251,7 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
 
     purchased.sort((a, b) => a.name.localeCompare(b.name));
     return { toBuySections: toBuy, gotIt: purchased };
-  }, [localSections]);
+  }, [viewSections]);
 
   const remainingCount = useMemo(
     () => toBuySections.reduce((count, section) => count + section.items.length, 0),
@@ -282,50 +277,58 @@ export default function SortedPage({ loaderData }: Route.ComponentProps) {
 
   function setItemPurchased(canonicalName: string, purchased: boolean) {
     setLocalSections((current) =>
-      current.map((section) => ({
-        ...section,
-        items: section.items.map((item) =>
-          item.canonicalName === canonicalName ? { ...item, purchased } : item,
-        ),
-      })),
+      withSortedBase(sections, current, (base) =>
+        base.map((section) => ({
+          ...section,
+          items: section.items.map((item) =>
+            item.canonicalName === canonicalName ? { ...item, purchased } : item,
+          ),
+        })),
+      ),
     );
   }
 
   function moveItem(canonicalName: string, name: string, nextSection: ShoppingSection) {
-    setLocalSections((current) => {
-      let moved: AggregatedIngredient | null = null;
-      const without = current.map((section) => {
-        const remaining = section.items.filter((item) => {
-          const match = item.canonicalName === canonicalName || item.name === name;
-          if (match) moved = item;
-          return !match;
+    setLocalSections((current) =>
+      withSortedBase(sections, current, (base) => {
+        let moved: AggregatedIngredient | null = null;
+        const without = base.map((section) => {
+          const remaining = section.items.filter((item) => {
+            const match = item.canonicalName === canonicalName || item.name === name;
+            if (match) moved = item;
+            return !match;
+          });
+          return { ...section, items: remaining };
         });
-        return { ...section, items: remaining };
-      });
 
-      if (!moved) return current;
+        if (!moved) return current;
 
-      const existing = without.find((section) => section.section === nextSection);
-      let next: SortedSection[];
-      if (existing) {
-        next = without.map((section) =>
-          section.section === nextSection
-            ? { ...section, items: [...section.items, moved as AggregatedIngredient] }
-            : section,
-        );
-      } else {
-        next = [...without, { section: nextSection, items: [moved] }];
-      }
-      return next.filter((section) => section.items.length > 0);
-    });
+        const existing = without.find((section) => section.section === nextSection);
+        let next: SortedSection[];
+        if (existing) {
+          next = without.map((section) =>
+            section.section === nextSection
+              ? { ...section, items: [...section.items, moved as AggregatedIngredient] }
+              : section,
+          );
+        } else {
+          next = [...without, { section: nextSection, items: [moved] }];
+        }
+        return next.filter((section) => section.items.length > 0);
+      }),
+    );
   }
 
   function clearAllPurchased() {
     setLocalSections((current) =>
-      current.map((section) => ({
-        ...section,
-        items: section.items.map((item) => (item.purchased ? { ...item, purchased: false } : item)),
-      })),
+      withSortedBase(sections, current, (base) =>
+        base.map((section) => ({
+          ...section,
+          items: section.items.map((item) =>
+            item.purchased ? { ...item, purchased: false } : item,
+          ),
+        })),
+      ),
     );
   }
 
