@@ -12,6 +12,8 @@ export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; 
   const revalidator = useRevalidator();
 
   useEffect(() => {
+    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+
     const source = new EventSource(pantryPath(pantryId, "api/events"));
 
     const handleInvalidate = (event: Event) => {
