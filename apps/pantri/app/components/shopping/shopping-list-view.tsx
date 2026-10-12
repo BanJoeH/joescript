@@ -17,8 +17,11 @@ import { Button } from "~/components/ui/button";
 import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
 import { shoppingBusyFromOutbox, unionShoppingBusy } from "~/lib/offline/busy-from-outbox";
-import { oddBitsFromOutbox } from "~/lib/offline/odd-bits-from-outbox";
 import { cancelPendingOddBitAdd, patchPendingOddBitAdd } from "~/lib/offline/outbox";
+import {
+  collectPendingOddBitAdds,
+  queuedOfflinePendingOddBitIds,
+} from "~/lib/offline/pending-odd-bit-adds";
 import { submitShoppingMutation } from "~/lib/offline/submit-shopping-mutation";
 import { useShoppingOutbox } from "~/lib/offline/use-shopping-outbox";
 import { pantryPath } from "~/lib/pantry-path";
@@ -27,7 +30,6 @@ import {
   isPendingOddBitId,
   mergeOddBits,
   mergeShoppingRecipes,
-  oddBitsFromAddFetchers,
   SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX,
   shoppingBusyFromFetchers,
 } from "~/lib/shopping-local-merge";
@@ -280,29 +282,27 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
     () => mergeShoppingRecipes(recipes, localRecipes, busy),
     [recipes, localRecipes, busy],
   );
-  const queuedOfflinePendingIds = useMemo(() => {
-    const ids = new Set<string>();
-    for (const entry of outboxEntries) {
-      if (entry.status !== "pending" || entry.fields.intent !== "add-odd-bit") continue;
-      const id = entry.fields.clientPendingId?.trim();
-      if (id) ids.add(id);
-    }
-    return ids;
-  }, [outboxEntries]);
+  const queuedOfflinePendingIds = useMemo(
+    () => queuedOfflinePendingOddBitIds(outboxEntries),
+    [outboxEntries],
+  );
 
   const viewOddBits = useMemo(() => {
     const merged = mergeOddBits(oddBits, localOddBits, busy);
     const localById = new Map(localOddBits.map((bit) => [bit.id, bit]));
-    const fromAdds = [
-      ...oddBitsFromAddFetchers(fetchers, oddBits),
-      ...oddBitsFromOutbox(outboxEntries, oddBits),
-    ].map((bit) => {
+    const fromAdds = collectPendingOddBitAdds(fetchers, outboxEntries, oddBits).map((bit) => {
       const local = localById.get(bit.id);
       return local ? { ...bit, purchased: local.purchased } : bit;
     });
     if (fromAdds.length === 0) return merged;
     const seen = new Set(merged.map((bit) => bit.id));
-    return [...merged, ...fromAdds.filter((bit) => !seen.has(bit.id))];
+    const extras: OddBit[] = [];
+    for (const bit of fromAdds) {
+      if (seen.has(bit.id)) continue;
+      seen.add(bit.id);
+      extras.push(bit);
+    }
+    return [...merged, ...extras];
   }, [oddBits, localOddBits, busy, fetchers, outboxEntries]);
 
   function cancelPendingOddBit(clientPendingId: string) {

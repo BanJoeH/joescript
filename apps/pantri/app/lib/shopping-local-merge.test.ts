@@ -4,6 +4,9 @@ import type { OddBit } from "~/lib/recipe-schema";
 import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
 
+import { collectPendingOddBitAdds } from "~/lib/offline/pending-odd-bit-adds";
+import type { OutboxEntry } from "~/lib/offline/types";
+
 import {
   mergeOddBits,
   mergeShoppingRecipes,
@@ -64,12 +67,19 @@ function viewOddBits(
   server: OddBit[],
   local: OddBit[],
   fetchers: Parameters<typeof shoppingBusyFromFetchers>[0],
+  outbox: OutboxEntry[] = [],
 ) {
   const merged = mergeOddBits(server, local, shoppingBusyFromFetchers(fetchers));
-  const fromAdds = oddBitsFromAddFetchers(fetchers, server);
+  const fromAdds = collectPendingOddBitAdds(fetchers, outbox, server);
   if (fromAdds.length === 0) return merged;
   const seen = new Set(merged.map((row) => row.id));
-  return [...merged, ...fromAdds.filter((row) => !seen.has(row.id))];
+  const extras: OddBit[] = [];
+  for (const bit of fromAdds) {
+    if (seen.has(bit.id)) continue;
+    seen.add(bit.id);
+    extras.push(bit);
+  }
+  return [...merged, ...extras];
 }
 
 describe("shoppingBusyFromFetchers", () => {
@@ -349,6 +359,24 @@ describe("oddBitsFromAddFetchers", () => {
 
     expect(bits.map((row) => row.id).sort()).toEqual(["pending:1", "pending:2"]);
   });
+
+  it("ignores outbox-drain fetchers even when formData is add-odd-bit", () => {
+    const bits = oddBitsFromAddFetchers(
+      [
+        {
+          key: "shopping-outbox-drain:p1",
+          state: "submitting",
+          formData: formData({
+            intent: "add-odd-bit",
+            clientPendingId: "pending:1",
+            name: "bags",
+          }),
+        },
+      ],
+      [],
+    );
+    expect(bits).toEqual([]);
+  });
 });
 
 describe("view odd bits composition", () => {
@@ -377,6 +405,60 @@ describe("view odd bits composition", () => {
       "ob2",
       "pending:2",
     ]);
+  });
+
+  it("keeps a single row across offline add → drain → loader catch-up", () => {
+    const created = bit({ id: "ob2", name: "bags" });
+    const outbox: OutboxEntry[] = [
+      {
+        id: "out-1",
+        pantryId: "p1",
+        createdAt: 1,
+        actionPath: "/p/p1/shopping",
+        status: "pending",
+        fields: {
+          intent: "add-odd-bit",
+          clientPendingId: "pending:1",
+          name: "bags",
+        },
+      },
+    ];
+
+    expect(viewOddBits([], [], [], outbox).map((row) => row.id)).toEqual(["pending:1"]);
+
+    expect(
+      viewOddBits(
+        [],
+        [],
+        [
+          {
+            key: "shopping-outbox-drain:p1",
+            state: "submitting",
+            formData: formData({
+              intent: "add-odd-bit",
+              clientPendingId: "pending:1",
+              name: "bags",
+            }),
+          },
+        ],
+        outbox,
+      ).map((row) => row.id),
+    ).toEqual(["pending:1"]);
+
+    expect(
+      viewOddBits(
+        [created],
+        [created],
+        [
+          {
+            key: "shopping-outbox-drain:p1",
+            state: "idle",
+            data: { ok: true, oddBit: created, clientPendingId: "pending:1" },
+          },
+        ],
+        outbox,
+      ).map((row) => row.id),
+    ).toEqual(["ob2"]);
   });
 });
 

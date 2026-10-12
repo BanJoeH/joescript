@@ -26,6 +26,9 @@ type FetcherLike = {
   data?: unknown;
 };
 
+/** Outbox drain posts the same intents; never treat it as UI busy for merges. */
+export const SHOPPING_OUTBOX_DRAIN_FETCHER_PREFIX = "shopping-outbox-drain:";
+
 /** Collect entity keys that currently have an in-flight shopping mutation. */
 export function shoppingBusyFromFetchers(fetchers: FetcherLike[]): ShoppingBusySets {
   const ingredientKeys = new Set<string>();
@@ -36,6 +39,7 @@ export function shoppingBusyFromFetchers(fetchers: FetcherLike[]): ShoppingBusyS
   let oddBitClears = false;
 
   for (const fetcher of fetchers) {
+    if (fetcher.key?.startsWith(SHOPPING_OUTBOX_DRAIN_FETCHER_PREFIX)) continue;
     const formData = fetcher.formData;
     if (!formData) continue;
     const intent = String(formData.get("intent") ?? "");
@@ -147,19 +151,19 @@ export function mergeOddBits(server: OddBit[], local: OddBit[], busy: ShoppingBu
 }
 
 /**
- * Derive in-flight / just-settled odd-bit adds from fetchers so the UI does not
- * need to copy pending rows into local state.
+ * Derive in-flight / just-settled odd-bit adds from **add** fetchers only
+ * (`shopping-add-odd-bit:*`). Prefer `collectPendingOddBitAdds` when outbox is
+ * involved — it also suppresses drain-fetcher duplicates and revalidate races.
  */
 export function oddBitsFromAddFetchers(fetchers: FetcherLike[], server: OddBit[]): OddBit[] {
   const serverIds = new Set(server.map((bit) => bit.id));
   const byId = new Map<string, OddBit>();
 
   for (const fetcher of fetchers) {
-    const keyedAdd = fetcher.key?.startsWith(SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX) ?? false;
-    const formData = fetcher.formData;
-    const intent = formData ? String(formData.get("intent") ?? "") : "";
+    if (!fetcher.key?.startsWith(SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX)) continue;
 
-    if (formData && intent === "add-odd-bit") {
+    const formData = fetcher.formData;
+    if (formData && String(formData.get("intent") ?? "") === "add-odd-bit") {
       const name = String(formData.get("name") ?? "").trim();
       const id = String(formData.get("clientPendingId") ?? "").trim();
       if (!name || !id) continue;
@@ -175,7 +179,6 @@ export function oddBitsFromAddFetchers(fetchers: FetcherLike[], server: OddBit[]
       continue;
     }
 
-    if (!keyedAdd && intent !== "add-odd-bit") continue;
     if (fetcher.state !== "idle" || fetcher.data == null || typeof fetcher.data !== "object") {
       continue;
     }
