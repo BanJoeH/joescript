@@ -8,8 +8,14 @@ import {
   setActiveDrainEntry,
 } from "~/lib/offline/drain-active";
 import { decideOutboxDrainStep } from "~/lib/offline/drain-decision";
+import {
+  DRAIN_LEASE_TTL_MS,
+  getDrainOwnerId,
+  releaseDrainLease,
+  tryAcquireDrainLease,
+} from "~/lib/offline/drain-lease";
 import { subscribeShoppingOfflineChange, subscribeShoppingTrySync } from "~/lib/offline/events";
-import { listOutbox, markOutboxFailed, peekOutbox } from "~/lib/offline/outbox";
+import { listOutbox, markOutboxFailed, peekOutbox, removeOutboxEntry } from "~/lib/offline/outbox";
 import { scheduleDeferredWork } from "~/lib/offline/schedule-deferred";
 import {
   CLIENT_OUTBOX_DRAIN_FIELD,
@@ -29,6 +35,8 @@ type DrainPhase = "idle" | "awaiting" | "handling";
  * still be idle with the *previous* `{ ok: true }` for a moment — treating that
  * as success for the next entry would commit/remove it without the server write.
  * We only consume fetcher.data when phase === "awaiting" (post-submit settle).
+ *
+ * Cross-tab: an IndexedDB lease ensures only one tab drains at a time.
  */
 export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
   // Wait for the reachability probe — navigator.onLine alone races drain POSTs offline.
@@ -39,6 +47,7 @@ export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
   const phaseRef = useRef<DrainPhase>(getActiveDrainEntry(pantryId) ? "awaiting" : "idle");
   const wasOfflineRef = useRef(false);
   const pullAfterReconnectRef = useRef(false);
+  const ownerIdRef = useRef(getDrainOwnerId());
   const [kick, setKick] = useState(0);
 
   useEffect(() => {
@@ -83,10 +92,19 @@ export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
         const all = await listOutbox(pantryId);
         const active = all.find((entry) => entry.id === activeId) ?? null;
         const pending = all.filter((entry) => entry.status === "pending" && entry.id !== activeId);
-        const decision = decideOutboxDrainStep(fetcher.data, activeId, pending[0] ?? null);
+        const decision = decideOutboxDrainStep(
+          fetcher.data,
+          activeId,
+          pending[0] ?? null,
+          active?.fields.intent,
+        );
 
         if (decision.remove && active) {
-          await commitDrainedOutboxEntry(active);
+          if (decision.skipFold) {
+            await removeOutboxEntry(active.id);
+          } else {
+            await commitDrainedOutboxEntry(active);
+          }
         } else if (decision.remove) {
           // Entry already gone (remount race).
         } else if (active) {
@@ -98,11 +116,21 @@ export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
           activeIdRef.current = null;
           clearActiveDrainEntry(pantryId, activeId);
           phaseRef.current = "idle";
+          await releaseDrainLease(pantryId, ownerIdRef.current);
           const afterReconnect = pullAfterReconnectRef.current;
           if (afterReconnect) pullAfterReconnectRef.current = false;
           scheduleDeferredWork(() => revalidator.revalidate(), {
             timeoutMs: afterReconnect ? 500 : 2000,
           });
+          return;
+        }
+
+        const acquired = await tryAcquireDrainLease(pantryId, next.id, ownerIdRef.current);
+        if (!acquired) {
+          activeIdRef.current = null;
+          clearActiveDrainEntry(pantryId, activeId);
+          phaseRef.current = "idle";
+          window.setTimeout(() => setKick((value) => value + 1), DRAIN_LEASE_TTL_MS);
           return;
         }
 
@@ -120,9 +148,16 @@ export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
     if (phaseRef.current !== "idle") return;
     if (activeIdRef.current ?? getActiveDrainEntry(pantryId)) return;
 
-    void peekOutbox(pantryId).then((next) => {
+    void peekOutbox(pantryId).then(async (next) => {
       if (!next || phaseRef.current !== "idle") return;
       if (activeIdRef.current || getActiveDrainEntry(pantryId)) return;
+
+      const acquired = await tryAcquireDrainLease(pantryId, next.id, ownerIdRef.current);
+      if (!acquired) {
+        window.setTimeout(() => setKick((value) => value + 1), DRAIN_LEASE_TTL_MS);
+        return;
+      }
+
       activeIdRef.current = next.id;
       setActiveDrainEntry(pantryId, next.id);
       phaseRef.current = "awaiting";

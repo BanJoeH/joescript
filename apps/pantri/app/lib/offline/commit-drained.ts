@@ -1,6 +1,7 @@
 import { applyOutboxToSnapshot } from "~/lib/offline/apply-outbox";
 import { emitShoppingOfflineChange } from "~/lib/offline/events";
 import { removeOutboxEntry } from "~/lib/offline/outbox";
+import { rememberFoldedPurchasedProtection } from "~/lib/offline/purchased-protection";
 import { putShoppingSnapshot, readShoppingSnapshot } from "~/lib/offline/snapshot";
 import type { OutboxEntry } from "~/lib/offline/types";
 
@@ -17,6 +18,7 @@ export async function commitDrainedOutboxEntry(entry: OutboxEntry): Promise<void
     const folded = applyOutboxToSnapshot(snap, [{ ...entry, status: "pending" }]);
     await putShoppingSnapshot(folded, { emit: false });
   }
+  rememberFoldedPurchasedProtection(entry);
   await removeOutboxEntry(entry.id, { emit: false });
   emitShoppingOfflineChange();
 }

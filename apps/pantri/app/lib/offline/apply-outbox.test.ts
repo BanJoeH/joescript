@@ -287,6 +287,30 @@ describe("decideOutboxDrainStep", () => {
     });
   });
 
+  it("treats remove not-found as converged success (still folds)", () => {
+    expect(
+      decideOutboxDrainStep({ error: "Odd bit not found" }, "e1", next, "remove-odd-bit"),
+    ).toEqual({
+      entryId: "e1",
+      remove: true,
+      skipFold: false,
+      next,
+      shouldRevalidate: false,
+    });
+  });
+
+  it("treats toggle not-found as converged success without folding", () => {
+    expect(
+      decideOutboxDrainStep({ error: "Ingredient not found" }, "e1", null, "toggle-ingredient"),
+    ).toEqual({
+      entryId: "e1",
+      remove: true,
+      skipFold: true,
+      next: null,
+      shouldRevalidate: true,
+    });
+  });
+
   it("revalidates only when the queue is empty after the step", () => {
     expect(decideOutboxDrainStep({ ok: true }, "e1", null).shouldRevalidate).toBe(true);
     expect(decideOutboxDrainStep({ error: "Nope" }, "e1", null).shouldRevalidate).toBe(true);

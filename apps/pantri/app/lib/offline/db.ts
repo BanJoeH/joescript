@@ -1,13 +1,14 @@
 const DB_NAME = "pantri-shopping-offline";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 export const SNAPSHOT_STORE = "snapshots";
 export const OUTBOX_STORE = "outbox";
 export const LAYOUT_STORE = "layouts";
+export const DRAIN_LEASE_STORE = "drain-leases";
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
-function openDb(): Promise<IDBDatabase> {
+export function openShoppingOfflineDb(): Promise<IDBDatabase> {
   if (typeof indexedDB === "undefined") {
     return Promise.reject(new Error("IndexedDB is not available."));
   }
@@ -27,6 +28,9 @@ function openDb(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains(LAYOUT_STORE)) {
           db.createObjectStore(LAYOUT_STORE, { keyPath: "pantryId" });
+        }
+        if (!db.objectStoreNames.contains(DRAIN_LEASE_STORE)) {
+          db.createObjectStore(DRAIN_LEASE_STORE, { keyPath: "pantryId" });
         }
       };
     });
@@ -66,7 +70,7 @@ export async function withStore<T>(
   mode: IDBTransactionMode,
   run: (store: IDBObjectStore) => IDBRequest<T>,
 ): Promise<T> {
-  const db = await openDb();
+  const db = await openShoppingOfflineDb();
   const tx = db.transaction(storeName, mode);
   const store = tx.objectStore(storeName);
   const resultPromise = requestToPromise(run(store));
