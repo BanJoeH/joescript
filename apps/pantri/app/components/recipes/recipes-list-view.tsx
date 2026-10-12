@@ -21,6 +21,7 @@ import { useFetcherSuccessToast, useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
+import { useOnlineStatus } from "~/lib/offline/connectivity";
 import { pantryPath } from "~/lib/pantry-path";
 import { formatIngredientLabel } from "~/lib/units";
 import { cn } from "~/lib/utils";
@@ -55,6 +56,7 @@ function filterRecipes(recipes: RecipeRecord[], query: string) {
 
 export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
   const action = pantryPath(pantryId, "recipes");
+  const online = useOnlineStatus();
   const { toast } = useToast();
   const addFetcher = useFetcher<AddToShoppingResult>();
   const [query, setQuery] = useState("");
@@ -192,9 +194,15 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                       <input name="intent" type="hidden" value="add-to-shopping" />
                       <input name="recipeId" type="hidden" value={recipe.id} />
                       <Button
-                        aria-label={`Add ${recipe.name} to shopping`}
+                        aria-label={
+                          online
+                            ? `Add ${recipe.name} to shopping`
+                            : "Adding recipes to shopping requires a connection"
+                        }
                         className="size-8"
+                        disabled={!online}
                         size="icon"
+                        title={online ? undefined : "Requires a connection"}
                         type="submit"
                         variant="ghost"
                       >

@@ -5,12 +5,14 @@ import type { AggregatedIngredient } from "~/lib/shopping-aggregation";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
 
 import {
+  CLIENT_OUTBOX_DRAIN_FIELD,
   mergeOddBits,
   mergeShoppingRecipes,
   mergeSortedSections,
   oddBitsFromAddFetchers,
   SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX,
   shoppingBusyFromFetchers,
+  shouldRevalidateShoppingLoaders,
   sortedBusyFromFetchers,
 } from "./shopping-local-merge";
 
@@ -59,18 +61,25 @@ function item(
   };
 }
 
-/** Same composition the shopping list view uses. */
-function viewOddBits(
-  server: OddBit[],
-  local: OddBit[],
-  fetchers: Parameters<typeof shoppingBusyFromFetchers>[0],
-) {
-  const merged = mergeOddBits(server, local, shoppingBusyFromFetchers(fetchers));
-  const fromAdds = oddBitsFromAddFetchers(fetchers, server);
-  if (fromAdds.length === 0) return merged;
-  const seen = new Set(merged.map((row) => row.id));
-  return [...merged, ...fromAdds.filter((row) => !seen.has(row.id))];
-}
+describe("shouldRevalidateShoppingLoaders", () => {
+  it("skips revalidation for outbox drain posts", () => {
+    expect(
+      shouldRevalidateShoppingLoaders({
+        formData: formData({ [CLIENT_OUTBOX_DRAIN_FIELD]: "1", intent: "toggle-odd-bit" }),
+        defaultShouldRevalidate: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("keeps the default for normal mutations", () => {
+    expect(
+      shouldRevalidateShoppingLoaders({
+        formData: formData({ intent: "toggle-odd-bit", id: "ob1" }),
+        defaultShouldRevalidate: true,
+      }),
+    ).toBe(true);
+  });
+});
 
 describe("shoppingBusyFromFetchers", () => {
   it("collects in-flight shopping intents", () => {
@@ -173,7 +182,7 @@ describe("mergeShoppingRecipes", () => {
 });
 
 describe("mergeOddBits", () => {
-  it("preserves pending adds and busy toggles", () => {
+  it("preserves busy toggles from local", () => {
     const server = [bit({ id: "ob1", name: "foil", purchased: false })];
     const local = [
       bit({ id: "ob1", name: "foil", purchased: true }),
@@ -183,15 +192,31 @@ describe("mergeOddBits", () => {
       { formData: formData({ intent: "toggle-odd-bit", id: "ob1", purchased: "true" }) },
     ]);
 
+    // pending:* must not be kept via localOnly — add fetchers/outbox own those rows.
     expect(mergeOddBits(server, local, busy)).toEqual([
       bit({ id: "ob1", name: "foil", purchased: true }),
-      bit({ id: "pending:1", name: "bags" }),
     ]);
   });
 
   it("keeps reconciled local-only bits until the loader includes them", () => {
     const server = [bit({ id: "ob1", name: "foil" })];
     const local = [bit({ id: "ob1", name: "foil" }), bit({ id: "ob2", name: "bags" })];
+    const busy = shoppingBusyFromFetchers([]);
+
+    expect(mergeOddBits(server, local, busy).map((row) => row.id)).toEqual(["ob1", "ob2"]);
+  });
+
+  it("does not keep stale pending:* ids from local or loader after the real row syncs", () => {
+    const server = [
+      bit({ id: "ob1", name: "foil" }),
+      bit({ id: "pending:1", name: "bags" }),
+      bit({ id: "ob2", name: "bags" }),
+    ];
+    const local = [
+      bit({ id: "ob1", name: "foil" }),
+      bit({ id: "pending:1", name: "bags" }),
+      bit({ id: "ob2", name: "bags" }),
+    ];
     const busy = shoppingBusyFromFetchers([]);
 
     expect(mergeOddBits(server, local, busy).map((row) => row.id)).toEqual(["ob1", "ob2"]);
@@ -232,7 +257,7 @@ describe("oddBitsFromAddFetchers", () => {
           state: "submitting",
           formData: formData({
             intent: "add-odd-bit",
-            clientPendingId: "pending:1",
+            id: "pending:1",
             name: "bags",
             amount: "2",
             unit: "rolls",
@@ -252,7 +277,7 @@ describe("oddBitsFromAddFetchers", () => {
         {
           key: `${SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX}a`,
           state: "idle",
-          data: { ok: true, oddBit: created, clientPendingId: "pending:1" },
+          data: { ok: true, oddBit: created, id: "pending:1" },
         },
       ],
       [bit({ id: "ob1", name: "foil" })],
@@ -268,7 +293,7 @@ describe("oddBitsFromAddFetchers", () => {
         {
           key: `${SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX}a`,
           state: "idle",
-          data: { ok: true, oddBit: created, clientPendingId: "pending:1" },
+          data: { ok: true, oddBit: created, id: "pending:1" },
         },
       ],
       [created],
@@ -295,7 +320,7 @@ describe("oddBitsFromAddFetchers", () => {
           state: "submitting",
           formData: formData({
             intent: "add-odd-bit",
-            clientPendingId: "pending:x",
+            id: "pending:x",
             name: "   ",
           }),
         },
@@ -314,7 +339,7 @@ describe("oddBitsFromAddFetchers", () => {
           state: "submitting",
           formData: formData({
             intent: "add-odd-bit",
-            clientPendingId: "pending:1",
+            id: "pending:1",
             name: "bags",
           }),
         },
@@ -323,7 +348,7 @@ describe("oddBitsFromAddFetchers", () => {
           state: "loading",
           formData: formData({
             intent: "add-odd-bit",
-            clientPendingId: "pending:2",
+            id: "pending:2",
             name: "foil",
           }),
         },
@@ -333,34 +358,23 @@ describe("oddBitsFromAddFetchers", () => {
 
     expect(bits.map((row) => row.id).sort()).toEqual(["pending:1", "pending:2"]);
   });
-});
 
-describe("view odd bits composition", () => {
-  it("appends fetcher adds without duplicating loader ids", () => {
-    const onServer = bit({ id: "ob1", name: "foil" });
-    const created = bit({ id: "ob2", name: "bags" });
-    const fetchers = [
-      {
-        key: `${SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX}a`,
-        state: "idle" as const,
-        data: { ok: true as const, oddBit: created, clientPendingId: "pending:1" },
-      },
-      {
-        key: `${SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX}b`,
-        state: "submitting" as const,
-        formData: formData({
-          intent: "add-odd-bit",
-          clientPendingId: "pending:2",
-          name: "tape",
-        }),
-      },
-    ];
-
-    expect(viewOddBits([onServer, created], [onServer], fetchers).map((row) => row.id)).toEqual([
-      "ob1",
-      "ob2",
-      "pending:2",
-    ]);
+  it("ignores outbox-drain fetchers even when formData is add-odd-bit", () => {
+    const bits = oddBitsFromAddFetchers(
+      [
+        {
+          key: "shopping-outbox-drain:p1",
+          state: "submitting",
+          formData: formData({
+            intent: "add-odd-bit",
+            id: "pending:1",
+            name: "bags",
+          }),
+        },
+      ],
+      [],
+    );
+    expect(bits).toEqual([]);
   });
 });
 

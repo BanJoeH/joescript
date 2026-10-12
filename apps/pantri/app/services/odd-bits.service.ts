@@ -6,7 +6,9 @@ import { ingredientNamesMatch } from "~/lib/ingredient-name";
 import type { OddBit } from "~/lib/recipe-schema";
 import type { PantriContext } from "~/services/types";
 
-const addOddBitInput = z.object({
+export const addOddBitInput = z.object({
+  /** Client-generated UUID; when set, insert is idempotent on replay. */
+  id: z.string().uuid().optional(),
   name: z.string().trim().min(1),
   amount: z.number().finite().nullable().optional(),
   unit: z.string().trim().min(1).nullable().optional(),
@@ -44,9 +46,20 @@ export function createOddBitsService({ db, pantryId }: PantriContext) {
     async add(input: AddOddBitInput): Promise<OddBit> {
       const data = addOddBitInput.parse(input);
       const now = new Date();
+
+      if (data.id) {
+        const [existing] = await db
+          .select()
+          .from(oddBitItems)
+          .where(and(eq(oddBitItems.id, data.id), eq(oddBitItems.pantryId, pantryId)))
+          .limit(1);
+        if (existing) return rowToOddBit(existing);
+      }
+
       const [row] = await db
         .insert(oddBitItems)
         .values({
+          ...(data.id ? { id: data.id } : {}),
           pantryId,
           name: data.name,
           amount: data.amount ?? null,
@@ -56,9 +69,21 @@ export function createOddBitsService({ db, pantryId }: PantriContext) {
           createdAt: now,
           updatedAt: now,
         })
+        .onConflictDoNothing()
         .returning();
-      if (!row) throw new Error("Failed to add odd bit");
-      return rowToOddBit(row);
+
+      if (row) return rowToOddBit(row);
+
+      // Concurrent replay of the same client id — return the winner.
+      if (data.id) {
+        const [existing] = await db
+          .select()
+          .from(oddBitItems)
+          .where(and(eq(oddBitItems.id, data.id), eq(oddBitItems.pantryId, pantryId)))
+          .limit(1);
+        if (existing) return rowToOddBit(existing);
+      }
+      throw new Error("Failed to add odd bit");
     },
 
     async remove(id: string): Promise<OddBit[]> {

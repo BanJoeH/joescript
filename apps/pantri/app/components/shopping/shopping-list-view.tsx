@@ -7,7 +7,6 @@ import {
   UtensilsCrossed,
 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { useFetcher, useFetchers } from "react-router";
 
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
@@ -16,19 +15,13 @@ import { ShoppingGotItSection } from "~/components/shopping/shopping-got-it-sect
 import { Button } from "~/components/ui/button";
 import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
+import { cancelPendingOddBitAdd, queuedOddBitAddIds } from "~/lib/offline/outbox";
+import { submitShoppingMutation } from "~/lib/offline/submit-shopping-mutation";
+import { useShoppingLocalState } from "~/lib/offline/use-shopping-local";
 import { pantryPath } from "~/lib/pantry-path";
 import type { OddBit, ShoppingIngredient } from "~/lib/recipe-schema";
-import {
-  isPendingOddBitId,
-  mergeOddBits,
-  mergeShoppingRecipes,
-  oddBitsFromAddFetchers,
-  SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX,
-  shoppingBusyFromFetchers,
-} from "~/lib/shopping-local-merge";
 import { splitIndexedByPurchased } from "~/lib/split-purchased";
 import { formatIngredientLabel } from "~/lib/units";
-import { useRevalidateOnFetcherError } from "~/lib/use-revalidate-on-fetcher-error";
 import { cn } from "~/lib/utils";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
 
@@ -58,40 +51,36 @@ function IngredientCheckbox({
 
 function RecipeIngredientRow({
   action,
+  pantryId,
   recipeId,
   ingredient,
-  onPurchased,
 }: {
   action: string;
+  pantryId: string;
   recipeId: string;
   ingredient: ShoppingIngredient;
-  onPurchased: (ingredientId: string, purchased: boolean) => void;
 }) {
-  const fetcher = useFetcher({ key: `shopping-toggle-ingredient:${recipeId}:${ingredient.id}` });
-
   return (
     <IngredientCheckbox
       checked={ingredient.purchased}
       label={formatIngredientLabel(ingredient)}
       onToggle={(next) => {
-        onPurchased(ingredient.id, next);
-        fetcher.submit(
-          {
+        void submitShoppingMutation({
+          pantryId,
+          action,
+          fields: {
             intent: "toggle-ingredient",
             shoppingRecipeId: recipeId,
             ingredientId: ingredient.id,
             purchased: String(next),
           },
-          { method: "post", action },
-        );
+        });
       }}
     />
   );
 }
 
-function AddOddBitForm({ action }: { action: string }) {
-  const [submitKey, setSubmitKey] = useState(() => crypto.randomUUID());
-  const fetcher = useFetcher({ key: `${SHOPPING_ADD_ODD_BIT_FETCHER_PREFIX}${submitKey}` });
+function AddOddBitForm({ action, pantryId }: { action: string; pantryId: string }) {
   const formRef = useRef<HTMLFormElement>(null);
   const quantityInputRef = useRef<HTMLInputElement>(null);
   const [addCycle, setAddCycle] = useState(0);
@@ -101,7 +90,7 @@ function AddOddBitForm({ action }: { action: string }) {
   });
 
   return (
-    <fetcher.Form
+    <form
       action={action}
       className="flex flex-wrap items-end gap-2"
       method="post"
@@ -112,11 +101,9 @@ function AddOddBitForm({ action }: { action: string }) {
         if (!name) return;
 
         const formData = new FormData(form);
-        formData.set("clientPendingId", `pending:${crypto.randomUUID()}`);
-        void fetcher.submit(formData, { method: "post", action });
-        // New key so the next add can start while this fetcher is still in flight;
-        // the list derives pending/settled rows from useFetchers().
-        setSubmitKey(crypto.randomUUID());
+        formData.set("id", crypto.randomUUID());
+        const fields = Object.fromEntries(formData.entries()) as Record<string, string>;
+        void submitShoppingMutation({ pantryId, action, fields });
         setQuantity({ amount: null, unit: null });
         setAddCycle((cycle) => cycle + 1);
         requestAnimationFrame(() => {
@@ -148,8 +135,6 @@ function AddOddBitForm({ action }: { action: string }) {
       />
       <Button
         onTouchEnd={(event) => {
-          // Block the post-keyboard synthetic click so it can't land on a
-          // row control that moved under this point (often Remove).
           event.preventDefault();
           event.currentTarget.form?.requestSubmit();
         }}
@@ -158,25 +143,24 @@ function AddOddBitForm({ action }: { action: string }) {
       >
         <Plus className="size-4" /> Add
       </Button>
-    </fetcher.Form>
+    </form>
   );
 }
 
 function OddBitRow({
   action,
+  pantryId,
   bit,
-  onPurchased,
-  onRemove,
+  queuedAdd,
+  onCancelPending,
 }: {
   action: string;
+  pantryId: string;
   bit: OddBit;
-  onPurchased: (id: string, purchased: boolean) => void;
-  onRemove: (id: string) => void;
+  /** Still in the outbox as an undrained add — cancel removes it locally. */
+  queuedAdd: boolean;
+  onCancelPending: (oddBitId: string) => void;
 }) {
-  const toggleFetcher = useFetcher({ key: `shopping-toggle-odd-bit:${bit.id}` });
-  const removeFetcher = useFetcher({ key: `shopping-remove-odd-bit:${bit.id}` });
-  const isPending = isPendingOddBitId(bit.id);
-
   return (
     <div className="flex items-center gap-1">
       <div className="flex-1">
@@ -184,36 +168,37 @@ function OddBitRow({
           checked={bit.purchased}
           label={formatIngredientLabel(bit)}
           onToggle={(next) => {
-            if (isPending) return;
-            onPurchased(bit.id, next);
-            toggleFetcher.submit(
-              {
+            void submitShoppingMutation({
+              pantryId,
+              action,
+              fields: {
                 intent: "toggle-odd-bit",
                 id: bit.id,
                 purchased: String(next),
               },
-              { method: "post", action },
-            );
+            });
           }}
         />
       </div>
-      {isPending ? null : (
-        <Button
-          aria-label="Remove odd bit"
-          onClick={() => {
-            onRemove(bit.id);
-            removeFetcher.submit(
-              { intent: "remove-odd-bit", id: bit.id },
-              { method: "post", action },
-            );
-          }}
-          size="icon"
-          type="button"
-          variant="ghost"
-        >
-          <Trash2 className="size-4" />
-        </Button>
-      )}
+      <Button
+        aria-label="Remove odd bit"
+        onClick={() => {
+          if (queuedAdd) {
+            onCancelPending(bit.id);
+            return;
+          }
+          void submitShoppingMutation({
+            pantryId,
+            action,
+            fields: { intent: "remove-odd-bit", id: bit.id },
+          });
+        }}
+        size="icon"
+        type="button"
+        variant="ghost"
+      >
+        <Trash2 className="size-4" />
+      </Button>
     </div>
   );
 }
@@ -226,26 +211,13 @@ export type ShoppingListViewProps = {
 
 export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListViewProps) {
   const action = pantryPath(pantryId, "shopping");
-  const fetchers = useFetchers();
-  const clearOddBitsFetcher = useFetcher({ key: "shopping-clear-odd-bits" });
+  const local = useShoppingLocalState(pantryId, { recipes, oddBits });
+  const viewRecipes = local.recipes;
+  const viewOddBits = local.oddBits;
+  const queuedAddIds = useMemo(() => queuedOddBitAddIds(local.outbox), [local.outbox]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
-  const [localRecipes, setLocalRecipes] = useState(recipes);
-  const [localOddBits, setLocalOddBits] = useState(oddBits);
 
-  useRevalidateOnFetcherError();
-
-  const busy = useMemo(() => shoppingBusyFromFetchers(fetchers), [fetchers]);
-  const viewRecipes = useMemo(
-    () => mergeShoppingRecipes(recipes, localRecipes, busy),
-    [recipes, localRecipes, busy],
-  );
-  const viewOddBits = useMemo(() => {
-    const merged = mergeOddBits(oddBits, localOddBits, busy);
-    const fromAdds = oddBitsFromAddFetchers(fetchers, oddBits);
-    if (fromAdds.length === 0) return merged;
-    const seen = new Set(merged.map((bit) => bit.id));
-    return [...merged, ...fromAdds.filter((bit) => !seen.has(bit.id))];
-  }, [oddBits, localOddBits, busy, fetchers]);
+  const { toBuy: oddBitsToBuy, gotIt: oddBitsGotIt } = splitIndexedByPurchased(viewOddBits);
 
   function toggleExpanded(recipeId: string) {
     setExpandedIds((current) => {
@@ -255,69 +227,6 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
       return next;
     });
   }
-
-  function setIngredientPurchased(recipeId: string, ingredientId: string, purchased: boolean) {
-    setLocalRecipes((current) => {
-      const patch = (recipe: ShoppingRecipeRecord) => ({
-        ...recipe,
-        ingredients: recipe.ingredients.map((ingredient) =>
-          ingredient.id === ingredientId ? { ...ingredient, purchased } : ingredient,
-        ),
-      });
-      if (current.some((recipe) => recipe.id === recipeId)) {
-        return current.map((recipe) => (recipe.id === recipeId ? patch(recipe) : recipe));
-      }
-      const fromServer = recipes.find((recipe) => recipe.id === recipeId);
-      return fromServer ? [...current, patch(fromServer)] : current;
-    });
-  }
-
-  function clearRecipePurchased(recipeId: string) {
-    setLocalRecipes((current) => {
-      const patch = (recipe: ShoppingRecipeRecord) => ({
-        ...recipe,
-        ingredients: recipe.ingredients.map((ingredient) =>
-          ingredient.purchased ? { ...ingredient, purchased: false } : ingredient,
-        ),
-      });
-      if (current.some((recipe) => recipe.id === recipeId)) {
-        return current.map((recipe) => (recipe.id === recipeId ? patch(recipe) : recipe));
-      }
-      const fromServer = recipes.find((recipe) => recipe.id === recipeId);
-      return fromServer ? [...current, patch(fromServer)] : current;
-    });
-  }
-
-  function removeRecipe(recipeId: string) {
-    setLocalRecipes((current) => current.filter((recipe) => recipe.id !== recipeId));
-  }
-
-  function setOddBitPurchased(id: string, purchased: boolean) {
-    setLocalOddBits((current) => {
-      if (current.some((bit) => bit.id === id)) {
-        return current.map((bit) => (bit.id === id ? { ...bit, purchased } : bit));
-      }
-      const fromServer = oddBits.find((bit) => bit.id === id);
-      return fromServer ? [...current, { ...fromServer, purchased }] : current;
-    });
-  }
-
-  function removeOddBit(id: string) {
-    setLocalOddBits((current) => current.filter((bit) => bit.id !== id));
-  }
-
-  function clearOddBitsPurchased() {
-    setLocalOddBits((current) => {
-      const base = current.length > 0 ? current : oddBits;
-      const byId = new Map(base.map((bit) => [bit.id, bit]));
-      for (const bit of oddBits) {
-        if (!byId.has(bit.id)) byId.set(bit.id, bit);
-      }
-      return [...byId.values()].map((bit) => (bit.purchased ? { ...bit, purchased: false } : bit));
-    });
-  }
-
-  const { toBuy: oddBitsToBuy, gotIt: oddBitsGotIt } = splitIndexedByPurchased(viewOddBits);
 
   return (
     <div className="flex flex-col gap-4">
@@ -353,8 +262,9 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                         action={action}
                         bit={bit}
                         key={bit.id}
-                        onPurchased={setOddBitPurchased}
-                        onRemove={removeOddBit}
+                        onCancelPending={(id) => void cancelPendingOddBitAdd(pantryId, id)}
+                        pantryId={pantryId}
+                        queuedAdd={queuedAddIds.has(bit.id)}
                       />
                     ))}
                   </div>
@@ -366,11 +276,11 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                   <ShoppingGotItSection
                     count={oddBitsGotIt.length}
                     onResetAll={() => {
-                      clearOddBitsPurchased();
-                      clearOddBitsFetcher.submit(
-                        { intent: "clear-odd-bits-purchased" },
-                        { method: "post", action },
-                      );
+                      void submitShoppingMutation({
+                        pantryId,
+                        action,
+                        fields: { intent: "clear-odd-bits-purchased" },
+                      });
                     }}
                   >
                     {oddBitsGotIt.map(({ item: bit }) => (
@@ -378,8 +288,9 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                         action={action}
                         bit={bit}
                         key={bit.id}
-                        onPurchased={setOddBitPurchased}
-                        onRemove={removeOddBit}
+                        onCancelPending={(id) => void cancelPendingOddBitAdd(pantryId, id)}
+                        pantryId={pantryId}
+                        queuedAdd={queuedAddIds.has(bit.id)}
                       />
                     ))}
                   </ShoppingGotItSection>
@@ -387,7 +298,7 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
               </>
             )}
 
-            <AddOddBitForm action={action} />
+            <AddOddBitForm action={action} pantryId={pantryId} />
           </div>
         </CardListItem>
 
@@ -402,11 +313,6 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
               expanded={expanded}
               gotIt={gotIt}
               key={recipe.id}
-              onClearPurchased={() => clearRecipePurchased(recipe.id)}
-              onIngredientPurchased={(ingredientId, purchased) =>
-                setIngredientPurchased(recipe.id, ingredientId, purchased)
-              }
-              onRemove={() => removeRecipe(recipe.id)}
               onToggleExpanded={() => toggleExpanded(recipe.id)}
               panelId={panelId}
               pantryId={pantryId}
@@ -429,9 +335,6 @@ function RecipeRow({
   toBuy,
   gotIt,
   onToggleExpanded,
-  onIngredientPurchased,
-  onClearPurchased,
-  onRemove,
 }: {
   action: string;
   recipe: ShoppingRecipeRecord;
@@ -441,12 +344,7 @@ function RecipeRow({
   toBuy: { item: ShoppingIngredient; index: number }[];
   gotIt: { item: ShoppingIngredient; index: number }[];
   onToggleExpanded: () => void;
-  onIngredientPurchased: (ingredientId: string, purchased: boolean) => void;
-  onClearPurchased: () => void;
-  onRemove: () => void;
 }) {
-  const clearFetcher = useFetcher({ key: `shopping-clear-recipe:${recipe.id}` });
-  const removeFetcher = useFetcher({ key: `shopping-remove-recipe:${recipe.id}` });
   const cookPath = recipe.sourceRecipeId
     ? pantryPath(pantryId, `recipes/${recipe.sourceRecipeId}`)
     : null;
@@ -486,11 +384,11 @@ function RecipeRow({
             aria-label={`Remove ${recipe.name} from shopping list`}
             className="size-8"
             onClick={() => {
-              onRemove();
-              removeFetcher.submit(
-                { intent: "remove-recipe", shoppingRecipeId: recipe.id },
-                { method: "post", action },
-              );
+              void submitShoppingMutation({
+                pantryId,
+                action,
+                fields: { intent: "remove-recipe", shoppingRecipeId: recipe.id },
+              });
             }}
             size="icon"
             type="button"
@@ -523,7 +421,7 @@ function RecipeRow({
                     action={action}
                     ingredient={item}
                     key={item.id}
-                    onPurchased={onIngredientPurchased}
+                    pantryId={pantryId}
                     recipeId={recipe.id}
                   />
                 ))
@@ -535,11 +433,14 @@ function RecipeRow({
                 <ShoppingGotItSection
                   count={gotIt.length}
                   onResetAll={() => {
-                    onClearPurchased();
-                    clearFetcher.submit(
-                      { intent: "clear-recipe-purchased", shoppingRecipeId: recipe.id },
-                      { method: "post", action },
-                    );
+                    void submitShoppingMutation({
+                      pantryId,
+                      action,
+                      fields: {
+                        intent: "clear-recipe-purchased",
+                        shoppingRecipeId: recipe.id,
+                      },
+                    });
                   }}
                 >
                   {gotIt.map(({ item }) => (
@@ -547,7 +448,7 @@ function RecipeRow({
                       action={action}
                       ingredient={item}
                       key={item.id}
-                      onPurchased={onIngredientPurchased}
+                      pantryId={pantryId}
                       recipeId={recipe.id}
                     />
                   ))}

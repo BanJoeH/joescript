@@ -33,6 +33,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 
     if (intent === "add-odd-bit") {
       const oddBit = await pantri.oddBits.add({
+        id: getOptionalString(formData, "id") ?? undefined,
         name: getString(formData, "name"),
         amount: (() => {
           const raw = getOptionalString(formData, "amount");
@@ -42,11 +43,7 @@ export async function action({ request, params }: Route.ActionArgs) {
         notes: getOptionalString(formData, "notes"),
       });
       await notify();
-      return {
-        ok: true as const,
-        oddBit,
-        clientPendingId: getOptionalString(formData, "clientPendingId") ?? null,
-      };
+      return { ok: true as const, oddBit };
     }
 
     if (intent === "toggle-odd-bit") {

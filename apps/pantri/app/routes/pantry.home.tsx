@@ -1,18 +1,55 @@
 import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router";
+import { Outlet, type ShouldRevalidateFunctionArgs, useLocation, useNavigate } from "react-router";
 import type { Swiper as SwiperClass } from "swiper";
 import { Swiper, SwiperSlide } from "swiper/react";
 
 import { PullToRefreshScroll } from "~/components/pull-to-refresh-scroll";
 import { RecipesListView } from "~/components/recipes/recipes-list-view";
+import { ShoppingOfflineBanner } from "~/components/shopping/offline-banner";
 import { ShoppingListView } from "~/components/shopping/shopping-list-view";
 import { resolveHomeRecipes } from "~/lib/home-recipes-cache";
 import { type HomeTab, useHomeTabPaneRef } from "~/lib/home-tab-scroll";
+import {
+  loadOfflineShoppingSnapshot,
+  writeSnapshotBaseAndApply,
+} from "~/lib/offline/hydrate-shopping";
+import { deserializeShoppingRecipes } from "~/lib/offline/types";
 import { getHomeTabIndex, pantryPath } from "~/lib/pantry-path";
+import { shouldRevalidateShoppingLoaders } from "~/lib/shopping-local-merge";
 
 import type { Route } from "./+types/pantry.home";
 
 export { loader } from "./pantry.home.server";
+
+export function shouldRevalidate(args: ShouldRevalidateFunctionArgs) {
+  return shouldRevalidateShoppingLoaders(args);
+}
+
+export async function clientLoader({ serverLoader, params }: Route.ClientLoaderArgs) {
+  const pantryId = params.pantryId;
+  try {
+    const data = await serverLoader();
+    const applied = await writeSnapshotBaseAndApply(pantryId, {
+      shoppingRecipes: data.shoppingRecipes,
+      oddBits: data.oddBits,
+    });
+    return {
+      ...data,
+      shoppingRecipes: deserializeShoppingRecipes(applied.shoppingRecipes),
+      oddBits: applied.oddBits,
+    };
+  } catch (error) {
+    const offline = await loadOfflineShoppingSnapshot(pantryId);
+    if (!offline) throw error;
+    return {
+      shoppingRecipes: deserializeShoppingRecipes(offline.applied.shoppingRecipes),
+      oddBits: offline.applied.oddBits,
+      recipes: [],
+      pantryId,
+    };
+  }
+}
+clientLoader.hydrate = true;
 
 function HomeTabPane({ tab, children }: { tab: HomeTab; children: React.ReactNode }) {
   const paneRef = useHomeTabPaneRef(tab);
@@ -34,7 +71,10 @@ type HomeTabData = {
 function ShoppingTab({ oddBits, pantryId, shoppingRecipes }: HomeTabData) {
   return (
     <HomeTabPane tab="shopping">
-      <ShoppingListView oddBits={oddBits} pantryId={pantryId} recipes={shoppingRecipes} />
+      <div className="flex flex-col gap-3">
+        <ShoppingOfflineBanner pantryId={pantryId} />
+        <ShoppingListView oddBits={oddBits} pantryId={pantryId} recipes={shoppingRecipes} />
+      </div>
     </HomeTabPane>
   );
 }
