@@ -6,6 +6,8 @@ const listeners = new Set<Listener>();
 
 /** Effective connectivity — `navigator.onLine` refined by a real network probe. */
 let effectiveOnline = true;
+/** False until the first probe (or offline event) settles — gates drain/SSE/revalidate. */
+let connectivitySettled = false;
 let probeInFlight: Promise<void> | null = null;
 let monitoringStarted = false;
 /** Only while offline — catches reconnect when `online` never fires (SW Offline toggle). */
@@ -17,6 +19,15 @@ export function getIsOnline() {
   return effectiveOnline;
 }
 
+export function hasConnectivitySettled() {
+  return connectivitySettled;
+}
+
+/** Safe for outbox drain / SSE / focus revalidate — false until the first probe finishes. */
+export function canUseNetwork() {
+  return connectivitySettled && effectiveOnline;
+}
+
 /** @deprecated Prefer `getIsOnline` — kept as an alias for call sites. */
 export function isBrowserOnline() {
   return getIsOnline();
@@ -24,6 +35,12 @@ export function isBrowserOnline() {
 
 function emit() {
   for (const listener of listeners) listener();
+}
+
+function markSettled() {
+  if (connectivitySettled) return;
+  connectivitySettled = true;
+  emit();
 }
 
 function stopOfflinePoll() {
@@ -44,11 +61,13 @@ function setEffectiveOnline(next: boolean) {
     // Still ensure poll matches state (e.g. first probe confirms offline).
     if (next) stopOfflinePoll();
     else startOfflinePoll();
+    markSettled();
     return;
   }
   effectiveOnline = next;
   if (next) stopOfflinePoll();
   else startOfflinePoll();
+  markSettled();
   emit();
 }
 
@@ -99,7 +118,10 @@ function startConnectivityMonitoring() {
   if (typeof window === "undefined" || monitoringStarted) return;
   monitoringStarted = true;
 
+  // Do not trust navigator.onLine for "can use network" until the probe settles.
+  // Keep effectiveOnline as a soft hint for the banner after settle only.
   effectiveOnline = navigator.onLine;
+  connectivitySettled = false;
 
   const sync = () => {
     void probeOnlineStatus();
@@ -122,18 +144,29 @@ if (!import.meta.env.VITEST) {
 }
 
 /**
- * Browser online status for UI. SSR defaults to online; the client probe updates
- * immediately after mount (including offline refresh with no "offline" event).
+ * Reachability for UI. SSR defaults to online; after mount the probe settles
+ * (including offline refresh where navigator.onLine lies).
  */
 export function useOnlineStatus() {
-  // Ensure monitoring is on when a React tree mounts (covers test environments too).
   if (typeof window !== "undefined") startConnectivityMonitoring();
   return useSyncExternalStore(subscribeOnline, getIsOnline, () => true);
+}
+
+export function useConnectivitySettled() {
+  if (typeof window !== "undefined") startConnectivityMonitoring();
+  return useSyncExternalStore(subscribeOnline, hasConnectivitySettled, () => false);
+}
+
+/** Drain / SSE / focus-revalidate: only true after the first probe says we're online. */
+export function useNetworkOnline() {
+  if (typeof window !== "undefined") startConnectivityMonitoring();
+  return useSyncExternalStore(subscribeOnline, canUseNetwork, () => false);
 }
 
 /** Test helper — reset probe state between cases. */
 export function resetConnectivityForTests(online = true) {
   stopOfflinePoll();
   effectiveOnline = online;
+  connectivitySettled = true;
   probeInFlight = null;
 }

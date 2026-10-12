@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFetcher, useRevalidator } from "react-router";
 import { commitDrainedOutboxEntry } from "~/lib/offline/commit-drained";
-import { useOnlineStatus } from "~/lib/offline/connectivity";
+import { useNetworkOnline } from "~/lib/offline/connectivity";
 import {
   clearActiveDrainEntry,
   getActiveDrainEntry,
@@ -31,12 +31,13 @@ type DrainPhase = "idle" | "awaiting" | "handling";
  * We only consume fetcher.data when phase === "awaiting" (post-submit settle).
  */
 export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
-  const online = useOnlineStatus();
+  // Wait for the reachability probe — navigator.onLine alone races drain POSTs offline.
+  const online = useNetworkOnline();
   const revalidator = useRevalidator();
   const fetcher = useFetcher({ key: `${SHOPPING_OUTBOX_DRAIN_FETCHER_PREFIX}${pantryId}` });
   const activeIdRef = useRef<string | null>(getActiveDrainEntry(pantryId));
   const phaseRef = useRef<DrainPhase>(getActiveDrainEntry(pantryId) ? "awaiting" : "idle");
-  const wasOfflineRef = useRef(!online);
+  const wasOfflineRef = useRef(false);
   const pullAfterReconnectRef = useRef(false);
   const [kick, setKick] = useState(0);
 

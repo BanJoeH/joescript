@@ -1,4 +1,4 @@
-import { getIsOnline } from "~/lib/offline/connectivity";
+import { canUseNetwork } from "~/lib/offline/connectivity";
 import { shoppingShellUrls } from "~/lib/offline/shopping-shell-paths";
 
 /** Register the Pantri service worker (production browser only). */
@@ -62,7 +62,7 @@ function postToActiveWorker(message: { type: string; urls: string[] }) {
  */
 export function prefetchShoppingOfflineShells(pantryId: string) {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
-  if (!getIsOnline()) return;
+  if (!canUseNetwork()) return;
 
   postToActiveWorker({ type: "PRECACHE_SHELLS", urls: shoppingShellUrls(pantryId) });
   postToActiveWorker({ type: "PRECACHE_ASSETS", urls: collectLoadedAssetUrls() });

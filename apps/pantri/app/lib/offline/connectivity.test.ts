@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  canUseNetwork,
   getIsOnline,
+  hasConnectivitySettled,
   probeOnlineStatus,
   resetConnectivityForTests,
 } from "~/lib/offline/connectivity";
@@ -23,6 +25,8 @@ describe("probeOnlineStatus", () => {
 
     await expect(probeOnlineStatus()).resolves.toBe(false);
     expect(getIsOnline()).toBe(false);
+    expect(canUseNetwork()).toBe(false);
+    expect(hasConnectivitySettled()).toBe(true);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -37,6 +41,7 @@ describe("probeOnlineStatus", () => {
 
     await expect(probeOnlineStatus()).resolves.toBe(false);
     expect(getIsOnline()).toBe(false);
+    expect(canUseNetwork()).toBe(false);
   });
 
   it("marks online when the probe reaches the origin (even with 404)", async () => {
@@ -48,6 +53,7 @@ describe("probeOnlineStatus", () => {
 
     await expect(probeOnlineStatus()).resolves.toBe(true);
     expect(getIsOnline()).toBe(true);
+    expect(canUseNetwork()).toBe(true);
   });
 
   it("stops offline polling once the probe succeeds again", async () => {

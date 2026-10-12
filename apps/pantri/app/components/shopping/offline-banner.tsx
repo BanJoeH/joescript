@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 
-import { useOnlineStatus } from "~/lib/offline/connectivity";
+import { useConnectivitySettled, useOnlineStatus } from "~/lib/offline/connectivity";
 import { useShoppingOutbox } from "~/lib/offline/use-shopping-outbox";
 import { cn } from "~/lib/utils";
 
 export function ShoppingOfflineBanner({ pantryId }: { pantryId: string }) {
   const online = useOnlineStatus();
+  const settled = useConnectivitySettled();
   const { pending, failed } = useShoppingOutbox(pantryId);
-  const wasOfflineRef = useRef(!online);
+  const wasOfflineRef = useRef(false);
   const [syncingAfterReconnect, setSyncingAfterReconnect] = useState(false);
 
   useEffect(() => {
+    if (!settled) return;
     if (!online) {
       wasOfflineRef.current = true;
       setSyncingAfterReconnect(false);
@@ -20,7 +22,7 @@ export function ShoppingOfflineBanner({ pantryId }: { pantryId: string }) {
       setSyncingAfterReconnect(true);
     }
     wasOfflineRef.current = false;
-  }, [online, pending]);
+  }, [settled, online, pending]);
 
   useEffect(() => {
     if (pending === 0) setSyncingAfterReconnect(false);
@@ -28,6 +30,8 @@ export function ShoppingOfflineBanner({ pantryId }: { pantryId: string }) {
 
   const showReconnectSync = online && syncingAfterReconnect && pending > 0;
 
+  // Avoid a false "online" banner state before the boot probe finishes.
+  if (!settled) return null;
   if (online && failed === 0 && !showReconnectSync) return null;
 
   let message = "Offline — changes will sync when you reconnect.";

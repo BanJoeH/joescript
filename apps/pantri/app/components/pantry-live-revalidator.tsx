@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useRevalidator } from "react-router";
 
-import { useOnlineStatus } from "~/lib/offline/connectivity";
+import { useNetworkOnline } from "~/lib/offline/connectivity";
 import { pantryPath } from "~/lib/pantry-path";
 
 /** Ignore bursty focus + visibility + pageshow from the same tab switch. */
@@ -12,11 +12,12 @@ const FOCUS_REVALIDATE_COOLDOWN_MS = 1000;
  * - SSE invalidate from other members
  * - refetch on window focus / pageshow / visible (react-query-style)
  *
- * Mount once per pantry layout. Skips network work while offline.
+ * Mount once per pantry layout. Skips network work until the reachability probe
+ * settles online (avoids shopping.data POSTs / loader fetches on offline refresh).
  */
 export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; userId: string }) {
   const revalidator = useRevalidator();
-  const online = useOnlineStatus();
+  const online = useNetworkOnline();
   const lastFocusRevalidateAt = useRef(0);
 
   useEffect(() => {
