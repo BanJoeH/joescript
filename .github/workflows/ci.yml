@@ -43,12 +43,18 @@ jobs:
         run: |
           pnpm --filter @joescript/garden test
           pnpm --filter @joescript/momentum test
+          pnpm --filter @joescript/pantri test
           pnpm --filter @joescript/website test
 
       - name: Website smoke test
         run: |
           pnpm --filter @joescript/website exec playwright install --with-deps chromium
           pnpm --filter @joescript/website test:e2e
+
+      - name: Pantri offline shell smoke
+        run: |
+          pnpm --filter @joescript/pantri exec playwright install --with-deps chromium
+          pnpm --filter @joescript/pantri test:e2e
 
       - name: Build
         run: pnpm build

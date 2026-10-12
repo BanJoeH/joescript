@@ -1,7 +1,9 @@
+import { useEffect } from "react";
 import { Outlet } from "react-router";
 import { PantryLiveRevalidator } from "~/components/pantry-live-revalidator";
 import { ShoppingOutboxDrain } from "~/components/shopping/shopping-outbox-drain";
 import { getPantriEnv } from "~/lib/context.server";
+import { prefetchShoppingOfflineShells } from "~/lib/offline/register-sw";
 import { requirePantriService } from "~/services";
 
 import type { Route } from "./+types/pantry";
@@ -22,6 +24,10 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 }
 
 export default function PantryLayout({ loaderData }: Route.ComponentProps) {
+  useEffect(() => {
+    prefetchShoppingOfflineShells(loaderData.pantryId);
+  }, [loaderData.pantryId]);
+
   return (
     <>
       <PantryLiveRevalidator pantryId={loaderData.pantryId} userId={loaderData.user.id} />

@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -9,6 +10,7 @@ import {
 
 import { ThemeProvider } from "~/components/theme-provider";
 import { ToastProvider } from "~/components/toast";
+import { registerPantriServiceWorker } from "~/lib/offline/register-sw";
 import { themeInitScript } from "~/lib/theme";
 
 import type { Route } from "./+types/root";
@@ -55,6 +57,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  useEffect(() => {
+    registerPantriServiceWorker();
+  }, []);
+
   return (
     <ThemeProvider>
       <ToastProvider>
