@@ -4,7 +4,15 @@ import { useFetcher, useRevalidator } from "react-router";
 import { useOnlineStatus } from "~/lib/offline/connectivity";
 import { decideOutboxDrainStep } from "~/lib/offline/drain-decision";
 import { subscribeShoppingOfflineChange } from "~/lib/offline/events";
-import { listOutbox, markOutboxFailed, peekOutbox, removeOutboxEntry } from "~/lib/offline/outbox";
+import {
+  enqueueOutbox,
+  listOutbox,
+  markOutboxFailed,
+  peekOutbox,
+  removeOutboxEntry,
+} from "~/lib/offline/outbox";
+import { pantryPath } from "~/lib/pantry-path";
+import type { OddBit } from "~/lib/recipe-schema";
 
 /**
  * FIFO-drains the shopping outbox via a React Router fetcher so success is
@@ -44,28 +52,54 @@ export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
       const entryId = activeIdRef.current;
 
       void (async () => {
-        const pending = (await listOutbox(pantryId)).filter(
-          (entry) => entry.status === "pending" && entry.id !== entryId,
-        );
+        const all = await listOutbox(pantryId);
+        const active = all.find((entry) => entry.id === entryId) ?? null;
+        const pending = all.filter((entry) => entry.status === "pending" && entry.id !== entryId);
         const decision = decideOutboxDrainStep(fetcher.data, entryId, pending[0] ?? null);
 
         if (decision.remove) {
           await removeOutboxEntry(decision.entryId);
+          // Offline toggles on a queued add are stored on the add row; after the
+          // server assigns a real id, enqueue the purchased toggle if needed.
+          const oddBit =
+            fetcher.data &&
+            typeof fetcher.data === "object" &&
+            "oddBit" in fetcher.data &&
+            (fetcher.data as { oddBit?: OddBit }).oddBit;
+          if (
+            active?.fields.intent === "add-odd-bit" &&
+            active.fields.purchased === "true" &&
+            oddBit?.id
+          ) {
+            await enqueueOutbox({
+              pantryId,
+              actionPath: pantryPath(pantryId, "shopping"),
+              fields: {
+                intent: "toggle-odd-bit",
+                id: oddBit.id,
+                purchased: "true",
+              },
+            });
+          }
         } else {
           await markOutboxFailed(decision.entryId, decision.failReason ?? "Sync failed.");
         }
         activeIdRef.current = null;
 
-        if (decision.shouldRevalidate) {
+        const next =
+          decision.remove && active?.fields.purchased === "true"
+            ? await peekOutbox(pantryId)
+            : decision.next;
+
+        if (!next) {
           revalidator.revalidate();
           return;
         }
-        if (!decision.next) return;
-        activeIdRef.current = decision.next.id;
+        activeIdRef.current = next.id;
         lastHandledRef.current = null;
-        fetcher.submit(decision.next.fields, {
+        fetcher.submit(next.fields, {
           method: "post",
-          action: decision.next.actionPath,
+          action: next.actionPath,
         });
       })();
       return;

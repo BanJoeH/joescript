@@ -18,6 +18,7 @@ import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
 import { shoppingBusyFromOutbox, unionShoppingBusy } from "~/lib/offline/busy-from-outbox";
 import { oddBitsFromOutbox } from "~/lib/offline/odd-bits-from-outbox";
+import { cancelPendingOddBitAdd, patchPendingOddBitAdd } from "~/lib/offline/outbox";
 import { submitShoppingMutation } from "~/lib/offline/submit-shopping-mutation";
 import { useShoppingOutbox } from "~/lib/offline/use-shopping-outbox";
 import { pantryPath } from "~/lib/pantry-path";
@@ -181,18 +182,24 @@ function OddBitRow({
   action,
   pantryId,
   bit,
+  queuedOffline,
   onPurchased,
   onRemove,
+  onCancelPending,
 }: {
   action: string;
   pantryId: string;
   bit: OddBit;
+  /** Queued in the offline outbox (interactable); online in-flight pending is not. */
+  queuedOffline: boolean;
   onPurchased: (id: string, purchased: boolean) => void;
   onRemove: (id: string) => void;
+  onCancelPending: (clientPendingId: string) => void;
 }) {
   const toggleFetcher = useFetcher({ key: `shopping-toggle-odd-bit:${bit.id}` });
   const removeFetcher = useFetcher({ key: `shopping-remove-odd-bit:${bit.id}` });
   const isPending = isPendingOddBitId(bit.id);
+  const locked = isPending && !queuedOffline;
 
   return (
     <div className="flex items-center gap-1">
@@ -201,8 +208,12 @@ function OddBitRow({
           checked={bit.purchased}
           label={formatIngredientLabel(bit)}
           onToggle={(next) => {
-            if (isPending) return;
+            if (locked) return;
             onPurchased(bit.id, next);
+            if (queuedOffline) {
+              void patchPendingOddBitAdd(pantryId, bit.id, next);
+              return;
+            }
             void submitShoppingMutation({
               pantryId,
               action,
@@ -216,10 +227,14 @@ function OddBitRow({
           }}
         />
       </div>
-      {isPending ? null : (
+      {locked ? null : (
         <Button
           aria-label="Remove odd bit"
           onClick={() => {
+            if (queuedOffline) {
+              onCancelPending(bit.id);
+              return;
+            }
             onRemove(bit.id);
             void submitShoppingMutation({
               pantryId,
@@ -265,16 +280,35 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
     () => mergeShoppingRecipes(recipes, localRecipes, busy),
     [recipes, localRecipes, busy],
   );
+  const queuedOfflinePendingIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const entry of outboxEntries) {
+      if (entry.status !== "pending" || entry.fields.intent !== "add-odd-bit") continue;
+      const id = entry.fields.clientPendingId?.trim();
+      if (id) ids.add(id);
+    }
+    return ids;
+  }, [outboxEntries]);
+
   const viewOddBits = useMemo(() => {
     const merged = mergeOddBits(oddBits, localOddBits, busy);
+    const localById = new Map(localOddBits.map((bit) => [bit.id, bit]));
     const fromAdds = [
       ...oddBitsFromAddFetchers(fetchers, oddBits),
       ...oddBitsFromOutbox(outboxEntries, oddBits),
-    ];
+    ].map((bit) => {
+      const local = localById.get(bit.id);
+      return local ? { ...bit, purchased: local.purchased } : bit;
+    });
     if (fromAdds.length === 0) return merged;
     const seen = new Set(merged.map((bit) => bit.id));
     return [...merged, ...fromAdds.filter((bit) => !seen.has(bit.id))];
   }, [oddBits, localOddBits, busy, fetchers, outboxEntries]);
+
+  function cancelPendingOddBit(clientPendingId: string) {
+    setLocalOddBits((current) => current.filter((bit) => bit.id !== clientPendingId));
+    void cancelPendingOddBitAdd(pantryId, clientPendingId);
+  }
 
   function toggleExpanded(recipeId: string) {
     setExpandedIds((current) => {
@@ -382,9 +416,11 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                         action={action}
                         bit={bit}
                         key={bit.id}
+                        onCancelPending={cancelPendingOddBit}
                         onPurchased={setOddBitPurchased}
                         onRemove={removeOddBit}
                         pantryId={pantryId}
+                        queuedOffline={queuedOfflinePendingIds.has(bit.id)}
                       />
                     ))}
                   </div>
@@ -411,9 +447,11 @@ export function ShoppingListView({ recipes, oddBits, pantryId }: ShoppingListVie
                         action={action}
                         bit={bit}
                         key={bit.id}
+                        onCancelPending={cancelPendingOddBit}
                         onPurchased={setOddBitPurchased}
                         onRemove={removeOddBit}
                         pantryId={pantryId}
+                        queuedOffline={queuedOfflinePendingIds.has(bit.id)}
                       />
                     ))}
                   </ShoppingGotItSection>

@@ -297,6 +297,21 @@ describe("oddBitsFromOutbox", () => {
     );
     expect(bits.map((bit) => bit.id)).toEqual(["pending:1"]);
   });
+
+  it("honours purchased patched onto a queued add", () => {
+    const bits = oddBitsFromOutbox(
+      [
+        entry({
+          intent: "add-odd-bit",
+          clientPendingId: "pending:1",
+          name: "bags",
+          purchased: "true",
+        }),
+      ],
+      [],
+    );
+    expect(bits[0]?.purchased).toBe(true);
+  });
 });
 
 describe("submitShoppingMutation", () => {

@@ -126,8 +126,11 @@ export function mergeOddBits(server: OddBit[], local: OddBit[], busy: ShoppingBu
   const localById = new Map(local.map((bit) => [bit.id, bit]));
   const serverIds = new Set(server.map((bit) => bit.id));
 
+  // Drop client `pending:*` ids from loader/hydrate payloads — those rows are
+  // owned by add fetchers / outbox so they stay cancelable and do not stick
+  // around as uneditable ghosts after sync.
   const mergedServer = server
-    .filter((bit) => !busy.oddBitRemoves.has(bit.id))
+    .filter((bit) => !busy.oddBitRemoves.has(bit.id) && !isPendingOddBitId(bit.id))
     .map((serverBit) => {
       if (busy.oddBitClears || busy.oddBitIds.has(serverBit.id)) {
         return localById.get(serverBit.id) ?? serverBit;
@@ -135,10 +138,6 @@ export function mergeOddBits(server: OddBit[], local: OddBit[], busy: ShoppingBu
       return serverBit;
     });
 
-  // Local-only rows that have not landed in loader data yet.
-  // Never keep client `pending:*` ids here — those come only from in-flight
-  // add fetchers / outbox. Persisting them via local state after hydrate leaves
-  // ghost rows (no remove control) once the real server id syncs in.
   const localOnly = local.filter(
     (bit) =>
       !serverIds.has(bit.id) && !busy.oddBitRemoves.has(bit.id) && !isPendingOddBitId(bit.id),

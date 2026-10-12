@@ -19,7 +19,7 @@ export function oddBitsFromOutbox(entries: OutboxEntry[], server: OddBit[]): Odd
       name,
       amount: amountRaw ? Number(amountRaw) : null,
       unit: unitRaw || null,
-      purchased: false,
+      purchased: entry.fields.purchased === "true",
     });
   }
 

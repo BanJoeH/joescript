@@ -197,8 +197,12 @@ describe("mergeOddBits", () => {
     expect(mergeOddBits(server, local, busy).map((row) => row.id)).toEqual(["ob1", "ob2"]);
   });
 
-  it("does not keep stale pending:* ids from local after the real row syncs", () => {
-    const server = [bit({ id: "ob1", name: "foil" }), bit({ id: "ob2", name: "bags" })];
+  it("does not keep stale pending:* ids from local or loader after the real row syncs", () => {
+    const server = [
+      bit({ id: "ob1", name: "foil" }),
+      bit({ id: "pending:1", name: "bags" }),
+      bit({ id: "ob2", name: "bags" }),
+    ];
     const local = [
       bit({ id: "ob1", name: "foil" }),
       bit({ id: "pending:1", name: "bags" }),

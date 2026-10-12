@@ -6,10 +6,13 @@ import { applyOutboxToSnapshot } from "~/lib/offline/apply-outbox";
 import { resetShoppingOfflineDbForTests } from "~/lib/offline/db";
 import { decideOutboxDrainStep } from "~/lib/offline/drain-decision";
 import { loadOfflineShoppingSnapshot } from "~/lib/offline/hydrate-shopping";
+import { oddBitsFromOutbox } from "~/lib/offline/odd-bits-from-outbox";
 import {
+  cancelPendingOddBitAdd,
   enqueueOutbox,
   listOutbox,
   markOutboxFailed,
+  patchPendingOddBitAdd,
   peekOutbox,
   removeOutboxEntry,
 } from "~/lib/offline/outbox";
@@ -108,6 +111,24 @@ describe("shopping offline persistence", () => {
     expect(hydrated?.applied.oddBits.map((bit) => bit.id)).toEqual(["ob1", "pending:1"]);
     // Raw snapshot stays server-truth until the next online loader write.
     expect(hydrated?.snapshot.shoppingRecipes[0]?.ingredients[0]?.purchased).toBe(false);
+  });
+
+  it("cancels and patches queued odd-bit adds while offline", async () => {
+    await enqueueOutbox({
+      pantryId,
+      actionPath: `/${pantryId}/shopping`,
+      fields: {
+        intent: "add-odd-bit",
+        clientPendingId: "pending:1",
+        name: "bags",
+      },
+    });
+    await patchPendingOddBitAdd(pantryId, "pending:1", true);
+    expect(oddBitsFromOutbox(await listOutbox(pantryId), [])[0]?.purchased).toBe(true);
+
+    await cancelPendingOddBitAdd(pantryId, "pending:1");
+    expect(await listOutbox(pantryId)).toEqual([]);
+    expect(oddBitsFromOutbox(await listOutbox(pantryId), [])).toEqual([]);
   });
 
   it("drain decision against a real queue does not drop failed entries", async () => {

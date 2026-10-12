@@ -67,3 +67,38 @@ export async function countOutbox(pantryId: string) {
     failed: entries.filter((entry) => entry.status === "failed").length,
   };
 }
+
+function isPendingAdd(entry: OutboxEntry, clientPendingId: string) {
+  return (
+    entry.fields.intent === "add-odd-bit" &&
+    entry.fields.clientPendingId === clientPendingId &&
+    entry.status === "pending"
+  );
+}
+
+/** Cancel an offline odd-bit add that has not drained yet. */
+export async function cancelPendingOddBitAdd(pantryId: string, clientPendingId: string) {
+  const matches = (await listOutbox(pantryId)).filter((entry) =>
+    isPendingAdd(entry, clientPendingId),
+  );
+  for (const entry of matches) {
+    await removeOutboxEntry(entry.id);
+  }
+}
+
+/** Update purchased on a queued add so offline toggles survive until drain. */
+export async function patchPendingOddBitAdd(
+  pantryId: string,
+  clientPendingId: string,
+  purchased: boolean,
+) {
+  const entry = (await listOutbox(pantryId)).find((row) => isPendingAdd(row, clientPendingId));
+  if (!entry) return;
+  await withStore(OUTBOX_STORE, "readwrite", (store) =>
+    store.put({
+      ...entry,
+      fields: { ...entry.fields, purchased: String(purchased) },
+    }),
+  );
+  emitShoppingOfflineChange();
+}
