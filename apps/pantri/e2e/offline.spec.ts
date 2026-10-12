@@ -16,6 +16,7 @@ test.describe("offline shell", () => {
     expect(swBody).toContain("PRECACHE_ASSETS");
     expect(swBody).toContain("assetUrlsFromHtml");
     expect(swBody).toContain("isShoppingShellPath");
+    expect(swBody).toContain("/_pantri_online_probe");
     expect(swBody).not.toContain("/photos/");
 
     const offline = await request.get("/offline.html");

@@ -197,11 +197,12 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Never intercept API / auth / SSE.
+  // Never intercept API / auth / SSE / connectivity probe — always network.
   if (
     url.pathname.startsWith("/api/") ||
     url.pathname.includes("/api/events") ||
-    url.pathname.startsWith("/api/auth")
+    url.pathname.startsWith("/api/auth") ||
+    url.pathname === "/_pantri_online_probe"
   ) {
     return;
   }

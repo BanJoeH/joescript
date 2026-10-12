@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useRevalidator } from "react-router";
 
+import { useOnlineStatus } from "~/lib/offline/connectivity";
 import { pantryPath } from "~/lib/pantry-path";
 
 /**
@@ -10,9 +11,10 @@ import { pantryPath } from "~/lib/pantry-path";
  */
 export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; userId: string }) {
   const revalidator = useRevalidator();
+  const online = useOnlineStatus();
 
   useEffect(() => {
-    if (typeof navigator !== "undefined" && !navigator.onLine) return;
+    if (!online) return;
 
     const source = new EventSource(pantryPath(pantryId, "api/events"));
 
@@ -36,7 +38,7 @@ export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; 
       source.removeEventListener("pantry:invalidate", handleInvalidate);
       source.close();
     };
-  }, [pantryId, revalidator, userId]);
+  }, [online, pantryId, revalidator, userId]);
 
   return null;
 }
