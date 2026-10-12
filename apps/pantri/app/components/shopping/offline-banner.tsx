@@ -1,11 +1,22 @@
-import { ChevronDown } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useConnectivitySettled, useOnlineStatus } from "~/lib/offline/connectivity";
 import { outboxEntryLabel } from "~/lib/offline/outbox-entry-label";
 import type { OutboxEntry } from "~/lib/offline/types";
 import { useShoppingOutbox } from "~/lib/offline/use-shopping-outbox";
 import { cn } from "~/lib/utils";
+
+const DEBUG_OUTBOX_KEY = "pantri.debugOutbox";
+
+function readDebugOutboxFlag() {
+  if (typeof window === "undefined") return false;
+  try {
+    if (new URLSearchParams(window.location.search).has("debugOutbox")) return true;
+    return window.localStorage.getItem(DEBUG_OUTBOX_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 function OutboxQueueInspector({ entries }: { entries: OutboxEntry[] }) {
   if (entries.length === 0) {
@@ -52,9 +63,13 @@ export function ShoppingOfflineBanner({ pantryId }: { pantryId: string }) {
   const settled = useConnectivitySettled();
   const { entries, pending, failed } = useShoppingOutbox(pantryId);
   const wasOfflineRef = useRef(false);
+  const clickTimesRef = useRef<number[]>([]);
   const [syncingAfterReconnect, setSyncingAfterReconnect] = useState(false);
-  const [queueOpen, setQueueOpen] = useState(false);
-  const panelId = useId();
+  const [debugOpen, setDebugOpen] = useState(false);
+
+  useEffect(() => {
+    setDebugOpen(readDebugOutboxFlag());
+  }, []);
 
   useEffect(() => {
     if (!settled) return;
@@ -88,11 +103,25 @@ export function ShoppingOfflineBanner({ pantryId }: { pantryId: string }) {
     message = `Offline — ${pending} change${pending === 1 ? "" : "s"} will sync when you reconnect.`;
   }
 
-  const queueCount = entries.length;
-  const queueSummary =
-    queueCount === 0
-      ? "Inspect queue"
-      : `Queue (${queueCount}${failed > 0 ? ` · ${failed} failed` : ""})`;
+  const onBannerClick = () => {
+    const now = Date.now();
+    const recent = clickTimesRef.current.filter((time) => now - time < 800);
+    recent.push(now);
+    clickTimesRef.current = recent;
+    if (recent.length < 3) return;
+
+    clickTimesRef.current = [];
+    setDebugOpen((open) => {
+      const next = !open;
+      try {
+        if (next) window.localStorage.setItem(DEBUG_OUTBOX_KEY, "1");
+        else window.localStorage.removeItem(DEBUG_OUTBOX_KEY);
+      } catch {
+        // ignore quota / private mode
+      }
+      return next;
+    });
+  };
 
   return (
     <div
@@ -102,29 +131,14 @@ export function ShoppingOfflineBanner({ pantryId }: { pantryId: string }) {
           ? "border-destructive/40 bg-destructive/10 text-destructive"
           : "border-border bg-muted/60 text-muted-foreground",
       )}
+      onClick={onBannerClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") onBannerClick();
+      }}
       role="status"
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="min-w-0 flex-1">{message}</p>
-        <button
-          aria-controls={panelId}
-          aria-expanded={queueOpen}
-          className="inline-flex shrink-0 items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium text-foreground/80 hover:bg-background/50"
-          onClick={() => setQueueOpen((open) => !open)}
-          type="button"
-        >
-          {queueSummary}
-          <ChevronDown
-            aria-hidden
-            className={cn("size-3.5 transition-transform", queueOpen && "rotate-180")}
-          />
-        </button>
-      </div>
-      {queueOpen ? (
-        <div id={panelId}>
-          <OutboxQueueInspector entries={entries} />
-        </div>
-      ) : null}
+      <p>{message}</p>
+      {debugOpen ? <OutboxQueueInspector entries={entries} /> : null}
     </div>
   );
 }
