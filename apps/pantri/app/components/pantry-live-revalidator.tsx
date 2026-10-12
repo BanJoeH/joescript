@@ -4,13 +4,13 @@ import { useRevalidator } from "react-router";
 import { useNetworkOnline } from "~/lib/offline/connectivity";
 import { pantryPath } from "~/lib/pantry-path";
 
-/** Ignore bursty focus + visibility + pageshow from the same tab switch. */
+/** Coalesce visibility + window focus from the same tab return. */
 const FOCUS_REVALIDATE_COOLDOWN_MS = 1000;
 
 /**
  * Keeps pantry loaders fresh while the tab is in use:
  * - SSE invalidate from other members
- * - refetch on window focus / pageshow / visible (react-query-style)
+ * - refetch when returning to the tab/window (react-query-style)
  *
  * Mount once per pantry layout. Skips network work until the reachability probe
  * settles online (avoids shopping.data POSTs / loader fetches on offline refresh).
@@ -18,7 +18,9 @@ const FOCUS_REVALIDATE_COOLDOWN_MS = 1000;
 export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; userId: string }) {
   const revalidator = useRevalidator();
   const online = useNetworkOnline();
+  const revalidatorRef = useRef(revalidator);
   const lastFocusRevalidateAt = useRef(0);
+  revalidatorRef.current = revalidator;
 
   useEffect(() => {
     if (!online) return;
@@ -36,7 +38,7 @@ export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; 
         // Ignore malformed payloads; still revalidate other clients.
       }
 
-      revalidator.revalidate();
+      revalidatorRef.current.revalidate();
     };
 
     source.addEventListener("pantry:invalidate", handleInvalidate);
@@ -45,33 +47,41 @@ export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; 
       source.removeEventListener("pantry:invalidate", handleInvalidate);
       source.close();
     };
-  }, [online, pantryId, revalidator, userId]);
+  }, [online, pantryId, userId]);
 
   useEffect(() => {
     if (!online) return;
 
-    const revalidateOnFocus = () => {
-      if (revalidator.state !== "idle") return;
+    // Only revalidate when coming *back* from hidden — not on the initial visible mount.
+    let wasHidden = document.visibilityState === "hidden";
+
+    const maybeRevalidate = () => {
+      if (document.visibilityState === "hidden") return;
+      if (revalidatorRef.current.state !== "idle") return;
       const now = Date.now();
       if (now - lastFocusRevalidateAt.current < FOCUS_REVALIDATE_COOLDOWN_MS) return;
       lastFocusRevalidateAt.current = now;
-      void revalidator.revalidate();
+      void revalidatorRef.current.revalidate();
     };
 
     const onVisibility = () => {
-      if (document.visibilityState === "visible") revalidateOnFocus();
+      const hidden = document.visibilityState === "hidden";
+      if (wasHidden && !hidden) maybeRevalidate();
+      wasHidden = hidden;
     };
 
-    window.addEventListener("focus", revalidateOnFocus);
-    window.addEventListener("pageshow", revalidateOnFocus);
+    const onWindowFocus = () => {
+      maybeRevalidate();
+    };
+
     document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onWindowFocus);
 
     return () => {
-      window.removeEventListener("focus", revalidateOnFocus);
-      window.removeEventListener("pageshow", revalidateOnFocus);
       document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onWindowFocus);
     };
-  }, [online, revalidator]);
+  }, [online]);
 
   return null;
 }
