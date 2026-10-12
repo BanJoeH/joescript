@@ -1,6 +1,6 @@
 /* Pantri SW: shopping/sorted document shells + static fallback. Keep path rules in sync with
  * `app/lib/offline/shopping-shell-paths.ts`. */
-const CACHE_VERSION = "pantri-shopping-v2";
+const CACHE_VERSION = "pantri-shopping-v3";
 const PRECACHE = [
   "/offline.html",
   "/site.webmanifest",
@@ -9,6 +9,7 @@ const PRECACHE = [
   "/favicon-96x96.png",
   "/apple-touch-icon.png",
   "/pantri-mark.svg",
+  "/background-dark.png",
   "/web-app-manifest-192x192.png",
   "/web-app-manifest-512x512.png",
 ];
