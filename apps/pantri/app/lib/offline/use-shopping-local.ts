@@ -43,47 +43,50 @@ export function useShoppingLocalState(pantryId: string, seed: Seed): ShoppingLoc
     ready: false,
   });
 
-  const refresh = useCallback(async (priority: "urgent" | "transition" = "urgent") => {
-    const seedNow = seedRef.current;
-    const outbox = await listOutbox(pantryId);
-    let snap = await readShoppingSnapshot(pantryId);
+  const refresh = useCallback(
+    async (priority: "urgent" | "transition" = "urgent") => {
+      const seedNow = seedRef.current;
+      const outbox = await listOutbox(pantryId);
+      let snap = await readShoppingSnapshot(pantryId);
 
-    // Seed IDB only when empty and there is nothing queued — otherwise seed may
-    // already be applied (base+outbox) and re-applying would duplicate rows.
-    if (!snap && outbox.length === 0) {
-      await writeShoppingSnapshot(pantryId, {
-        shoppingRecipes: seedNow.recipes,
-        oddBits: seedNow.oddBits,
-        categoryOverrides: seedNow.categoryOverrides,
-      });
-      snap = await readShoppingSnapshot(pantryId);
-    }
-
-    const next: ShoppingLocalState = !snap
-      ? {
-          recipes: seedNow.recipes,
+      // Seed IDB only when empty and there is nothing queued — otherwise seed may
+      // already be applied (base+outbox) and re-applying would duplicate rows.
+      if (!snap && outbox.length === 0) {
+        await writeShoppingSnapshot(pantryId, {
+          shoppingRecipes: seedNow.recipes,
           oddBits: seedNow.oddBits,
-          outbox,
-          categoryOverrides: seedNow.categoryOverrides ?? {},
-          ready: true,
-        }
-      : (() => {
-          const applied = applyOutboxToSnapshot(snap, outbox);
-          return {
-            recipes: deserializeShoppingRecipes(applied.shoppingRecipes),
-            oddBits: applied.oddBits,
-            outbox,
-            categoryOverrides: applied.categoryOverrides,
-            ready: true,
-          };
-        })();
+          categoryOverrides: seedNow.categoryOverrides,
+        });
+        snap = await readShoppingSnapshot(pantryId);
+      }
 
-    if (priority === "transition") {
-      startTransition(() => setState(next));
-    } else {
-      setState(next);
-    }
-  }, [pantryId]);
+      const next: ShoppingLocalState = !snap
+        ? {
+            recipes: seedNow.recipes,
+            oddBits: seedNow.oddBits,
+            outbox,
+            categoryOverrides: seedNow.categoryOverrides ?? {},
+            ready: true,
+          }
+        : (() => {
+            const applied = applyOutboxToSnapshot(snap, outbox);
+            return {
+              recipes: deserializeShoppingRecipes(applied.shoppingRecipes),
+              oddBits: applied.oddBits,
+              outbox,
+              categoryOverrides: applied.categoryOverrides,
+              ready: true,
+            };
+          })();
+
+      if (priority === "transition") {
+        startTransition(() => setState(next));
+      } else {
+        setState(next);
+      }
+    },
+    [pantryId],
+  );
 
   useEffect(() => {
     void refresh("urgent");

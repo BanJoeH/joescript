@@ -1,6 +1,6 @@
+import type { SerializedShoppingRecipe, ShoppingSnapshot } from "~/lib/offline/types";
 import { pantryPath } from "~/lib/pantry-path";
 import type { OddBit } from "~/lib/recipe-schema";
-import type { SerializedShoppingRecipe, ShoppingSnapshot } from "~/lib/offline/types";
 
 export type PurchasedRepair = {
   actionPath: string;

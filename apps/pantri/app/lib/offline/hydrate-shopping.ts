@@ -3,11 +3,15 @@ import { groupBySection } from "~/lib/ingredient-sections";
 import { applyOutboxToSnapshot } from "~/lib/offline/apply-outbox";
 import { mergeServerSnapshotWithLocal } from "~/lib/offline/merge-server-snapshot";
 import { enqueueOutbox, listOutbox } from "~/lib/offline/outbox";
-import { putShoppingSnapshot, readShoppingSnapshot, writeShoppingSnapshot } from "~/lib/offline/snapshot";
+import {
+  putShoppingSnapshot,
+  readShoppingSnapshot,
+  writeShoppingSnapshot,
+} from "~/lib/offline/snapshot";
 import {
   deserializeShoppingRecipes,
-  serializeShoppingRecipes,
   type ShoppingSnapshot,
+  serializeShoppingRecipes,
 } from "~/lib/offline/types";
 import type { OddBit } from "~/lib/recipe-schema";
 import { aggregateIngredients, type ShoppingLine } from "~/lib/shopping-aggregation";
@@ -39,8 +43,7 @@ export async function writeSnapshotBaseAndApply(
     updatedAt: Date.now(),
     shoppingRecipes: serializeShoppingRecipes(input.shoppingRecipes),
     oddBits: input.oddBits,
-    categoryOverrides:
-      input.categoryOverrides ?? previous?.categoryOverrides ?? {},
+    categoryOverrides: input.categoryOverrides ?? previous?.categoryOverrides ?? {},
   };
 
   const { merged, repairs } = mergeServerSnapshotWithLocal(pantryId, serverBase, previous);

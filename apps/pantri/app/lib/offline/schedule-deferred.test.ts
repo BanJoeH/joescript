@@ -26,7 +26,7 @@ describe("scheduleDeferredWork", () => {
     scheduleDeferredWork(() => runs.push(2));
     expect(runs).toEqual([]);
 
-    idleCb?.( { didTimeout: false, timeRemaining: () => 10 } as IdleDeadline);
+    idleCb?.({ didTimeout: false, timeRemaining: () => 10 } as IdleDeadline);
     expect(runs).toEqual([2]);
   });
 

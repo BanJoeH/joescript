@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useFetcher, useRevalidator } from "react-router";
-
-import { useOnlineStatus } from "~/lib/offline/connectivity";
 import { commitDrainedOutboxEntry } from "~/lib/offline/commit-drained";
+import { useOnlineStatus } from "~/lib/offline/connectivity";
 import {
   clearActiveDrainEntry,
   getActiveDrainEntry,

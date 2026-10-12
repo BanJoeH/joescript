@@ -1,9 +1,6 @@
 import type { IngredientCategoryOverrides } from "~/lib/ingredient-sections";
 import { SNAPSHOT_STORE, withStore } from "~/lib/offline/db";
-import {
-  emitShoppingOfflineChange,
-  type ShoppingOfflineChangeDetail,
-} from "~/lib/offline/events";
+import { emitShoppingOfflineChange, type ShoppingOfflineChangeDetail } from "~/lib/offline/events";
 import type { ShoppingSnapshot } from "~/lib/offline/types";
 import { serializeShoppingRecipes } from "~/lib/offline/types";
 import type { OddBit } from "~/lib/recipe-schema";

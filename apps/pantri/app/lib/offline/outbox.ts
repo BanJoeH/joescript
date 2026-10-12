@@ -39,10 +39,7 @@ export async function enqueueOutbox(input: {
   return entry;
 }
 
-export async function removeOutboxEntry(
-  id: string,
-  options?: { emit?: boolean },
-): Promise<void> {
+export async function removeOutboxEntry(id: string, options?: { emit?: boolean }): Promise<void> {
   await withStore(OUTBOX_STORE, "readwrite", (store) => store.delete(id));
   if (options?.emit === false) return;
   emitShoppingOfflineChange();

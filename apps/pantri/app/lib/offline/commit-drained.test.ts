@@ -49,10 +49,11 @@ describe("commitDrainedOutboxEntry", () => {
 
     expect(await listOutbox(pantryId)).toEqual([]);
     const base = await readShoppingSnapshot(pantryId);
-    expect(base?.oddBits[0]?.purchased).toBe(true);
+    if (!base) throw new Error("expected snapshot");
+    expect(base.oddBits[0]?.purchased).toBe(true);
 
     // Applied view stays correct with an empty outbox (no revert flicker).
-    expect(applyOutboxToSnapshot(base!, []).oddBits[0]?.purchased).toBe(true);
+    expect(applyOutboxToSnapshot(base, []).oddBits[0]?.purchased).toBe(true);
   });
 
   it("keeps remaining outbox rows on top of the folded base", async () => {
@@ -75,10 +76,11 @@ describe("commitDrainedOutboxEntry", () => {
     await commitDrainedOutboxEntry(first);
 
     const base = await readShoppingSnapshot(pantryId);
+    if (!base) throw new Error("expected snapshot");
     const outbox = await listOutbox(pantryId);
-    expect(base?.oddBits[0]?.purchased).toBe(true);
+    expect(base.oddBits[0]?.purchased).toBe(true);
     expect(outbox).toHaveLength(1);
-    expect(applyOutboxToSnapshot(base!, outbox).oddBits.map((bit) => bit.id)).toEqual([
+    expect(applyOutboxToSnapshot(base, outbox).oddBits.map((bit) => bit.id)).toEqual([
       "ob1",
       clientId,
     ]);

@@ -1,4 +1,6 @@
-type IdleHandle = { kind: "idle"; id: number } | { kind: "timeout"; id: ReturnType<typeof setTimeout> };
+type IdleHandle =
+  | { kind: "idle"; id: number }
+  | { kind: "timeout"; id: ReturnType<typeof setTimeout> };
 
 let pending: IdleHandle | null = null;
 
@@ -32,10 +34,13 @@ export function scheduleDeferredWork(work: () => void, options?: { timeoutMs?: n
     return;
   }
 
-  const id = setTimeout(() => {
-    pending = null;
-    work();
-  }, Math.min(500, timeoutMs));
+  const id = setTimeout(
+    () => {
+      pending = null;
+      work();
+    },
+    Math.min(500, timeoutMs),
+  );
   pending = { kind: "timeout", id };
 }
 
