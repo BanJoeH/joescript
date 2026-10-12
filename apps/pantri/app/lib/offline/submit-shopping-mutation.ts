@@ -13,9 +13,14 @@ export async function submitShoppingMutation(options: {
   action: string;
   fields: Record<string, string>;
   onlineSubmit: (fields: Record<string, string>) => void;
+  /** Test seam; defaults to `navigator.onLine`. */
+  isOnline?: () => boolean;
+  enqueue?: typeof enqueueOutbox;
 }): Promise<SubmitShoppingMutationResult> {
-  if (!isBrowserOnline()) {
-    await enqueueOutbox({
+  const online = (options.isOnline ?? isBrowserOnline)();
+  if (!online) {
+    const enqueue = options.enqueue ?? enqueueOutbox;
+    await enqueue({
       pantryId: options.pantryId,
       actionPath: options.action,
       fields: options.fields,

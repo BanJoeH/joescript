@@ -2,6 +2,14 @@ import { newOutboxId, OUTBOX_STORE, withStore } from "~/lib/offline/db";
 import { emitShoppingOfflineChange } from "~/lib/offline/events";
 import type { OutboxEntry } from "~/lib/offline/types";
 
+let lastCreatedAt = 0;
+
+function nextCreatedAt() {
+  const now = Date.now();
+  lastCreatedAt = now <= lastCreatedAt ? lastCreatedAt + 1 : now;
+  return lastCreatedAt;
+}
+
 export async function listOutbox(pantryId: string): Promise<OutboxEntry[]> {
   try {
     const all = await withStore<OutboxEntry[]>(OUTBOX_STORE, "readonly", (store) => store.getAll());
@@ -21,7 +29,7 @@ export async function enqueueOutbox(input: {
   const entry: OutboxEntry = {
     id: newOutboxId(),
     pantryId: input.pantryId,
-    createdAt: Date.now(),
+    createdAt: nextCreatedAt(),
     actionPath: input.actionPath,
     fields: input.fields,
     status: "pending",

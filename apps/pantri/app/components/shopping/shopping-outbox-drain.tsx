@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { useFetcher, useRevalidator } from "react-router";
 
 import { useOnlineStatus } from "~/lib/offline/connectivity";
+import { decideOutboxDrainStep } from "~/lib/offline/drain-decision";
 import { subscribeShoppingOfflineChange } from "~/lib/offline/events";
-import { interpretActionData } from "~/lib/offline/interpret-action-data";
-import { markOutboxFailed, peekOutbox, removeOutboxEntry } from "~/lib/offline/outbox";
+import { listOutbox, markOutboxFailed, peekOutbox, removeOutboxEntry } from "~/lib/offline/outbox";
 
 /**
  * FIFO-drains the shopping outbox via a React Router fetcher so success is
@@ -42,24 +42,31 @@ export function ShoppingOutboxDrain({ pantryId }: { pantryId: string }) {
     ) {
       lastHandledRef.current = fetcher.data;
       const entryId = activeIdRef.current;
-      const result = interpretActionData(fetcher.data);
 
       void (async () => {
-        if (result.ok) {
-          await removeOutboxEntry(entryId);
+        const pending = (await listOutbox(pantryId)).filter(
+          (entry) => entry.status === "pending" && entry.id !== entryId,
+        );
+        const decision = decideOutboxDrainStep(fetcher.data, entryId, pending[0] ?? null);
+
+        if (decision.remove) {
+          await removeOutboxEntry(decision.entryId);
         } else {
-          await markOutboxFailed(entryId, result.reason);
+          await markOutboxFailed(decision.entryId, decision.failReason ?? "Sync failed.");
         }
         activeIdRef.current = null;
 
-        const next = await peekOutbox(pantryId);
-        if (!next) {
+        if (decision.shouldRevalidate) {
           revalidator.revalidate();
           return;
         }
-        activeIdRef.current = next.id;
+        if (!decision.next) return;
+        activeIdRef.current = decision.next.id;
         lastHandledRef.current = null;
-        fetcher.submit(next.fields, { method: "post", action: next.actionPath });
+        fetcher.submit(decision.next.fields, {
+          method: "post",
+          action: decision.next.actionPath,
+        });
       })();
       return;
     }

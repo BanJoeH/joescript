@@ -30,6 +30,26 @@ function openDb(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
+/** Reset the cached DB handle (tests only). */
+export async function resetShoppingOfflineDbForTests() {
+  if (dbPromise) {
+    try {
+      const db = await dbPromise;
+      db.close();
+    } catch {
+      // ignore
+    }
+  }
+  dbPromise = null;
+  if (typeof indexedDB === "undefined") return;
+  await new Promise<void>((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error ?? new Error("Failed to delete test DB."));
+    request.onblocked = () => resolve();
+  });
+}
+
 function requestToPromise<T>(request: IDBRequest<T>): Promise<T> {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);
