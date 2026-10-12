@@ -1,7 +1,7 @@
 import { type MutableRefObject, type RefObject, useEffect, useRef } from "react";
 import { useRevalidator } from "react-router";
 
-import { canUseNetwork, useNetworkOnline } from "~/lib/offline/connectivity";
+import { canUseNetwork, subscribeWindowResume, useNetworkOnline } from "~/lib/offline/connectivity";
 import { pantryPath } from "~/lib/pantry-path";
 
 /** Coalesce visibility + window focus from the same tab return. */
@@ -58,7 +58,7 @@ export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; 
     };
   }, [online, pantryId, userId]);
 
-  // Probe settle / reconnect — independent of focus listeners so those stay mounted.
+  // Probe settle / reconnect.
   useEffect(() => {
     if (!online) {
       logFocus("skip: offline (canUseNetwork false until probe settles)", {
@@ -71,56 +71,12 @@ export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; 
     maybeRevalidateFromRef(revalidatorRef, lastFocusRevalidateAt, "online-settle");
   }, [online]);
 
-  // Focus / visibility listeners mount once — do not tear down when online flips.
+  // Module-level focus/visibility bus (same listeners as the online probe).
   useEffect(() => {
-    let wasHidden = document.visibilityState === "hidden";
-    logFocus("effect: focus listeners attached", { visibility: document.visibilityState });
-
-    const onVisibility = () => {
-      const hidden = document.visibilityState === "hidden";
-      logFocus("visibilitychange", {
-        wasHidden,
-        now: document.visibilityState,
-        canUseNetwork: canUseNetwork(),
-        willRevalidate: wasHidden && !hidden && canUseNetwork(),
-      });
-      if (wasHidden && !hidden) {
-        maybeRevalidateFromRef(revalidatorRef, lastFocusRevalidateAt, "visibility-visible");
-      }
-      wasHidden = hidden;
-    };
-
-    const onFocus = () => {
-      logFocus("window focus", {
-        visibility: document.visibilityState,
-        canUseNetwork: canUseNetwork(),
-      });
-      maybeRevalidateFromRef(revalidatorRef, lastFocusRevalidateAt, "window-focus");
-    };
-
-    const onPageShow = (event: PageTransitionEvent) => {
-      const willRevalidate = event.persisted || document.visibilityState === "visible";
-      logFocus("pageshow", {
-        persisted: event.persisted,
-        visibility: document.visibilityState,
-        canUseNetwork: canUseNetwork(),
-        willRevalidate,
-      });
-      if (willRevalidate) {
-        maybeRevalidateFromRef(revalidatorRef, lastFocusRevalidateAt, "pageshow");
-      }
-    };
-
-    document.addEventListener("visibilitychange", onVisibility);
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("pageshow", onPageShow);
-
-    return () => {
-      logFocus("effect: focus listeners cleanup");
-      document.removeEventListener("visibilitychange", onVisibility);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("pageshow", onPageShow);
-    };
+    logFocus("effect: subscribed to window resume");
+    return subscribeWindowResume(() => {
+      maybeRevalidateFromRef(revalidatorRef, lastFocusRevalidateAt, "window-resume");
+    });
   }, []);
 
   return null;

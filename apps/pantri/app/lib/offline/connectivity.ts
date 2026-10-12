@@ -3,6 +3,8 @@ import { useSyncExternalStore } from "react";
 type Listener = () => void;
 
 const listeners = new Set<Listener>();
+/** Tab/window resume — focus, visibility visible, pageshow. Module-level so React effects can't drop it. */
+const resumeListeners = new Set<Listener>();
 
 /** Effective connectivity — `navigator.onLine` refined by a real network probe. */
 let effectiveOnline = true;
@@ -14,6 +16,14 @@ let monitoringStarted = false;
 let offlinePollId: ReturnType<typeof setInterval> | null = null;
 
 const OFFLINE_POLL_MS = 10_000;
+
+const logConnectivity = (message: string, detail?: Record<string, unknown>) => {
+  if (detail) {
+    console.info(`[pantri:connectivity] ${message}`, detail);
+    return;
+  }
+  console.info(`[pantri:connectivity] ${message}`);
+};
 
 export function getIsOnline() {
   return effectiveOnline;
@@ -78,6 +88,28 @@ function subscribeOnline(onStoreChange: Listener) {
   };
 }
 
+function emitResume(reason: string) {
+  logConnectivity(`resume:${reason}`, {
+    visibility: document.visibilityState,
+    hasFocus: document.hasFocus(),
+    canUseNetwork: connectivitySettled && effectiveOnline,
+    listeners: resumeListeners.size,
+  });
+  for (const listener of resumeListeners) listener();
+}
+
+/**
+ * Fires when the tab becomes visible, the window is focused, or pageshow runs.
+ * Listeners are registered on `window`/`document` once for the page lifetime.
+ */
+export function subscribeWindowResume(onResume: Listener) {
+  if (typeof window !== "undefined") startConnectivityMonitoring();
+  resumeListeners.add(onResume);
+  return () => {
+    resumeListeners.delete(onResume);
+  };
+}
+
 /**
  * Confirm reachability. Needed because Chrome's Application → Service worker →
  * Offline checkbox (and some lie-fi cases) leave `navigator.onLine === true`
@@ -129,11 +161,37 @@ function startConnectivityMonitoring() {
 
   window.addEventListener("online", sync);
   window.addEventListener("offline", () => setEffectiveOnline(false));
-  window.addEventListener("pageshow", sync);
-  window.addEventListener("focus", sync);
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") sync();
+  window.addEventListener("pageshow", (event) => {
+    logConnectivity("pageshow", { persisted: event.persisted });
+    sync();
+    emitResume("pageshow");
   });
+  // Tab switches in the same window do not fire window focus — only visibilitychange.
+  window.addEventListener("focus", () => {
+    logConnectivity("window focus");
+    sync();
+    emitResume("focus");
+  });
+  window.addEventListener("blur", () => {
+    logConnectivity("window blur");
+  });
+  document.addEventListener("visibilitychange", () => {
+    logConnectivity("visibilitychange", { visibility: document.visibilityState });
+    if (document.visibilityState === "visible") {
+      sync();
+      emitResume("visibility");
+    }
+  });
+
+  // Console helper: run `__pantriPingResume()` to prove the revalidate subscribe path.
+  (window as Window & { __pantriPingResume?: () => void }).__pantriPingResume = () =>
+    emitResume("manual");
+
+  logConnectivity("monitoring started", {
+    visibility: document.visibilityState,
+    onLine: navigator.onLine,
+  });
+
   // Immediate probe on boot (offline hard-refresh / SW Offline with onLine===true).
   sync();
 }
