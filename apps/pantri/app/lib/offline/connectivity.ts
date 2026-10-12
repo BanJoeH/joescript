@@ -16,6 +16,8 @@ let monitoringStarted = false;
 let offlinePollId: ReturnType<typeof setInterval> | null = null;
 
 const OFFLINE_POLL_MS = 10_000;
+/** Background tabs pause rAF; a gap this large means the tab was frozen and just woke. */
+const RAF_RESUME_GAP_MS = 1_500;
 
 const logConnectivity = (message: string, detail?: Record<string, unknown>) => {
   if (detail) {
@@ -167,21 +169,58 @@ function startConnectivityMonitoring() {
     emitResume("pageshow");
   });
   // Tab switches in the same window do not fire window focus — only visibilitychange.
-  window.addEventListener("focus", () => {
-    logConnectivity("window focus");
-    sync();
-    emitResume("focus");
-  });
-  window.addEventListener("blur", () => {
-    logConnectivity("window blur");
-  });
-  document.addEventListener("visibilitychange", () => {
+  window.addEventListener(
+    "focus",
+    () => {
+      logConnectivity("window focus");
+      sync();
+      emitResume("focus");
+    },
+    true,
+  );
+  window.addEventListener(
+    "blur",
+    () => {
+      logConnectivity("window blur");
+    },
+    true,
+  );
+  const onVisibility = () => {
     logConnectivity("visibilitychange", { visibility: document.visibilityState });
     if (document.visibilityState === "visible") {
       sync();
       emitResume("visibility");
     }
+  };
+  document.addEventListener("visibilitychange", onVisibility);
+  // Some embeds only surface the event on window.
+  window.addEventListener("visibilitychange", onVisibility);
+
+  // Page Lifecycle (Chromium) — fires when a tab is frozen / resumed.
+  document.addEventListener("freeze", () => {
+    logConnectivity("freeze");
   });
+  document.addEventListener("resume", () => {
+    logConnectivity("resume event");
+    sync();
+    emitResume("lifecycle-resume");
+  });
+
+  // Fallback: background tabs pause requestAnimationFrame. When we wake, the
+  // frame-time gap is large even if visibilitychange was swallowed (webview /
+  // odd Chrome focus setups). `__pantriPingResume` already proved the
+  // subscribe→revalidate path works without these browser events.
+  let lastFrameAt = 0;
+  const onFrame = (now: number) => {
+    if (lastFrameAt > 0 && now - lastFrameAt > RAF_RESUME_GAP_MS) {
+      logConnectivity("rAF gap resume", { gapMs: Math.round(now - lastFrameAt) });
+      sync();
+      emitResume("rAF-gap");
+    }
+    lastFrameAt = now;
+    requestAnimationFrame(onFrame);
+  };
+  requestAnimationFrame(onFrame);
 
   // Console helper: run `__pantriPingResume()` to prove the revalidate subscribe path.
   (window as Window & { __pantriPingResume?: () => void }).__pantriPingResume = () =>

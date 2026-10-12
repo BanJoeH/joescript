@@ -61,7 +61,10 @@ export function PantryLiveRevalidator({ pantryId, userId }: { pantryId: string; 
   // Probe settle / reconnect.
   useEffect(() => {
     if (!online) {
-      logFocus("skip: offline (canUseNetwork false until probe settles)", {
+      // `online` is the React snapshot; `canUseNetwork()` may already be true if the
+      // probe settled between render and effect.
+      logFocus("skip: waiting for useNetworkOnline", {
+        online,
         canUseNetwork: canUseNetwork(),
       });
       return;
