@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
-import { Outlet, useLocation, useNavigate } from "react-router";
+import { Outlet, type ShouldRevalidateFunctionArgs, useLocation, useNavigate } from "react-router";
 import type { Swiper as SwiperClass } from "swiper";
 import { Swiper, SwiperSlide } from "swiper/react";
 
@@ -21,7 +21,7 @@ import type { Route } from "./+types/pantry.home";
 
 export { loader } from "./pantry.home.server";
 
-export function shouldRevalidate(args: Route.ShouldRevalidateFunctionArgs) {
+export function shouldRevalidate(args: ShouldRevalidateFunctionArgs) {
   return shouldRevalidateShoppingLoaders(args);
 }
 

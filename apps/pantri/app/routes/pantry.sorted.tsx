@@ -1,5 +1,6 @@
 import { ArrowLeft, ChevronDown, MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { ShouldRevalidateFunctionArgs } from "react-router";
 
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
@@ -34,7 +35,7 @@ import type { Route } from "./+types/pantry.sorted";
 
 export { action, loader } from "./pantry.sorted.server";
 
-export function shouldRevalidate(args: Route.ShouldRevalidateFunctionArgs) {
+export function shouldRevalidate(args: ShouldRevalidateFunctionArgs) {
   return shouldRevalidateShoppingLoaders(args);
 }
 

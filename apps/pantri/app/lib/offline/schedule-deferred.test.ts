@@ -12,21 +12,22 @@ describe("scheduleDeferredWork", () => {
   it("coalesces rapid calls into a single idle run", () => {
     vi.useFakeTimers();
     const runs: number[] = [];
-    let idleCb: IdleRequestCallback | null = null;
+    const captured: { cb: ((deadline: IdleDeadline) => void) | null } = { cb: null };
 
-    vi.stubGlobal("requestIdleCallback", (cb: IdleRequestCallback) => {
-      idleCb = cb;
+    vi.stubGlobal("requestIdleCallback", (cb: (deadline: IdleDeadline) => void) => {
+      captured.cb = cb;
       return 1;
     });
     vi.stubGlobal("cancelIdleCallback", () => {
-      idleCb = null;
+      captured.cb = null;
     });
 
     scheduleDeferredWork(() => runs.push(1));
     scheduleDeferredWork(() => runs.push(2));
     expect(runs).toEqual([]);
 
-    idleCb?.({ didTimeout: false, timeRemaining: () => 10 } as IdleDeadline);
+    if (!captured.cb) throw new Error("expected idle callback");
+    captured.cb({ didTimeout: false, timeRemaining: () => 10 });
     expect(runs).toEqual([2]);
   });
 
