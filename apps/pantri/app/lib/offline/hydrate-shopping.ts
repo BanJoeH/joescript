@@ -38,6 +38,7 @@ export async function writeSnapshotBaseAndApply(
   },
 ): Promise<ShoppingSnapshot> {
   const previous = await readShoppingSnapshot(pantryId);
+  const pendingOutbox = (await listOutbox(pantryId)).filter((entry) => entry.status === "pending");
   const serverBase: ShoppingSnapshot = {
     pantryId,
     updatedAt: Date.now(),
@@ -46,12 +47,14 @@ export async function writeSnapshotBaseAndApply(
     categoryOverrides: input.categoryOverrides ?? previous?.categoryOverrides ?? {},
   };
 
-  const { merged, repairs } = mergeServerSnapshotWithLocal(pantryId, serverBase, previous);
+  const { merged, repairs } = mergeServerSnapshotWithLocal(pantryId, serverBase, previous, {
+    pendingOutbox,
+  });
 
   // Server pull — notify UI as a transition so toggles stay urgent.
   await putShoppingSnapshot(merged, { priority: "transition" });
 
-  // Re-push any purchased flags the server pull disagreed with (lost drain writes).
+  // Re-push only protected disagreements (pending outbox / just-folded drains).
   for (const repair of repairs) {
     await enqueueOutbox({
       pantryId,

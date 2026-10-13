@@ -43,18 +43,34 @@ export async function clientLoader({ serverLoader, params }: Route.ClientLoaderA
   const pantryId = params.pantryId;
   try {
     const data = await serverLoader();
-    const applied = await writeSnapshotBaseAndApply(pantryId, {
-      shoppingRecipes: data.shoppingRecipes,
-      oddBits: data.oddBits,
-      categoryOverrides: data.categoryOverrides,
-    });
-    return {
-      sections: sectionsFromSnapshot(applied),
-      pantryId,
-      shoppingRecipes: deserializeShoppingRecipes(applied.shoppingRecipes),
-      oddBits: applied.oddBits,
-      categoryOverrides: applied.categoryOverrides,
-    };
+    try {
+      const applied = await writeSnapshotBaseAndApply(pantryId, {
+        shoppingRecipes: data.shoppingRecipes,
+        oddBits: data.oddBits,
+        categoryOverrides: data.categoryOverrides,
+      });
+      return {
+        sections: sectionsFromSnapshot(applied),
+        pantryId,
+        shoppingRecipes: deserializeShoppingRecipes(applied.shoppingRecipes),
+        oddBits: applied.oddBits,
+        categoryOverrides: applied.categoryOverrides,
+      };
+    } catch {
+      return {
+        sections: sectionsFromSnapshot({
+          pantryId,
+          updatedAt: Date.now(),
+          shoppingRecipes: serializeShoppingRecipes(data.shoppingRecipes),
+          oddBits: data.oddBits,
+          categoryOverrides: data.categoryOverrides,
+        }),
+        pantryId,
+        shoppingRecipes: data.shoppingRecipes,
+        oddBits: data.oddBits,
+        categoryOverrides: data.categoryOverrides,
+      };
+    }
   } catch (error) {
     const offline = await loadOfflineShoppingSnapshot(pantryId);
     if (!offline) throw error;

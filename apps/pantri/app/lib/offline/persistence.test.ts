@@ -18,6 +18,7 @@ import {
   peekOutbox,
   queuedOddBitAddIds,
   removeOutboxEntry,
+  retryFailedOutbox,
 } from "~/lib/offline/outbox";
 import { readShoppingSnapshot, writeShoppingSnapshot } from "~/lib/offline/snapshot";
 import type { ShoppingRecipeRecord } from "~/services/shopping.service";
@@ -209,5 +210,20 @@ describe("shopping offline persistence", () => {
     const applied = applyOutboxToSnapshot(snap, after);
     expect(applied.shoppingRecipes[0]?.ingredients[0]?.purchased).toBe(false);
     expect(applied.oddBits.map((bit) => bit.id)).toEqual(["ob1", clientId]);
+  });
+
+  it("retryFailedOutbox requeues failed rows as pending", async () => {
+    const entry = await enqueueOutbox({
+      pantryId,
+      actionPath: `/${pantryId}/shopping`,
+      fields: { intent: "toggle-odd-bit", id: "ob1", purchased: "true" },
+    });
+    await markOutboxFailed(entry.id, "nope");
+    expect(await retryFailedOutbox(pantryId)).toBe(1);
+    const after = await listOutbox(pantryId);
+    expect(after.find((row) => row.id === entry.id)).toMatchObject({
+      status: "pending",
+    });
+    expect(after.find((row) => row.id === entry.id)?.lastError).toBeUndefined();
   });
 });

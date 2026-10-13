@@ -21,7 +21,7 @@ import { useFetcherSuccessToast, useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
-import { useOnlineStatus } from "~/lib/offline/connectivity";
+import { useNetworkOnline } from "~/lib/offline/connectivity";
 import { pantryPath } from "~/lib/pantry-path";
 import { formatIngredientLabel } from "~/lib/units";
 import { cn } from "~/lib/utils";
@@ -56,7 +56,7 @@ function filterRecipes(recipes: RecipeRecord[], query: string) {
 
 export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
   const action = pantryPath(pantryId, "recipes");
-  const online = useOnlineStatus();
+  const online = useNetworkOnline();
   const { toast } = useToast();
   const addFetcher = useFetcher<AddToShoppingResult>();
   const [query, setQuery] = useState("");

@@ -56,6 +56,25 @@ export async function markOutboxFailed(id: string, lastError: string): Promise<v
   emitShoppingOfflineChange();
 }
 
+/** Re-queue failed rows as pending so drain will attempt them again. */
+export async function retryFailedOutbox(pantryId: string): Promise<number> {
+  const failed = (await listOutbox(pantryId)).filter((entry) => entry.status === "failed");
+  for (const entry of failed) {
+    await withStore(OUTBOX_STORE, "readwrite", (store) =>
+      store.put({
+        id: entry.id,
+        pantryId: entry.pantryId,
+        createdAt: entry.createdAt,
+        actionPath: entry.actionPath,
+        fields: entry.fields,
+        status: "pending",
+      }),
+    );
+  }
+  if (failed.length > 0) emitShoppingOfflineChange();
+  return failed.length;
+}
+
 export async function peekOutbox(pantryId: string): Promise<OutboxEntry | null> {
   const entries = await listOutbox(pantryId);
   return entries.find((entry) => entry.status === "pending") ?? null;

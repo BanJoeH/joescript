@@ -29,15 +29,20 @@ export async function clientLoader({ serverLoader, params }: Route.ClientLoaderA
   const pantryId = params.pantryId;
   try {
     const data = await serverLoader();
-    const applied = await writeSnapshotBaseAndApply(pantryId, {
-      shoppingRecipes: data.shoppingRecipes,
-      oddBits: data.oddBits,
-    });
-    return {
-      ...data,
-      shoppingRecipes: deserializeShoppingRecipes(applied.shoppingRecipes),
-      oddBits: applied.oddBits,
-    };
+    try {
+      const applied = await writeSnapshotBaseAndApply(pantryId, {
+        shoppingRecipes: data.shoppingRecipes,
+        oddBits: data.oddBits,
+      });
+      return {
+        ...data,
+        shoppingRecipes: deserializeShoppingRecipes(applied.shoppingRecipes),
+        oddBits: applied.oddBits,
+      };
+    } catch {
+      // Dehydrated/server data is still usable if snapshot persist fails.
+      return data;
+    }
   } catch (error) {
     const offline = await loadOfflineShoppingSnapshot(pantryId);
     if (!offline) throw error;

@@ -1,4 +1,9 @@
-import type { SerializedShoppingRecipe, ShoppingSnapshot } from "~/lib/offline/types";
+import {
+  isIngredientPurchasedProtected,
+  isOddBitPurchasedProtected,
+  purchasedProtectionFromOutbox,
+} from "~/lib/offline/purchased-protection";
+import type { OutboxEntry, SerializedShoppingRecipe, ShoppingSnapshot } from "~/lib/offline/types";
 import { pantryPath } from "~/lib/pantry-path";
 import type { OddBit } from "~/lib/recipe-schema";
 
@@ -8,17 +13,21 @@ export type PurchasedRepair = {
 };
 
 /**
- * After a server pull, find purchased flags where the local snapshot disagrees
- * with the server. Prefer local (just-folded drain commits) and return outbox
- * repairs so the server is pushed again instead of silently losing offline work.
+ * After a server pull, reconcile with the local snapshot.
+ *
+ * Purchased flags only prefer local (and enqueue a repair) when that entity is
+ * covered by a pending outbox intent or a just-folded drain — otherwise accept
+ * the server so another device/member's writes aren't clobbered.
  */
 export function mergeServerSnapshotWithLocal(
   pantryId: string,
   server: ShoppingSnapshot,
   local: ShoppingSnapshot | null,
+  options?: { pendingOutbox?: OutboxEntry[] },
 ): { merged: ShoppingSnapshot; repairs: PurchasedRepair[] } {
   if (!local) return { merged: server, repairs: [] };
 
+  const protection = purchasedProtectionFromOutbox(options?.pendingOutbox ?? []);
   const repairs: PurchasedRepair[] = [];
   const shoppingAction = pantryPath(pantryId, "shopping");
   const sortedAction = pantryPath(pantryId, "shopping/sorted");
@@ -27,6 +36,7 @@ export function mergeServerSnapshotWithLocal(
   const oddBits: OddBit[] = server.oddBits.map((serverBit) => {
     const localBit = localOddById.get(serverBit.id);
     if (!localBit || localBit.purchased === serverBit.purchased) return serverBit;
+    if (!isOddBitPurchasedProtected(protection, localBit.id)) return serverBit;
     repairs.push({
       actionPath: shoppingAction,
       fields: {
@@ -54,6 +64,15 @@ export function mergeServerSnapshotWithLocal(
     const ingredients = serverRecipe.ingredients.map((serverIng) => {
       const localIng = localIngById.get(serverIng.id);
       if (!localIng || localIng.purchased === serverIng.purchased) return serverIng;
+      if (
+        !isIngredientPurchasedProtected(protection, {
+          recipeId: serverRecipe.id,
+          ingredientId: localIng.id,
+          name: localIng.name,
+        })
+      ) {
+        return serverIng;
+      }
 
       // Prefer name toggle on sorted path so all instances stay consistent on replay.
       repairs.push({

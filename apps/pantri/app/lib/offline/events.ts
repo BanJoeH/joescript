@@ -1,4 +1,5 @@
 const CHANGE_EVENT = "pantri-shopping-offline-change";
+const TRY_SYNC_EVENT = "pantri-shopping-try-sync";
 
 export type ShoppingOfflineChangeDetail = {
   /** `transition` = server pull / non-urgent; default urgent for local mutations. */
@@ -25,4 +26,16 @@ export function subscribeShoppingOfflineChange(
   };
   window.addEventListener(CHANGE_EVENT, handler);
   return () => window.removeEventListener(CHANGE_EVENT, handler);
+}
+
+/** Ask the outbox drain to attempt a pass now (after connectivity probe). */
+export function requestShoppingOutboxSync() {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(TRY_SYNC_EVENT));
+}
+
+export function subscribeShoppingTrySync(listener: () => void) {
+  if (typeof window === "undefined") return () => {};
+  window.addEventListener(TRY_SYNC_EVENT, listener);
+  return () => window.removeEventListener(TRY_SYNC_EVENT, listener);
 }

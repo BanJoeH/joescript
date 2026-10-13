@@ -9,7 +9,7 @@ import { ShareRecipeButton } from "~/components/recipes/share-recipe-button";
 import { useFetcherSuccessToast, useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { useCookFocus } from "~/lib/cook-focus";
-import { useOnlineStatus } from "~/lib/offline/connectivity";
+import { useNetworkOnline } from "~/lib/offline/connectivity";
 import { pantryPath } from "~/lib/pantry-path";
 import { cn } from "~/lib/utils";
 
@@ -35,7 +35,7 @@ export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
   const focused = cookFocus?.focused ?? false;
   const shopFetcher = useFetcher<ShopActionData>({ key: `recipe-cook-shop:${recipe.id}` });
   const shopping = shopFetcher.state !== "idle";
-  const online = useOnlineStatus();
+  const online = useNetworkOnline();
 
   useFetcherSuccessToast(shopFetcher, (data) => {
     if (data.added) {
