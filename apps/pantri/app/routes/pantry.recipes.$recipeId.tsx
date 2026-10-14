@@ -1,26 +1,21 @@
 import { ShoppingCart } from "lucide-react";
-import { useFetcher } from "react-router";
+import { useState } from "react";
 
 import { DeleteForm } from "~/components/delete-form";
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
 import { RecipeCookView } from "~/components/recipes/recipe-cook-view";
 import { ShareRecipeButton } from "~/components/recipes/share-recipe-button";
-import { useFetcherSuccessToast, useToast } from "~/components/toast";
+import { useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { useCookFocus } from "~/lib/cook-focus";
-import { useNetworkOnline } from "~/lib/offline/connectivity";
+import { enqueueAddRecipeToShopping } from "~/lib/offline/add-recipe-to-shopping";
 import { pantryPath } from "~/lib/pantry-path";
 import { cn } from "~/lib/utils";
 
 import type { Route } from "./+types/pantry.recipes.$recipeId";
 
 export { action, loader } from "./pantry.recipes.$recipeId.server";
-
-type ShopActionData = {
-  error?: string;
-  added?: string;
-};
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [
@@ -33,15 +28,22 @@ export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
   const { toast } = useToast();
   const cookFocus = useCookFocus();
   const focused = cookFocus?.focused ?? false;
-  const shopFetcher = useFetcher<ShopActionData>({ key: `recipe-cook-shop:${recipe.id}` });
-  const shopping = shopFetcher.state !== "idle";
-  const online = useNetworkOnline();
+  const [shopping, setShopping] = useState(false);
 
-  useFetcherSuccessToast(shopFetcher, (data) => {
-    if (data.added) {
-      toast({ title: data.added, message: "Added to shopping" });
-    }
-  });
+  function addToShopping() {
+    if (shopping) return;
+    setShopping(true);
+    void enqueueAddRecipeToShopping({ pantryId, recipe })
+      .then(({ name }) => {
+        toast({ title: name, message: "Added to shopping" });
+      })
+      .catch(() => {
+        toast({ title: recipe.name, message: "Could not queue add to shopping." });
+      })
+      .finally(() => {
+        setShopping(false);
+      });
+  }
 
   return (
     <div className={cn("flex flex-col", focused ? "h-full min-h-0 gap-0" : "gap-6")}>
@@ -49,19 +51,16 @@ export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
         <PageHeader
           actions={
             <>
-              <shopFetcher.Form method="post">
-                <input name="intent" type="hidden" value="add-to-shopping" />
-                <Button
-                  disabled={shopping || !online}
-                  size="sm"
-                  title={online ? undefined : "Requires a connection"}
-                  type="submit"
-                  variant="outline"
-                >
-                  <ShoppingCart className="size-4" />
-                  {!online ? "Offline" : shopping ? "Adding…" : "Shop"}
-                </Button>
-              </shopFetcher.Form>
+              <Button
+                disabled={shopping}
+                onClick={addToShopping}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <ShoppingCart className="size-4" />
+                {shopping ? "Adding…" : "Shop"}
+              </Button>
               <ShareRecipeButton
                 isShared={Boolean(recipe.shareToken)}
                 recipeId={recipe.id}
@@ -102,12 +101,6 @@ export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
           }
           title={recipe.name}
         />
-      ) : null}
-
-      {shopFetcher.data?.error && !focused ? (
-        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {shopFetcher.data.error}
-        </p>
       ) : null}
 
       <RecipeCookView className={focused ? "min-h-0 flex-1" : undefined} recipe={recipe} />

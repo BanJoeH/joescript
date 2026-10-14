@@ -11,17 +11,16 @@ import {
 } from "lucide-react";
 import { matchSorter } from "match-sorter";
 import { useDeferredValue, useMemo, useState } from "react";
-import { useFetcher } from "react-router";
 
 import { DeleteForm } from "~/components/delete-form";
 import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
 import { ShareRecipeButton } from "~/components/recipes/share-recipe-button";
-import { useFetcherSuccessToast, useToast } from "~/components/toast";
+import { useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { CardList, CardListItem } from "~/components/ui/card-list";
 import { Input } from "~/components/ui/input";
-import { useNetworkOnline } from "~/lib/offline/connectivity";
+import { enqueueAddRecipeToShopping } from "~/lib/offline/add-recipe-to-shopping";
 import { pantryPath } from "~/lib/pantry-path";
 import { formatIngredientLabel } from "~/lib/units";
 import { cn } from "~/lib/utils";
@@ -31,8 +30,6 @@ export type RecipesListViewProps = {
   recipes: RecipeRecord[];
   pantryId: string;
 };
-
-type AddToShoppingResult = { added?: string; error?: string };
 
 function filterRecipes(recipes: RecipeRecord[], query: string) {
   const trimmed = query.trim();
@@ -56,22 +53,15 @@ function filterRecipes(recipes: RecipeRecord[], query: string) {
 
 export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
   const action = pantryPath(pantryId, "recipes");
-  const online = useNetworkOnline();
   const { toast } = useToast();
-  const addFetcher = useFetcher<AddToShoppingResult>();
   const [query, setQuery] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [addingIds, setAddingIds] = useState<Set<string>>(() => new Set());
   const deferredQuery = useDeferredValue(query);
   const filteredRecipes = useMemo(
     () => filterRecipes(recipes, deferredQuery),
     [recipes, deferredQuery],
   );
-
-  useFetcherSuccessToast(addFetcher, (data) => {
-    if (data.added) {
-      toast({ title: data.added, message: "Added to shopping" });
-    }
-  });
 
   function toggleExpanded(recipeId: string) {
     setExpandedIds((current) => {
@@ -80,6 +70,25 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
       else next.add(recipeId);
       return next;
     });
+  }
+
+  function addToShopping(recipe: RecipeRecord) {
+    if (addingIds.has(recipe.id)) return;
+    setAddingIds((current) => new Set(current).add(recipe.id));
+    void enqueueAddRecipeToShopping({ pantryId, recipe })
+      .then(({ name }) => {
+        toast({ title: name, message: "Added to shopping" });
+      })
+      .catch(() => {
+        toast({ title: recipe.name, message: "Could not queue add to shopping." });
+      })
+      .finally(() => {
+        setAddingIds((current) => {
+          const next = new Set(current);
+          next.delete(recipe.id);
+          return next;
+        });
+      });
   }
 
   return (
@@ -119,12 +128,6 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
             value={query}
           />
         </div>
-      ) : null}
-
-      {addFetcher.data?.error ? (
-        <p className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {addFetcher.data.error}
-        </p>
       ) : null}
 
       {recipes.length === 0 ? (
@@ -190,25 +193,17 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                         <UtensilsCrossed className="size-4" />
                       </Link>
                     </Button>
-                    <addFetcher.Form action={action} method="post">
-                      <input name="intent" type="hidden" value="add-to-shopping" />
-                      <input name="recipeId" type="hidden" value={recipe.id} />
-                      <Button
-                        aria-label={
-                          online
-                            ? `Add ${recipe.name} to shopping`
-                            : "Adding recipes to shopping requires a connection"
-                        }
-                        className="size-8"
-                        disabled={!online}
-                        size="icon"
-                        title={online ? undefined : "Requires a connection"}
-                        type="submit"
-                        variant="ghost"
-                      >
-                        <ShoppingCart className="size-4" />
-                      </Button>
-                    </addFetcher.Form>
+                    <Button
+                      aria-label={`Add ${recipe.name} to shopping`}
+                      className="size-8"
+                      disabled={addingIds.has(recipe.id)}
+                      onClick={() => addToShopping(recipe)}
+                      size="icon"
+                      type="button"
+                      variant="ghost"
+                    >
+                      <ShoppingCart className="size-4" />
+                    </Button>
                   </div>
                 </div>
                 {expanded ? (

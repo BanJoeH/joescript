@@ -15,6 +15,7 @@ import {
 import { oddBitsFromOutbox } from "~/lib/offline/odd-bits-from-outbox";
 import { submitShoppingMutation } from "~/lib/offline/submit-shopping-mutation";
 import type { OutboxEntry, ShoppingSnapshot } from "~/lib/offline/types";
+import { serializeShoppingIngredients } from "~/lib/recipe-schema";
 
 function snapshot(overrides: Partial<ShoppingSnapshot> = {}): ShoppingSnapshot {
   return {
@@ -139,6 +140,37 @@ describe("applyOutboxToSnapshot", () => {
 
     expect(next.shoppingRecipes[0]?.ingredients[1]?.purchased).toBe(false);
     expect(next.categoryOverrides.onion).toBe("Pantry");
+  });
+
+  it("adds a shopping recipe from add-from-recipe with client ids", () => {
+    const shoppingId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const ingredientId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const next = applyOutboxToSnapshot(snapshot({ shoppingRecipes: [] }), [
+      entry({
+        intent: "add-from-recipe",
+        id: shoppingId,
+        recipeId: "src1",
+        name: "Pasta",
+        link: "https://example.com",
+        servings: "2",
+        ingredients: serializeShoppingIngredients([
+          { id: ingredientId, name: "noodles", amount: 1, unit: "lb", purchased: false },
+        ]),
+      }),
+    ]);
+
+    expect(next.shoppingRecipes).toEqual([
+      expect.objectContaining({
+        id: shoppingId,
+        sourceRecipeId: "src1",
+        name: "Pasta",
+        link: "https://example.com",
+        servings: 2,
+        ingredients: [
+          expect.objectContaining({ id: ingredientId, name: "noodles", purchased: false }),
+        ],
+      }),
+    ]);
   });
 
   it("skips failed outbox rows", () => {

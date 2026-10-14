@@ -16,6 +16,9 @@ function entry(fields: Record<string, string>): OutboxEntry {
 
 describe("outboxEntryLabel", () => {
   it("labels odd-bit and sorted intents", () => {
+    expect(outboxEntryLabel(entry({ intent: "add-from-recipe", name: "Chili" }))).toBe(
+      "Add recipe “Chili”",
+    );
     expect(outboxEntryLabel(entry({ intent: "add-odd-bit", name: "milk" }))).toBe(
       "Add odd bit “milk”",
     );
