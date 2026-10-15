@@ -6,6 +6,7 @@ import { Link } from "~/components/link";
 import { PageHeader } from "~/components/page-header";
 import { RecipeCookView } from "~/components/recipes/recipe-cook-view";
 import { ShareRecipeButton } from "~/components/recipes/share-recipe-button";
+import { ShoppingOfflineBanner } from "~/components/shopping/offline-banner";
 import { useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { useCookFocus } from "~/lib/cook-focus";
