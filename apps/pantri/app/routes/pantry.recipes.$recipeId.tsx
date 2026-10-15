@@ -67,6 +67,7 @@ export default function RecipeDetailPage({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className={cn("flex flex-col", focused ? "h-full min-h-0 gap-0" : "gap-6")}>
+      {!focused ? <ShoppingOfflineBanner pantryId={pantryId} /> : null}
       {!focused ? (
         <PageHeader
           actions={

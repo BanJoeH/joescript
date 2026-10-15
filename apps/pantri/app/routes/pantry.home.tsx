@@ -94,7 +94,10 @@ function ShoppingTab({ oddBits, pantryId, shoppingRecipes }: HomeTabData) {
 function RecipesTab({ pantryId, recipes }: Pick<HomeTabData, "pantryId" | "recipes">) {
   return (
     <HomeTabPane tab="recipes">
-      <RecipesListView pantryId={pantryId} recipes={recipes} />
+      <div className="flex flex-col gap-3">
+        <ShoppingOfflineBanner pantryId={pantryId} />
+        <RecipesListView pantryId={pantryId} recipes={recipes} />
+      </div>
     </HomeTabPane>
   );
 }
