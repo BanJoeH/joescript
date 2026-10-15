@@ -1,6 +1,6 @@
-/* Pantri SW: shopping/sorted document shells + static fallback. Keep path rules in sync with
- * `app/lib/offline/shopping-shell-paths.ts`. */
-const CACHE_VERSION = "pantri-shopping-v3";
+/* Pantri SW: shopping/sorted/recipes document shells + static fallback. Keep path
+ * rules in sync with `app/lib/offline/offline-shell-paths.ts`. */
+const CACHE_VERSION = "pantri-shopping-v4";
 const PRECACHE = [
   "/offline.html",
   "/site.webmanifest",
@@ -14,8 +14,13 @@ const PRECACHE = [
   "/web-app-manifest-512x512.png",
 ];
 
-function isShoppingShellPath(pathname) {
-  return /^\/[^/]+\/shopping(?:\/sorted)?\/?$/.test(pathname);
+function isOfflineShellPath(pathname) {
+  if (/^\/[^/]+\/shopping(?:\/sorted)?\/?$/.test(pathname)) return true;
+  if (/^\/[^/]+\/recipes\/?$/.test(pathname)) return true;
+  const detail = pathname.match(/^\/[^/]+\/recipes\/([^/]+)\/?$/);
+  if (!detail) return false;
+  const segment = detail[1] || "";
+  return segment !== "new" && segment !== "import-photos";
 }
 
 function isDocumentRequest(request) {
@@ -125,7 +130,7 @@ self.addEventListener("message", (event) => {
         } catch {
           continue;
         }
-        if (!isShoppingShellPath(pathname)) continue;
+        if (!isOfflineShellPath(pathname)) continue;
         try {
           const response = await fetch(pathname, { credentials: "same-origin" });
           if (response.ok) {
@@ -139,7 +144,7 @@ self.addEventListener("message", (event) => {
   );
 });
 
-async function networkFirstShoppingShell(request) {
+async function networkFirstOfflineShell(request) {
   const cache = await caches.open(CACHE_VERSION);
   try {
     const response = await fetch(request);
@@ -207,10 +212,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Do not cache recipe / share / photo routes (navigations get offline fallback only).
   if (isDocumentRequest(request)) {
-    if (isShoppingShellPath(url.pathname)) {
-      event.respondWith(networkFirstShoppingShell(request));
+    if (isOfflineShellPath(url.pathname)) {
+      event.respondWith(networkFirstOfflineShell(request));
       return;
     }
     event.respondWith(networkOrOfflineFallback(request));

@@ -13,6 +13,7 @@ import {
   loadOfflineShoppingSnapshot,
   writeSnapshotBaseAndApply,
 } from "~/lib/offline/hydrate-shopping";
+import { listRecipesFromSnapshot, writeRecipesSnapshot } from "~/lib/offline/recipes-snapshot";
 import { deserializeShoppingRecipes } from "~/lib/offline/types";
 import { getHomeTabIndex, pantryPath } from "~/lib/pantry-path";
 import { shouldRevalidateShoppingLoaders } from "~/lib/shopping-local-merge";
@@ -34,6 +35,11 @@ export async function clientLoader({ serverLoader, params }: Route.ClientLoaderA
         shoppingRecipes: data.shoppingRecipes,
         oddBits: data.oddBits,
       });
+      try {
+        await writeRecipesSnapshot(pantryId, data.recipes);
+      } catch {
+        // Keep shopping hydrate even if recipes snapshot write fails.
+      }
       return {
         ...data,
         shoppingRecipes: deserializeShoppingRecipes(applied.shoppingRecipes),
@@ -46,10 +52,11 @@ export async function clientLoader({ serverLoader, params }: Route.ClientLoaderA
   } catch (error) {
     const offline = await loadOfflineShoppingSnapshot(pantryId);
     if (!offline) throw error;
+    const recipes = await listRecipesFromSnapshot(pantryId);
     return {
       shoppingRecipes: deserializeShoppingRecipes(offline.applied.shoppingRecipes),
       oddBits: offline.applied.oddBits,
-      recipes: [],
+      recipes,
       pantryId,
     };
   }

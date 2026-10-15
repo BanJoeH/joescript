@@ -10,12 +10,32 @@ import { useToast } from "~/components/toast";
 import { Button } from "~/components/ui/button";
 import { useCookFocus } from "~/lib/cook-focus";
 import { enqueueAddRecipeToShopping } from "~/lib/offline/add-recipe-to-shopping";
+import { readRecipeFromSnapshot, upsertRecipeInSnapshot } from "~/lib/offline/recipes-snapshot";
 import { pantryPath } from "~/lib/pantry-path";
 import { cn } from "~/lib/utils";
 
 import type { Route } from "./+types/pantry.recipes.$recipeId";
 
 export { action, loader } from "./pantry.recipes.$recipeId.server";
+
+export async function clientLoader({ serverLoader, params }: Route.ClientLoaderArgs) {
+  const pantryId = params.pantryId;
+  const recipeId = params.recipeId;
+  try {
+    const data = await serverLoader();
+    try {
+      await upsertRecipeInSnapshot(data.recipe);
+    } catch {
+      // Keep serving loader data even if IDB write fails.
+    }
+    return data;
+  } catch (error) {
+    const recipe = await readRecipeFromSnapshot(pantryId, recipeId);
+    if (!recipe) throw error;
+    return { recipe, pantryId };
+  }
+}
+clientLoader.hydrate = true;
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [

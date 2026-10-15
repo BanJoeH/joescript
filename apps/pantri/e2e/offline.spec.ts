@@ -9,13 +9,13 @@ test.describe("offline shell", () => {
     const sw = await request.get("/sw.js");
     expect(sw.ok()).toBe(true);
     const swBody = await sw.text();
-    expect(swBody).toContain("pantri-shopping-v3");
+    expect(swBody).toContain("pantri-shopping-v4");
     expect(swBody).toContain("offline.html");
     expect(swBody).toContain("/background-dark.png");
     expect(swBody).toContain("PRECACHE_SHELLS");
     expect(swBody).toContain("PRECACHE_ASSETS");
     expect(swBody).toContain("assetUrlsFromHtml");
-    expect(swBody).toContain("isShoppingShellPath");
+    expect(swBody).toContain("isOfflineShellPath");
     expect(swBody).toContain("/_pantri_online_probe");
     expect(swBody).not.toContain("/photos/");
 
