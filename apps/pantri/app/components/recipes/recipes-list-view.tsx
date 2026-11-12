@@ -184,31 +184,28 @@ export function RecipesListView({ recipes, pantryId }: RecipesListViewProps) {
                       </span>
                     </div>
                   </button>
-                  <div className="flex shrink-0 items-center gap-0">
-                    <Button asChild className="size-8" size="icon" variant="ghost">
-                      <Link
-                        aria-label={`Cook ${recipe.name}`}
-                        to={pantryPath(pantryId, `recipes/${recipe.id}`)}
-                      >
-                        <UtensilsCrossed className="size-4" />
-                      </Link>
-                    </Button>
-                    <Button
-                      aria-label={`Add ${recipe.name} to shopping`}
-                      className="size-8"
-                      disabled={addingIds.has(recipe.id)}
-                      onClick={() => addToShopping(recipe)}
-                      size="icon"
-                      type="button"
-                      variant="ghost"
-                    >
-                      <ShoppingCart className="size-4" />
-                    </Button>
-                  </div>
+                  <Button
+                    aria-label={`Add ${recipe.name} to shopping`}
+                    className="h-8 shrink-0 px-2"
+                    disabled={addingIds.has(recipe.id)}
+                    onClick={() => addToShopping(recipe)}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ShoppingCart className="size-4" />
+                    {addingIds.has(recipe.id) ? "Adding…" : "Shop"}
+                  </Button>
                 </div>
                 {expanded ? (
                   <div className="space-y-2 px-4 pb-3" id={panelId}>
                     <div className="flex flex-wrap items-center gap-2">
+                      <Button asChild size="sm" variant="outline">
+                        <Link to={pantryPath(pantryId, `recipes/${recipe.id}`)}>
+                          <UtensilsCrossed className="size-4" />
+                          Cook
+                        </Link>
+                      </Button>
                       <Button asChild size="sm" variant="outline">
                         <Link to={pantryPath(pantryId, `recipes/${recipe.id}/edit`)}>
                           <Pencil className="size-4" />
