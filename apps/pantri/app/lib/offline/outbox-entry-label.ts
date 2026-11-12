@@ -6,6 +6,8 @@ export function outboxEntryLabel(entry: OutboxEntry): string {
   const name = (entry.fields.name ?? "").trim();
 
   switch (intent) {
+    case "add-from-recipe":
+      return name ? `Add recipe “${name}”` : "Add recipe to shopping";
     case "add-odd-bit":
       return name ? `Add odd bit “${name}”` : "Add odd bit";
     case "toggle-odd-bit":

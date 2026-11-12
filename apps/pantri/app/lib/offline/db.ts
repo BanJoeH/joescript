@@ -1,10 +1,11 @@
 const DB_NAME = "pantri-shopping-offline";
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 export const SNAPSHOT_STORE = "snapshots";
 export const OUTBOX_STORE = "outbox";
 export const LAYOUT_STORE = "layouts";
 export const DRAIN_LEASE_STORE = "drain-leases";
+export const RECIPES_STORE = "recipes";
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -31,6 +32,9 @@ export function openShoppingOfflineDb(): Promise<IDBDatabase> {
         }
         if (!db.objectStoreNames.contains(DRAIN_LEASE_STORE)) {
           db.createObjectStore(DRAIN_LEASE_STORE, { keyPath: "pantryId" });
+        }
+        if (!db.objectStoreNames.contains(RECIPES_STORE)) {
+          db.createObjectStore(RECIPES_STORE, { keyPath: "pantryId" });
         }
       };
     });

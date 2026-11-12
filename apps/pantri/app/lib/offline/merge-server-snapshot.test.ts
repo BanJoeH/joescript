@@ -161,4 +161,25 @@ describe("mergeServerSnapshotWithLocal", () => {
     );
     expect(repairs).toEqual([]);
   });
+
+  it("keeps local-only shopping recipes missing from the server pull", () => {
+    const localOnly = {
+      id: "local-sr",
+      pantryId: "p1",
+      sourceRecipeId: "src1",
+      name: "Pasta",
+      link: null,
+      servings: 2,
+      createdAt: "2020-01-01T00:00:00.000Z",
+      updatedAt: "2020-01-01T00:00:00.000Z",
+      ingredients: [{ id: "i1", name: "noodles", amount: 1, unit: null, purchased: false }],
+    };
+    const { merged } = mergeServerSnapshotWithLocal(
+      "p1",
+      snap({ shoppingRecipes: [] }),
+      snap({ shoppingRecipes: [localOnly] }),
+      { pendingOutbox: [] },
+    );
+    expect(merged.shoppingRecipes.map((recipe) => recipe.id)).toEqual(["local-sr"]);
+  });
 });

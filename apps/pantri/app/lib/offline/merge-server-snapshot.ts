@@ -89,6 +89,12 @@ export function mergeServerSnapshotWithLocal(
     return { ...serverRecipe, ingredients };
   });
 
+  // Keep local-only shopping recipes (undrained / just-folded client-id adds).
+  for (const localRecipe of local.shoppingRecipes) {
+    if (shoppingRecipes.some((recipe) => recipe.id === localRecipe.id)) continue;
+    shoppingRecipes.push(localRecipe);
+  }
+
   return {
     merged: {
       ...server,

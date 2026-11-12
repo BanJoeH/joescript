@@ -1,5 +1,5 @@
 import { canUseNetwork } from "~/lib/offline/connectivity";
-import { shoppingShellUrls } from "~/lib/offline/shopping-shell-paths";
+import { offlineShellUrls } from "~/lib/offline/offline-shell-paths";
 
 /** Register the Pantri service worker (production browser only). */
 export function registerPantriServiceWorker() {
@@ -57,13 +57,13 @@ function postToActiveWorker(message: { type: string; urls: string[] }) {
 }
 
 /**
- * Ask the SW to cache shopping + sorted document shells (and their /assets/*)
+ * Ask the SW to cache shopping / sorted / recipes document shells (and /assets/*)
  * for offline cold opens. Safe to call repeatedly.
  */
 export function prefetchShoppingOfflineShells(pantryId: string) {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
   if (!canUseNetwork()) return;
 
-  postToActiveWorker({ type: "PRECACHE_SHELLS", urls: shoppingShellUrls(pantryId) });
+  postToActiveWorker({ type: "PRECACHE_SHELLS", urls: offlineShellUrls(pantryId) });
   postToActiveWorker({ type: "PRECACHE_ASSETS", urls: collectLoadedAssetUrls() });
 }

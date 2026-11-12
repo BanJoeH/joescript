@@ -86,7 +86,19 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
       return row ? hydrate(row) : null;
     },
 
-    async addFromRecipe(recipeId: string): Promise<ShoppingRecipeRecord> {
+    /**
+     * Copy a pantry recipe onto the shopping list.
+     * Optional `id` / `ingredients` support offline outbox replay (client UUID + stable ingredient ids).
+     */
+    async addFromRecipe(
+      recipeId: string,
+      options?: { id?: string; ingredients?: ShoppingIngredient[] },
+    ): Promise<ShoppingRecipeRecord> {
+      if (options?.id) {
+        const existing = await this.get(options.id);
+        if (existing) return existing;
+      }
+
       const [recipe] = await db
         .select()
         .from(recipes)
@@ -99,23 +111,35 @@ export function createShoppingService({ db, userId, pantryId }: PantriContext) {
         throw new Error("Recipe not found");
       }
 
-      const id = newId();
+      const id = options?.id ?? newId();
       const now = new Date();
-      const ingredients = toShoppingIngredients(parseRecipeIngredientsJson(recipe.ingredients));
+      const ingredients =
+        options?.ingredients && options.ingredients.length > 0
+          ? ensureShoppingIngredientIds(options.ingredients).ingredients
+          : toShoppingIngredients(parseRecipeIngredientsJson(recipe.ingredients));
 
-      await db.insert(shoppingRecipes).values({
-        id,
-        pantryId,
-        sourceRecipeId: recipe.id,
-        createdByUserId: userId,
-        name: recipe.name,
-        link: recipe.link,
-        servings: recipe.servings,
-        ingredients: serializeShoppingIngredients(ingredients),
-        steps: serializeRecipeSteps(parseRecipeStepsJson(recipe.steps)),
-        createdAt: now,
-        updatedAt: now,
-      });
+      const inserted = await db
+        .insert(shoppingRecipes)
+        .values({
+          id,
+          pantryId,
+          sourceRecipeId: recipe.id,
+          createdByUserId: userId,
+          name: recipe.name,
+          link: recipe.link,
+          servings: recipe.servings,
+          ingredients: serializeShoppingIngredients(ingredients),
+          steps: serializeRecipeSteps(parseRecipeStepsJson(recipe.steps)),
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoNothing()
+        .returning({ id: shoppingRecipes.id });
+
+      if (inserted.length === 0 && options?.id) {
+        const existing = await this.get(options.id);
+        if (existing) return existing;
+      }
 
       const record = await this.get(id);
       if (!record) throw new Error("Failed to add recipe to shopping list");

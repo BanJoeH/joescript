@@ -1,5 +1,10 @@
 import { getPantriEnv, getWorkerEnv } from "~/lib/context.server";
 import { getOptionalString, getString } from "~/lib/forms.server";
+import {
+  ensureShoppingIngredientIds,
+  parseShoppingIngredients,
+  type ShoppingIngredient,
+} from "~/lib/recipe-schema";
 import { requirePantriService } from "~/services";
 import { notifyPantryMutation } from "~/services/realtime.server";
 
@@ -15,6 +20,27 @@ export async function action({ request, params }: Route.ActionArgs) {
   }
 
   try {
+    if (intent === "add-from-recipe") {
+      const clientId = getOptionalString(formData, "id") ?? undefined;
+      const ingredientsRaw = getOptionalString(formData, "ingredients");
+      let ingredients: ShoppingIngredient[] | undefined;
+      if (ingredientsRaw) {
+        try {
+          ingredients = ensureShoppingIngredientIds(
+            parseShoppingIngredients(JSON.parse(ingredientsRaw)),
+          ).ingredients;
+        } catch {
+          ingredients = undefined;
+        }
+      }
+      const shoppingRecipe = await pantri.shopping.addFromRecipe(getString(formData, "recipeId"), {
+        id: clientId,
+        ingredients,
+      });
+      await notify();
+      return { ok: true as const, added: shoppingRecipe.name };
+    }
+
     if (intent === "toggle-ingredient") {
       await pantri.shopping.toggleIngredientPurchased(
         getString(formData, "shoppingRecipeId"),

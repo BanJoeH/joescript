@@ -1,7 +1,12 @@
 import { getCanonicalIngredientName } from "~/lib/ingredient-name";
 import type { ShoppingSection } from "~/lib/ingredient-sections";
 import type { OutboxEntry, ShoppingSnapshot } from "~/lib/offline/types";
-import type { OddBit, ShoppingIngredient } from "~/lib/recipe-schema";
+import {
+  ensureShoppingIngredientIds,
+  type OddBit,
+  parseShoppingIngredientsJson,
+  type ShoppingIngredient,
+} from "~/lib/recipe-schema";
 
 function parseAmount(raw: string | undefined) {
   if (!raw) return null;
@@ -76,6 +81,33 @@ export function applyOutboxToSnapshot(
               ),
             },
       );
+      continue;
+    }
+
+    if (intent === "add-from-recipe") {
+      const id = (entry.fields.id ?? "").trim();
+      const name = (entry.fields.name ?? "").trim();
+      if (!id || !name) continue;
+      if (shoppingRecipes.some((recipe) => recipe.id === id)) continue;
+      const parsed = parseShoppingIngredientsJson(entry.fields.ingredients);
+      const { ingredients } = ensureShoppingIngredientIds(parsed);
+      const servingsRaw = (entry.fields.servings ?? "").trim();
+      const servings = servingsRaw ? Number(servingsRaw) : null;
+      const createdAt = new Date(entry.createdAt).toISOString();
+      shoppingRecipes = [
+        ...shoppingRecipes,
+        {
+          id,
+          pantryId: snapshot.pantryId,
+          sourceRecipeId: (entry.fields.recipeId ?? "").trim() || null,
+          name,
+          link: (entry.fields.link ?? "").trim() || null,
+          servings: Number.isFinite(servings) ? servings : null,
+          ingredients,
+          createdAt,
+          updatedAt: createdAt,
+        },
+      ];
       continue;
     }
 
